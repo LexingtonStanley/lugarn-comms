@@ -1,0 +1,8 @@
+COMMAND: opencode run --standalone --format json --model opencode-go/iceman-contributor-free
+stdin: Reply with only the word ok. Do not use tools.
+Config: inherited own config; no custom MCP/config home.
+elapsed_seconds: 25.04
+timed_out: True
+exit_code: -9
+events: [{"type": "step_start", "sessionID": "ses_e863a4d4affefQgd0c8r41EwFC"}, {"type": "step_start", "sessionID": "ses_e863a4d4affefQgd0c8r41EwFC"}, {"type": "step_start", "sessionID": "ses_e863a4d4affefQgd0c8r41EwFC"}, {"type": "step_start", "sessionID": "ses_e863a4d4affefQgd0c8r41EwFC"}]
+stderr_bytes: 0

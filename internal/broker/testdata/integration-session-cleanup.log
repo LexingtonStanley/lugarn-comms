@@ -1,0 +1,10 @@
+After the real flow runs, each own session's status reported running=false:
+
+herdr --session lugarn-test-eff775f3122cf054 session delete lugarn-test-eff775f3122cf054
+exit 0: deleted session lugarn-test-eff775f3122cf054
+herdr --session lugarn-test-90eedddbbb0cce07 session delete lugarn-test-90eedddbbb0cce07
+exit 0: deleted session lugarn-test-90eedddbbb0cce07
+herdr --session lugarn-test-a29ef84c31dc33a8 session delete lugarn-test-a29ef84c31dc33a8
+exit 0: deleted session lugarn-test-a29ef84c31dc33a8
+
+Only these fresh sessions created by this work were stopped or deleted.

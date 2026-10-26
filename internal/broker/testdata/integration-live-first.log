@@ -1,0 +1,35 @@
+=== RUN   TestIntegrationLiveFlows
+    integration_live_linux_test.go:204: app start-herdr server=lugarn-test-eff775f3122cf054 started=true method=0x3a9abff000a0
+=== RUN   TestIntegrationLiveFlows/a-headless-budget
+    integration_live_linux_test.go:225: app start-team live-a: state=running runner=0x3a9abfdd0810 pane=0x3a9abfd1ec60
+    integration_live_linux_test.go:229: lugarn-comms --member live-writer --token-file <launch/01M5WVW5NPRYB1XNXV65A30PFM.token> ["send" "reviewer" "Reply with the word ok."] -> {"id":"01M5WVW5TSQK57XY6KPFNY2N73","to":{"id":"live-reviewer","name":"reviewer"},"state":"queued","reason":null,"will_wake":false}
+        send: 01M5WVW5TSQK57XY6KPFNY2N73 to reviewer (queued)
+    integration_live_linux_test.go:109: turn {"id":"01M5WVW5YPKXTFTB0K06FDDEQH","team":"live-a","member":{"id":"live-reviewer","name":"reviewer"},"launch":"01M5WVW5NPDMJ4XZ7DPRRB7GK3","lease_generation":1,"harness":"codex","session_id_start":null,"session_id_end":"01a179be-188a-7592-8822-77619154e95c","pid":3630364,"status":"succeeded","exit_code":0,"error":null,"usage":{"input_tokens":13543,"output_tokens":23,"cached_input_tokens":11520,"reasoning_tokens":16,"cost_usd":null},"started_at":"2026-10-26T19:44:23.510Z","ended_at":"2026-10-26T19:44:28.024Z","consumed":["01M5WVW5TSQK57XY6KPFNY2N73"],"auto_replies":["01M5WVWABNGX6E7TDR9YV88BSW"]}
+    integration_live_linux_test.go:262: app continue-budget: released=1 allowance=2
+    integration_live_linux_test.go:109: turn {"id":"01M5WVW5YPKXTFTB0K06FDDEQH","team":"live-a","member":{"id":"live-reviewer","name":"reviewer"},"launch":"01M5WVW5NPDMJ4XZ7DPRRB7GK3","lease_generation":1,"harness":"codex","session_id_start":null,"session_id_end":"01a179be-188a-7592-8822-77619154e95c","pid":3630364,"status":"succeeded","exit_code":0,"error":null,"usage":{"input_tokens":13543,"output_tokens":23,"cached_input_tokens":11520,"reasoning_tokens":16,"cost_usd":null},"started_at":"2026-10-26T19:44:23.510Z","ended_at":"2026-10-26T19:44:28.024Z","consumed":["01M5WVW5TSQK57XY6KPFNY2N73"],"auto_replies":["01M5WVWABNGX6E7TDR9YV88BSW"]}
+    integration_live_linux_test.go:109: turn {"id":"01M5WVWAJTG43BYE1G8BSPKEH2","team":"live-a","member":{"id":"live-writer","name":"writer"},"launch":"01M5WVW5NPRYB1XNXV65A30PFM","lease_generation":1,"harness":"claude","session_id_start":"5448d515-39ee-4ec4-a0da-81900db0d590","session_id_end":"5448d515-39ee-4ec4-a0da-81900db0d590","pid":3630716,"status":"succeeded","exit_code":0,"error":null,"usage":{"input_tokens":2,"output_tokens":101,"cached_input_tokens":11333,"reasoning_tokens":97,"cost_usd":0.07102330000000001},"started_at":"2026-10-26T19:44:28.250Z","ended_at":"2026-10-26T19:44:35.312Z","consumed":["01M5WVWABNGX6E7TDR9YV88BSW"],"auto_replies":["01M5WVWHFF7QM14BBPSZVDS5H8"]}
+    integration_live_linux_test.go:265: app stop-team live-a: stopped; 2 launch ids and 1 owned panes clean
+=== RUN   TestIntegrationLiveFlows/b-opencode-pane
+    integration_live_linux_test.go:268: app start-team live-b: state=running runner=0x3a9abfbe0dc0 pane=0x3a9ac0180580
+    integration_live_linux_test.go:109: turn {"id":"01M5WVWJ63NYR2NK7KETBFEJKK","team":"live-b","member":{"id":"live-opencode","name":"worker"},"launch":"01M5WVWJ5K1ZFN7M8ZMRFTWR5W","lease_generation":1,"harness":"opencode","session_id_start":null,"session_id_end":"ses_e8641b4f5ffeTbjbg1p6pTDf6W","pid":3631133,"status":"timed_out","exit_code":-1,"error":null,"usage":null,"started_at":"2026-10-26T19:44:36.035Z","ended_at":"2026-10-26T19:45:36.087Z","consumed":[],"auto_replies":[]}
+    integration_live_linux_test.go:276: OpenCode pane launch stopped: 0x3a9abfcd5d20
+=== RUN   TestIntegrationLiveFlows/c-claude-conversion
+    integration_live_linux_test.go:295: app start-team live-c: state=running runner=0x3a9abfa48a10 pane=0x3a9abfdf6800
+    integration_live_linux_test.go:301: request result {"id":"01M5WVYDQGHN2NM2Q0221JNASA","team":"live-c","kind":"open-terminal","member":{"id":"live-claude","name":"worker"},"requested_by":{"id":"01M5WVYDA6WPR537940PGPDSK4","name":"human"},"args":{"cancel_turn":false},"status":"succeeded","error":null,"created_at":"2026-10-26T19:45:37.008Z","started_at":"2026-10-26T19:45:37.214Z","finished_at":"2026-10-26T19:45:41.157Z"}
+    integration_live_linux_test.go:306: Claude pane activity=0x3a9abfe56c40 session=0x3a9abfe56c70
+    integration_live_linux_test.go:308: Claude trust question is blocked; return-headless must wait for the person, no keys injected
+=== RUN   TestIntegrationLiveFlows/d-spawn-worktree-stop
+    integration_live_linux_test.go:326: app start-team live-d: state=running runner=0x3a9abfe623a0 pane=0x3a9abff003b0
+    integration_live_linux_test.go:329: lugarn-comms --member live-parent --token-file <launch/01M5WVYK5T2J67EZMRPQVT4V3T.token> ["spawn" "worker" "claude" "Reply with the word ok. Do not change files." "--profile" "workspace"] -> {"member":{"id":"01M5WVYKGHCY1BP45JG9S3BYMC","name":"worker","harness":"claude","profile":"workspace","mode":"headless","state":"running","workdir":"/tmp/TestIntegrationLiveFlows1258693721/004/repo-lugarn/live-d-worker","worktree":{"path":"/tmp/TestIntegrationLiveFlows1258693721/004/repo-lugarn/live-d-worker","branch":"lugarn/live-d/worker"}},"task_message":"01M5WVYKGMCXZ2TPDBVDW76NNT"}
+        spawn: worker (running)
+    integration_live_linux_test.go:331: invalid character 's' after top-level value
+=== NAME  TestIntegrationLiveFlows
+    integration_live_linux_test.go:351: herdr --session lugarn-test-eff775f3122cf054 server stop:  (<nil>)
+--- FAIL: TestIntegrationLiveFlows (82.32s)
+    --- PASS: TestIntegrationLiveFlows/a-headless-budget (13.06s)
+    --- FAIL: TestIntegrationLiveFlows/b-opencode-pane (60.70s)
+    --- SKIP: TestIntegrationLiveFlows/c-claude-conversion (5.77s)
+    --- FAIL: TestIntegrationLiveFlows/d-spawn-worktree-stop (1.55s)
+FAIL
+FAIL	github.com/LexingtonStanley/lugarn-comms/internal/broker	82.332s
+FAIL
