@@ -1,0 +1,15 @@
+{
+  "protocol": 1,
+  "op": "open-terminal",
+  "ok": false,
+  "error": {
+    "code": "lease_conflict",
+    "message": "api's lease is at generation 2, not 1",
+    "details": {
+      "member": "01M5W85YF0SS6YS3C4DWA7N360",
+      "expected": 1,
+      "actual": 2,
+      "driver": "pane"
+    }
+  }
+}

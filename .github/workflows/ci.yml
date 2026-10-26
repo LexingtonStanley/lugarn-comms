@@ -49,3 +49,14 @@ jobs:
           cache: false
       - name: Build all release targets
         run: scripts/build-all.sh
+
+  protocol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the schema validator
+        run: python3 -m pip install --user 'jsonschema==4.26.0'
+      - name: Validate the schemas and examples against docs/protocol.md
+        run: python3 scripts/validate-schemas.py
+      - name: Apply the store migrations and run the smoke checks
+        run: python3 scripts/check-migrations.py

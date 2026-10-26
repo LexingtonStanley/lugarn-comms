@@ -1,0 +1,13 @@
+{
+  "protocol": 1,
+  "op": "start-team",
+  "ok": false,
+  "error": {
+    "code": "herdr_unavailable",
+    "message": "Herdr server 'default' isn't running: start it with start-herdr",
+    "details": {
+      "reason": "not_running",
+      "server": "default"
+    }
+  }
+}

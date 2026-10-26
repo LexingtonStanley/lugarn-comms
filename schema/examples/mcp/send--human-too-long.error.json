@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "invalid_request",
+    "message": "messages to human are capped at 8000 characters: shorten it and send again",
+    "details": {
+      "field": "text",
+      "limit": 8000,
+      "length": 11240
+    }
+  }
+}

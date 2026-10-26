@@ -1,0 +1,643 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/LexingtonStanley/lugarn-comms/main/schema/mcp-tools.v1.schema.json",
+  "title": "lugarn-comms MCP tools v1",
+  "description": "Input and output of each tool `lugarn-comms mcp` serves (server name `lugarn`). A tool succeeds with its output as structuredContent; it fails with isError and a ToolError as structuredContent. The CLI faces print the same objects.",
+  "$defs": {
+    "ToolName": {
+      "type": "string",
+      "enum": [
+        "send",
+        "reply",
+        "inbox",
+        "team",
+        "spawn",
+        "stop"
+      ]
+    },
+    "ToolError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "common.v1.schema.json#/$defs/Error"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "Recipient": {
+      "description": "A member name, including `human`. Never `all`: only the person broadcasts.",
+      "allOf": [
+        {
+          "$ref": "common.v1.schema.json#/$defs/MemberName"
+        },
+        {
+          "not": {
+            "const": "all"
+          }
+        }
+      ]
+    },
+    "SendInput": {
+      "type": "object",
+      "properties": {
+        "to": {
+          "$ref": "#/$defs/Recipient"
+        },
+        "text": {
+          "$ref": "common.v1.schema.json#/$defs/Text"
+        },
+        "reply_to": {
+          "$ref": "common.v1.schema.json#/$defs/Ulid"
+        }
+      },
+      "required": [
+        "to",
+        "text"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "to": {
+            "const": "human"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "text": {
+            "maxLength": 8000
+          }
+        }
+      },
+      "description": "Text to `human` is capped at 8,000 code points."
+    },
+    "SendOutput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.v1.schema.json#/$defs/Ulid"
+        },
+        "to": {
+          "$ref": "common.v1.schema.json#/$defs/MemberRef"
+        },
+        "state": {
+          "$ref": "common.v1.schema.json#/$defs/DeliveryState"
+        },
+        "reason": {
+          "oneOf": [
+            {
+              "$ref": "common.v1.schema.json#/$defs/DeliveryReason"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "will_wake": {
+          "description": "The recipient is stopped and this message will start it.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "to",
+        "state",
+        "reason",
+        "will_wake"
+      ],
+      "additionalProperties": false
+    },
+    "ReplyInput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.v1.schema.json#/$defs/Ulid"
+        },
+        "text": {
+          "$ref": "common.v1.schema.json#/$defs/Text"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "ReplyOutput": {
+      "$ref": "#/$defs/SendOutput"
+    },
+    "InboxInput": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "$ref": "common.v1.schema.json#/$defs/InboxDirection",
+          "default": "in"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        },
+        "before": {
+          "description": "Return messages older than this message id.",
+          "$ref": "common.v1.schema.json#/$defs/Ulid"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InboxMessage": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.v1.schema.json#/$defs/Ulid"
+        },
+        "from": {
+          "$ref": "common.v1.schema.json#/$defs/MemberName"
+        },
+        "to": {
+          "description": "The recipient's name, or `all` for the person's broadcasts.",
+          "$ref": "common.v1.schema.json#/$defs/MemberName"
+        },
+        "kind": {
+          "$ref": "common.v1.schema.json#/$defs/MessageKind"
+        },
+        "reply_to": {
+          "oneOf": [
+            {
+              "$ref": "common.v1.schema.json#/$defs/Ulid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "$ref": "common.v1.schema.json#/$defs/Text"
+        },
+        "created_at": {
+          "$ref": "common.v1.schema.json#/$defs/Timestamp"
+        },
+        "state": {
+          "$ref": "common.v1.schema.json#/$defs/DeliveryState"
+        },
+        "reason": {
+          "oneOf": [
+            {
+              "$ref": "common.v1.schema.json#/$defs/DeliveryReason"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "from",
+        "to",
+        "kind",
+        "reply_to",
+        "text",
+        "created_at",
+        "state",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "InboxOutput": {
+      "type": "object",
+      "properties": {
+        "messages": {
+          "description": "Newest first.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InboxMessage"
+          }
+        },
+        "has_more": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "messages",
+        "has_more"
+      ],
+      "additionalProperties": false
+    },
+    "TeamInput": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "TeamOutput": {
+      "type": "object",
+      "properties": {
+        "team": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "common.v1.schema.json#/$defs/OpaqueId"
+            },
+            "name": {
+              "$ref": "common.v1.schema.json#/$defs/TeamName"
+            },
+            "pattern": {
+              "$ref": "common.v1.schema.json#/$defs/Pattern"
+            },
+            "state": {
+              "$ref": "common.v1.schema.json#/$defs/TeamState"
+            },
+            "run": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "pattern",
+            "state",
+            "run"
+          ],
+          "additionalProperties": false
+        },
+        "me": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "common.v1.schema.json#/$defs/OpaqueId"
+            },
+            "name": {
+              "$ref": "common.v1.schema.json#/$defs/MemberName"
+            },
+            "role": {
+              "$ref": "common.v1.schema.json#/$defs/Role"
+            },
+            "harness": {
+              "$ref": "common.v1.schema.json#/$defs/Harness"
+            },
+            "profile": {
+              "$ref": "common.v1.schema.json#/$defs/Profile"
+            },
+            "mode": {
+              "$ref": "common.v1.schema.json#/$defs/Mode"
+            },
+            "spawned_by": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/MemberName"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "can_spawn": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "role",
+            "harness",
+            "profile",
+            "mode",
+            "spawned_by",
+            "can_spawn"
+          ],
+          "additionalProperties": false
+        },
+        "members": {
+          "description": "Every live member except the caller, `human` included.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TeamMember"
+          }
+        },
+        "hops": {
+          "type": "object",
+          "properties": {
+            "used": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "allowance": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "used",
+            "allowance"
+          ],
+          "additionalProperties": false
+        },
+        "spawn": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SpawnStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "team",
+        "me",
+        "members",
+        "hops",
+        "spawn"
+      ],
+      "additionalProperties": false
+    },
+    "TeamMember": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.v1.schema.json#/$defs/OpaqueId"
+        },
+        "name": {
+          "$ref": "common.v1.schema.json#/$defs/MemberName"
+        },
+        "kind": {
+          "$ref": "common.v1.schema.json#/$defs/MemberKind"
+        },
+        "role": {
+          "oneOf": [
+            {
+              "$ref": "common.v1.schema.json#/$defs/Role"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "harness": {
+          "oneOf": [
+            {
+              "$ref": "common.v1.schema.json#/$defs/Harness"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mode": {
+          "oneOf": [
+            {
+              "$ref": "common.v1.schema.json#/$defs/Mode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "common.v1.schema.json#/$defs/MemberState"
+        },
+        "activity": {
+          "oneOf": [
+            {
+              "$ref": "common.v1.schema.json#/$defs/Activity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "spawned_by": {
+          "oneOf": [
+            {
+              "$ref": "common.v1.schema.json#/$defs/MemberName"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "can": {
+          "description": "What the caller may do to this member.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.v1.schema.json#/$defs/GridCapability"
+          }
+        },
+        "spawned_by_me": {
+          "type": "boolean",
+          "description": "The caller spawned it, so the caller may stop it."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "role",
+        "harness",
+        "mode",
+        "state",
+        "activity",
+        "spawned_by",
+        "can",
+        "spawned_by_me"
+      ],
+      "additionalProperties": false
+    },
+    "SpawnStatus": {
+      "type": "object",
+      "properties": {
+        "running": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "running_at_once": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24
+        },
+        "spawned_this_run": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "per_run": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24
+        },
+        "harnesses": {
+          "description": "Harnesses the caller may spawn that the host can run.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.v1.schema.json#/$defs/Harness"
+          }
+        },
+        "mode": {
+          "$ref": "common.v1.schema.json#/$defs/Mode"
+        },
+        "folder": {
+          "$ref": "common.v1.schema.json#/$defs/SpawnFolder"
+        },
+        "max_profile": {
+          "description": "The effective highest profile: the lower of the setting and the caller's own profile.",
+          "$ref": "common.v1.schema.json#/$defs/Profile"
+        }
+      },
+      "required": [
+        "running",
+        "running_at_once",
+        "spawned_this_run",
+        "per_run",
+        "harnesses",
+        "mode",
+        "folder",
+        "max_profile"
+      ],
+      "additionalProperties": false
+    },
+    "SpawnInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "common.v1.schema.json#/$defs/AgentName"
+        },
+        "harness": {
+          "$ref": "common.v1.schema.json#/$defs/Harness"
+        },
+        "task": {
+          "$ref": "common.v1.schema.json#/$defs/Text"
+        },
+        "profile": {
+          "$ref": "common.v1.schema.json#/$defs/Profile"
+        },
+        "mode": {
+          "$ref": "common.v1.schema.json#/$defs/Mode"
+        }
+      },
+      "required": [
+        "name",
+        "harness",
+        "task"
+      ],
+      "additionalProperties": false
+    },
+    "SpawnOutput": {
+      "type": "object",
+      "properties": {
+        "member": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "common.v1.schema.json#/$defs/Ulid"
+            },
+            "name": {
+              "$ref": "common.v1.schema.json#/$defs/AgentName"
+            },
+            "harness": {
+              "$ref": "common.v1.schema.json#/$defs/Harness"
+            },
+            "profile": {
+              "$ref": "common.v1.schema.json#/$defs/Profile"
+            },
+            "mode": {
+              "$ref": "common.v1.schema.json#/$defs/Mode"
+            },
+            "state": {
+              "$ref": "common.v1.schema.json#/$defs/MemberState"
+            },
+            "workdir": {
+              "$ref": "common.v1.schema.json#/$defs/Path"
+            },
+            "worktree": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/Worktree"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "harness",
+            "profile",
+            "mode",
+            "state",
+            "workdir",
+            "worktree"
+          ],
+          "additionalProperties": false
+        },
+        "task_message": {
+          "$ref": "common.v1.schema.json#/$defs/Ulid"
+        }
+      },
+      "required": [
+        "member",
+        "task_message"
+      ],
+      "additionalProperties": false
+    },
+    "StopInput": {
+      "type": "object",
+      "properties": {
+        "member": {
+          "$ref": "common.v1.schema.json#/$defs/AgentName"
+        }
+      },
+      "required": [
+        "member"
+      ],
+      "additionalProperties": false
+    },
+    "StopOutput": {
+      "type": "object",
+      "properties": {
+        "member": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "common.v1.schema.json#/$defs/OpaqueId"
+            },
+            "name": {
+              "$ref": "common.v1.schema.json#/$defs/AgentName"
+            },
+            "state": {
+              "$ref": "common.v1.schema.json#/$defs/MemberState"
+            },
+            "stop_reason": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/StopReason"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "state",
+            "stop_reason"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "member"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

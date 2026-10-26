@@ -1,0 +1,11 @@
+{
+  "protocol": 1,
+  "op": "hello",
+  "request_id": "r1",
+  "protocols": [
+    1
+  ],
+  "app": {
+    "version": "1.12.0"
+  }
+}

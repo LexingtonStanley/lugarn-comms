@@ -1,0 +1,43 @@
+{
+  "protocol": 1,
+  "op": "status",
+  "ok": true,
+  "result": {
+    "teams": [
+      {
+        "id": "fmvq3a1x7k2",
+        "name": "auth-rewrite",
+        "pattern": "orchestrator",
+        "revision": 2,
+        "run": 1,
+        "state": "running",
+        "runner": {
+          "state": "up",
+          "pid": 48211,
+          "pane": "pane-11",
+          "started_at": "2026-10-26T14:00:02.074Z",
+          "heartbeat_at": "2026-10-26T14:05:05.285Z"
+        },
+        "hops": {
+          "used": 5,
+          "allowance": 16,
+          "base": 16,
+          "exhausted": false
+        },
+        "rounds": [],
+        "counts": {
+          "members": 2,
+          "running": 2,
+          "headless_turns": 1,
+          "queued": 0,
+          "held": 0,
+          "uncertain": 0
+        },
+        "started_at": "2026-10-26T14:00:01.037Z",
+        "stopped_at": null,
+        "last_app_contact_at": "2026-10-26T14:05:00.100Z"
+      }
+    ],
+    "cursor": "9f3c2a71d4e85b06a1c7e2f490b3d58e.1042"
+  }
+}

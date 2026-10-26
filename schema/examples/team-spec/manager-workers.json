@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "id": "fmvq5c3k9h2",
+  "name": "docs-sweep",
+  "pattern": "manager_workers",
+  "limits": {
+    "hop_budget": 24,
+    "headless_turns": 2
+  },
+  "members": [
+    {
+      "id": "fmvq5c3m1j4",
+      "name": "manager",
+      "role": "manager",
+      "harness": "claude",
+      "folder": "/home/lex/code/flare",
+      "profile": "workspace",
+      "mode": "pane",
+      "brief": "You are {{member}}, the manager of team {{team}}. Split the job between your workers, collect their reports and merge their branches.\n\nTeam:\n{{roster}}\n\nTools:\n{{tools}}",
+      "task": "Bring every doc under docs/ in line with docs/style.md. One worker per folder.",
+      "spawn": {
+        "enabled": false
+      }
+    },
+    {
+      "id": "fmvq5c3m3k7",
+      "name": "worker-a",
+      "role": "worker",
+      "harness": "codex",
+      "folder": "/home/lex/code/flare",
+      "worktree": true,
+      "profile": "workspace",
+      "mode": "headless",
+      "brief": "You are {{member}}, a worker in team {{team}}. Do what manager asks, in your own worktree, and report back to manager in one short message.\n\nTools:\n{{tools}}"
+    },
+    {
+      "id": "fmvq5c3m5n9",
+      "name": "worker-b",
+      "role": "worker",
+      "harness": "opencode",
+      "folder": "/home/lex/code/flare",
+      "worktree": true,
+      "profile": "workspace",
+      "mode": "headless",
+      "brief": "You are {{member}}, a worker in team {{team}}. Do what manager asks, in your own worktree, and report back to manager in one short message.\n\nTools:\n{{tools}}"
+    }
+  ],
+  "grid": [
+    {
+      "from": "manager",
+      "to": "worker-a",
+      "can": [
+        "message",
+        "wake"
+      ]
+    },
+    {
+      "from": "manager",
+      "to": "worker-b",
+      "can": [
+        "message",
+        "wake"
+      ]
+    },
+    {
+      "from": "worker-a",
+      "to": "manager",
+      "can": [
+        "message"
+      ]
+    },
+    {
+      "from": "worker-b",
+      "to": "manager",
+      "can": [
+        "message"
+      ]
+    }
+  ]
+}

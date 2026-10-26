@@ -1,0 +1,13 @@
+{
+  "protocol": 1,
+  "op": "hold",
+  "ok": true,
+  "result": {
+    "member": {
+      "id": "fmvq3a1y0c4",
+      "name": "lead"
+    },
+    "held_until": null,
+    "released": 1
+  }
+}

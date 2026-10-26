@@ -1,0 +1,10 @@
+{
+  "protocol": 1,
+  "op": "remove-worktrees",
+  "team": "fmvq3a1x7k2",
+  "paths": [
+    "/home/lex/code/flare-wt/auth-rewrite-api",
+    "/home/lex/code/flare-wt/auth-rewrite-web",
+    "/home/lex/code/flare-wt/auth-rewrite-docs"
+  ]
+}

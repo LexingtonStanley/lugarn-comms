@@ -1,0 +1,27 @@
+{
+  "messages": [
+    {
+      "id": "01M5W86788S5AA819X9YP98106",
+      "from": "human",
+      "to": "lead",
+      "kind": "message",
+      "reply_to": null,
+      "text": "Keep the cookie fallback until the mobile app ships 1.13.",
+      "created_at": "2026-10-26T14:05:10.470Z",
+      "state": "delivered",
+      "reason": null
+    },
+    {
+      "id": "01M5W865SCDY0YP57RCYBVN5SX",
+      "from": "api",
+      "to": "lead",
+      "kind": "auto_reply",
+      "reply_to": "01M5W861CRYYK596NGYA1DQ91K",
+      "text": "Ported refresh to the token client. Changed src/auth/refresh.ts and src/auth/refresh.test.ts; all auth tests pass.",
+      "created_at": "2026-10-26T14:05:01.137Z",
+      "state": "delivered",
+      "reason": null
+    }
+  ],
+  "has_more": true
+}

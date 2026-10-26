@@ -1,0 +1,58 @@
+{
+  "protocol": 1,
+  "op": "apply-team",
+  "request_id": "r2",
+  "if_revision": 0,
+  "spec": {
+    "version": 1,
+    "id": "fmvq4b2z1d8",
+    "name": "login-fix",
+    "pattern": "writer_reviewer",
+    "limits": {
+      "review_rounds": 3
+    },
+    "members": [
+      {
+        "id": "fmvq4b2z3e1",
+        "name": "writer",
+        "role": "writer",
+        "harness": "claude",
+        "folder": "/home/lex/code/flare",
+        "worktree": true,
+        "profile": "workspace",
+        "mode": "pane",
+        "brief": "You are {{member}}, the writer in team {{team}}. Make the change, then send reviewer a short message asking for a review of your branch. Address each review point and ask again. After 3 rounds the person decides.\n\nTeam:\n{{roster}}\n\nTools:\n{{tools}}",
+        "task": "Fix the login redirect loop in issue #212. Add a test that fails before the fix."
+      },
+      {
+        "id": "fmvq4b2z5g6",
+        "name": "reviewer",
+        "role": "reviewer",
+        "harness": "codex",
+        "folder": "/home/lex/code/flare",
+        "worktree": false,
+        "profile": "read-only",
+        "mode": "headless",
+        "brief": "You are {{member}}, the reviewer in team {{team}}. You can read but not change files. Review what writer asks you to review. Answer with a short list of concrete problems, or 'approved'.\n\nTools:\n{{tools}}",
+        "task": null
+      }
+    ],
+    "grid": [
+      {
+        "from": "writer",
+        "to": "reviewer",
+        "can": [
+          "message",
+          "wake"
+        ]
+      },
+      {
+        "from": "reviewer",
+        "to": "writer",
+        "can": [
+          "message"
+        ]
+      }
+    ]
+  }
+}

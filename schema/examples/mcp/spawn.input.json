@@ -1,0 +1,6 @@
+{
+  "name": "web",
+  "harness": "opencode",
+  "task": "Update src/web/login.tsx to call the token client's signIn. Report the files you changed.",
+  "profile": "workspace"
+}

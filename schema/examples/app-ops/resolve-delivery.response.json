@@ -1,0 +1,23 @@
+{
+  "protocol": 1,
+  "op": "resolve-delivery",
+  "ok": true,
+  "result": {
+    "message": "01M5W868Q48VCD1GDJFMGT83PX",
+    "delivery": {
+      "to": {
+        "id": "fmvq4b2z3e1",
+        "name": "writer"
+      },
+      "state": "queued",
+      "reason": null,
+      "via": null,
+      "wake": false,
+      "attempts": 1,
+      "notify": null,
+      "turn": null,
+      "updated_at": "2026-10-26T14:07:00.540Z",
+      "delivered_at": null
+    }
+  }
+}

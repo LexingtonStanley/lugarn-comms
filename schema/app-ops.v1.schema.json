@@ -1,0 +1,2493 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/LexingtonStanley/lugarn-comms/main/schema/app-ops.v1.schema.json",
+  "title": "lugarn-comms app ops v1",
+  "description": "`lugarn-comms app <op>`: one JSON request on stdin, one JSON response on stdout. `watch` instead writes NDJSON watch lines until its input closes. Requests are discriminated by `op`; responses by `op` and `ok`; watch lines by `type`.",
+  "$defs": {
+    "OpName": {
+      "type": "string",
+      "enum": [
+        "hello",
+        "apply-team",
+        "get-team",
+        "start-team",
+        "stop-team",
+        "status",
+        "members",
+        "timeline",
+        "send",
+        "continue-budget",
+        "resolve-delivery",
+        "hold",
+        "open-terminal",
+        "return-headless",
+        "stop-member",
+        "worktrees",
+        "remove-worktrees",
+        "start-herdr",
+        "watch"
+      ]
+    },
+    "HerdrStartMethod": {
+      "type": "string",
+      "enum": [
+        "detached",
+        "wmi"
+      ]
+    },
+    "GitState": {
+      "type": "string",
+      "enum": [
+        "missing",
+        "clean",
+        "dirty"
+      ]
+    },
+    "WorktreeRefusal": {
+      "type": "string",
+      "enum": [
+        "member_not_stopped",
+        "dirty",
+        "unknown_path",
+        "git_failed"
+      ]
+    },
+    "BranchOutcome": {
+      "type": "string",
+      "enum": [
+        "deleted",
+        "kept_unmerged",
+        "missing"
+      ]
+    },
+    "RequestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "TeamRef": {
+      "$ref": "common.v1.schema.json#/$defs/OpaqueId"
+    },
+    "MemberId": {
+      "$ref": "common.v1.schema.json#/$defs/OpaqueId"
+    },
+    "Request": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/HelloRequest"
+        },
+        {
+          "$ref": "#/$defs/ApplyTeamRequest"
+        },
+        {
+          "$ref": "#/$defs/GetTeamRequest"
+        },
+        {
+          "$ref": "#/$defs/StartTeamRequest"
+        },
+        {
+          "$ref": "#/$defs/StopTeamRequest"
+        },
+        {
+          "$ref": "#/$defs/StatusRequest"
+        },
+        {
+          "$ref": "#/$defs/MembersRequest"
+        },
+        {
+          "$ref": "#/$defs/TimelineRequest"
+        },
+        {
+          "$ref": "#/$defs/SendRequest"
+        },
+        {
+          "$ref": "#/$defs/ContinueBudgetRequest"
+        },
+        {
+          "$ref": "#/$defs/ResolveDeliveryRequest"
+        },
+        {
+          "$ref": "#/$defs/HoldRequest"
+        },
+        {
+          "$ref": "#/$defs/OpenTerminalRequest"
+        },
+        {
+          "$ref": "#/$defs/ReturnHeadlessRequest"
+        },
+        {
+          "$ref": "#/$defs/StopMemberRequest"
+        },
+        {
+          "$ref": "#/$defs/WorktreesRequest"
+        },
+        {
+          "$ref": "#/$defs/RemoveWorktreesRequest"
+        },
+        {
+          "$ref": "#/$defs/StartHerdrRequest"
+        },
+        {
+          "$ref": "#/$defs/WatchRequest"
+        }
+      ]
+    },
+    "RequestEnvelope": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "op": {
+          "$ref": "#/$defs/OpName"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        }
+      },
+      "required": [
+        "protocol",
+        "op"
+      ]
+    },
+    "HelloRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "hello"
+        },
+        "protocols": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "app": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "version"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocols",
+        "app"
+      ],
+      "unevaluatedProperties": false
+    },
+    "ApplyTeamRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "apply-team"
+        },
+        "spec": {
+          "$ref": "team-spec.v1.schema.json#/$defs/TeamSpec"
+        },
+        "if_revision": {
+          "description": "The revision the app last saw. 0 creates the team and fails if it exists.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "spec",
+        "if_revision"
+      ],
+      "unevaluatedProperties": false
+    },
+    "GetTeamRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "get-team"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        }
+      },
+      "required": [
+        "team"
+      ],
+      "unevaluatedProperties": false
+    },
+    "StartTeamRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "start-team"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "resume": {
+          "description": "true: members continue their current sessions and no tasks are posted. false (default): fresh sessions, initial tasks posted, last run's stopped spawned workers retired.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "team"
+      ],
+      "unevaluatedProperties": false
+    },
+    "StopTeamRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "stop-team"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        }
+      },
+      "required": [
+        "team"
+      ],
+      "unevaluatedProperties": false
+    },
+    "StatusRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "status"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "MembersRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "members"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "include_removed": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "team"
+      ],
+      "unevaluatedProperties": false
+    },
+    "TimelineRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "timeline"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "before": {
+          "$ref": "common.v1.schema.json#/$defs/Cursor"
+        },
+        "after": {
+          "$ref": "common.v1.schema.json#/$defs/Cursor"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        }
+      },
+      "required": [
+        "team"
+      ],
+      "not": {
+        "required": [
+          "before",
+          "after"
+        ]
+      },
+      "unevaluatedProperties": false
+    },
+    "SendRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "send"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "to": {
+          "$ref": "#/$defs/MemberId"
+        },
+        "all": {
+          "const": true
+        },
+        "text": {
+          "$ref": "common.v1.schema.json#/$defs/Text"
+        },
+        "reply_to": {
+          "$ref": "common.v1.schema.json#/$defs/Ulid"
+        }
+      },
+      "required": [
+        "team",
+        "text"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "to"
+          ]
+        },
+        {
+          "required": [
+            "all"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ContinueBudgetRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "continue-budget"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "kind": {
+          "$ref": "common.v1.schema.json#/$defs/BudgetKind",
+          "default": "hops"
+        },
+        "amount": {
+          "description": "How much to add. Default: the spec's hop_budget (hops) or review_rounds (rounds).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "writer": {
+          "$ref": "#/$defs/MemberId"
+        },
+        "reviewer": {
+          "$ref": "#/$defs/MemberId"
+        }
+      },
+      "required": [
+        "team"
+      ],
+      "dependentSchemas": {
+        "writer": {
+          "required": [
+            "kind",
+            "reviewer"
+          ],
+          "properties": {
+            "kind": {
+              "const": "rounds"
+            }
+          }
+        },
+        "reviewer": {
+          "required": [
+            "kind",
+            "writer"
+          ],
+          "properties": {
+            "kind": {
+              "const": "rounds"
+            }
+          }
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "ResolveDeliveryRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "resolve-delivery"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "message": {
+          "$ref": "common.v1.schema.json#/$defs/Ulid"
+        },
+        "member": {
+          "$ref": "#/$defs/MemberId"
+        },
+        "action": {
+          "$ref": "common.v1.schema.json#/$defs/ResolveAction"
+        }
+      },
+      "required": [
+        "team",
+        "message",
+        "member",
+        "action"
+      ],
+      "unevaluatedProperties": false
+    },
+    "HoldRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "hold"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "member": {
+          "$ref": "#/$defs/MemberId"
+        },
+        "ttl_seconds": {
+          "description": "Hold (or renew the hold) for this long from now. The app renews it while the person is in control.",
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 120
+        },
+        "release": {
+          "description": "End the hold now.",
+          "const": true
+        }
+      },
+      "required": [
+        "team",
+        "member"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "ttl_seconds"
+          ]
+        },
+        {
+          "required": [
+            "release"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "OpenTerminalRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "open-terminal"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "member": {
+          "$ref": "#/$defs/MemberId"
+        },
+        "cancel_turn": {
+          "description": "false (default): wait for a running headless turn to end. true: cancel it.",
+          "type": "boolean",
+          "default": false
+        },
+        "if_generation": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "team",
+        "member"
+      ],
+      "unevaluatedProperties": false
+    },
+    "ReturnHeadlessRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "return-headless"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "member": {
+          "$ref": "#/$defs/MemberId"
+        },
+        "if_generation": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "team",
+        "member"
+      ],
+      "unevaluatedProperties": false
+    },
+    "StopMemberRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "stop-member"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "member": {
+          "$ref": "#/$defs/MemberId"
+        }
+      },
+      "required": [
+        "team",
+        "member"
+      ],
+      "unevaluatedProperties": false
+    },
+    "WorktreesRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "worktrees"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        }
+      },
+      "required": [
+        "team"
+      ],
+      "unevaluatedProperties": false
+    },
+    "RemoveWorktreesRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "remove-worktrees"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "paths": {
+          "description": "Exactly the worktrees to remove, as `worktrees` listed them.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.v1.schema.json#/$defs/Path"
+          }
+        }
+      },
+      "required": [
+        "team",
+        "paths"
+      ],
+      "unevaluatedProperties": false
+    },
+    "StartHerdrRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "start-herdr"
+        },
+        "server": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "default": "default"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "WatchRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RequestEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "watch"
+        },
+        "team": {
+          "$ref": "#/$defs/TeamRef"
+        },
+        "after": {
+          "$ref": "common.v1.schema.json#/$defs/Cursor"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "Response": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ErrorResponse"
+        },
+        {
+          "$ref": "#/$defs/HelloResponse"
+        },
+        {
+          "$ref": "#/$defs/ApplyTeamResponse"
+        },
+        {
+          "$ref": "#/$defs/GetTeamResponse"
+        },
+        {
+          "$ref": "#/$defs/StartTeamResponse"
+        },
+        {
+          "$ref": "#/$defs/StopTeamResponse"
+        },
+        {
+          "$ref": "#/$defs/StatusResponse"
+        },
+        {
+          "$ref": "#/$defs/MembersResponse"
+        },
+        {
+          "$ref": "#/$defs/TimelineResponse"
+        },
+        {
+          "$ref": "#/$defs/SendResponse"
+        },
+        {
+          "$ref": "#/$defs/ContinueBudgetResponse"
+        },
+        {
+          "$ref": "#/$defs/ResolveDeliveryResponse"
+        },
+        {
+          "$ref": "#/$defs/HoldResponse"
+        },
+        {
+          "$ref": "#/$defs/OpenTerminalResponse"
+        },
+        {
+          "$ref": "#/$defs/ReturnHeadlessResponse"
+        },
+        {
+          "$ref": "#/$defs/StopMemberResponse"
+        },
+        {
+          "$ref": "#/$defs/WorktreesResponse"
+        },
+        {
+          "$ref": "#/$defs/RemoveWorktreesResponse"
+        },
+        {
+          "$ref": "#/$defs/StartHerdrResponse"
+        }
+      ]
+    },
+    "OkEnvelope": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "op": {
+          "$ref": "#/$defs/OpName"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "ok": {
+          "const": true
+        },
+        "result": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "protocol",
+        "op",
+        "ok",
+        "result"
+      ]
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "op": {
+          "$ref": "#/$defs/OpName"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "ok": {
+          "const": false
+        },
+        "error": {
+          "$ref": "common.v1.schema.json#/$defs/Error"
+        }
+      },
+      "required": [
+        "protocol",
+        "op",
+        "ok",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "HelloResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "hello"
+        },
+        "result": {
+          "$ref": "#/$defs/HelloResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "ApplyTeamResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "apply-team"
+        },
+        "result": {
+          "$ref": "#/$defs/ApplyTeamResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "GetTeamResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "get-team"
+        },
+        "result": {
+          "$ref": "#/$defs/GetTeamResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "StartTeamResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "start-team"
+        },
+        "result": {
+          "$ref": "#/$defs/StartTeamResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "StopTeamResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "stop-team"
+        },
+        "result": {
+          "$ref": "#/$defs/StopTeamResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "StatusResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "status"
+        },
+        "result": {
+          "$ref": "#/$defs/StatusResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "MembersResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "members"
+        },
+        "result": {
+          "$ref": "#/$defs/MembersResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "TimelineResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "timeline"
+        },
+        "result": {
+          "$ref": "#/$defs/TimelineResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "SendResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "send"
+        },
+        "result": {
+          "$ref": "#/$defs/SendResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "ContinueBudgetResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "continue-budget"
+        },
+        "result": {
+          "$ref": "#/$defs/ContinueBudgetResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "ResolveDeliveryResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "resolve-delivery"
+        },
+        "result": {
+          "$ref": "#/$defs/ResolveDeliveryResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "HoldResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "hold"
+        },
+        "result": {
+          "$ref": "#/$defs/HoldResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "OpenTerminalResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "open-terminal"
+        },
+        "result": {
+          "$ref": "#/$defs/RequestResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "ReturnHeadlessResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "return-headless"
+        },
+        "result": {
+          "$ref": "#/$defs/RequestResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "StopMemberResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "stop-member"
+        },
+        "result": {
+          "$ref": "#/$defs/RequestResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "WorktreesResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "worktrees"
+        },
+        "result": {
+          "$ref": "#/$defs/WorktreesResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "RemoveWorktreesResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "remove-worktrees"
+        },
+        "result": {
+          "$ref": "#/$defs/RemoveWorktreesResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "StartHerdrResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OkEnvelope"
+        }
+      ],
+      "properties": {
+        "op": {
+          "const": "start-herdr"
+        },
+        "result": {
+          "$ref": "#/$defs/StartHerdrResult"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "HelloResult": {
+      "type": "object",
+      "properties": {
+        "broker": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "commit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "protocol": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The protocol chosen for this app: the highest in both lists."
+            },
+            "protocols": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "required": [
+            "version",
+            "commit",
+            "protocol",
+            "protocols"
+          ],
+          "additionalProperties": false
+        },
+        "schemas": {
+          "type": "object",
+          "properties": {
+            "team_spec": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "store": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "team_spec",
+            "store"
+          ],
+          "additionalProperties": false
+        },
+        "capabilities": {
+          "description": "Feature flags. Known values are listed in docs/protocol.md; clients ignore ones they don't know.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,63}$"
+          }
+        },
+        "host": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{32}$"
+            },
+            "os": {
+              "$ref": "common.v1.schema.json#/$defs/HostOS"
+            },
+            "arch": {
+              "$ref": "common.v1.schema.json#/$defs/HostArch"
+            },
+            "hostname": {
+              "type": "string"
+            },
+            "state_dir": {
+              "$ref": "common.v1.schema.json#/$defs/Path"
+            }
+          },
+          "required": [
+            "id",
+            "os",
+            "arch",
+            "hostname",
+            "state_dir"
+          ],
+          "additionalProperties": false
+        },
+        "herdr": {
+          "$ref": "common.v1.schema.json#/$defs/HerdrInfo"
+        },
+        "harnesses": {
+          "type": "array",
+          "items": {
+            "$ref": "common.v1.schema.json#/$defs/HarnessInfo"
+          }
+        }
+      },
+      "required": [
+        "broker",
+        "schemas",
+        "capabilities",
+        "host",
+        "herdr",
+        "harnesses"
+      ],
+      "additionalProperties": false
+    },
+    "Warning": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "common.v1.schema.json#/$defs/WarningCode"
+        },
+        "member": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MemberId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "code",
+        "member",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "ApplyTeamResult": {
+      "type": "object",
+      "properties": {
+        "team": {
+          "$ref": "common.v1.schema.json#/$defs/TeamStatus"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Warning"
+          }
+        }
+      },
+      "required": [
+        "team",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "GetTeamResult": {
+      "type": "object",
+      "properties": {
+        "spec": {
+          "$ref": "team-spec.v1.schema.json#/$defs/TeamSpec"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cursor": {
+          "$ref": "common.v1.schema.json#/$defs/Cursor"
+        }
+      },
+      "required": [
+        "spec",
+        "revision",
+        "cursor"
+      ],
+      "additionalProperties": false
+    },
+    "StartTeamResult": {
+      "type": "object",
+      "properties": {
+        "team": {
+          "$ref": "common.v1.schema.json#/$defs/TeamStatus"
+        },
+        "already_running": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "team",
+        "already_running"
+      ],
+      "additionalProperties": false
+    },
+    "StopTeamResult": {
+      "type": "object",
+      "properties": {
+        "team": {
+          "$ref": "common.v1.schema.json#/$defs/TeamStatus"
+        },
+        "expired": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Deliveries moved to expired."
+        }
+      },
+      "required": [
+        "team",
+        "expired"
+      ],
+      "additionalProperties": false
+    },
+    "StatusResult": {
+      "type": "object",
+      "properties": {
+        "teams": {
+          "type": "array",
+          "items": {
+            "$ref": "common.v1.schema.json#/$defs/TeamStatus"
+          }
+        },
+        "cursor": {
+          "$ref": "common.v1.schema.json#/$defs/Cursor"
+        }
+      },
+      "required": [
+        "teams",
+        "cursor"
+      ],
+      "additionalProperties": false
+    },
+    "MembersResult": {
+      "type": "object",
+      "properties": {
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "common.v1.schema.json#/$defs/Member"
+          }
+        },
+        "cursor": {
+          "$ref": "common.v1.schema.json#/$defs/Cursor"
+        }
+      },
+      "required": [
+        "members",
+        "cursor"
+      ],
+      "additionalProperties": false
+    },
+    "TimelineResult": {
+      "type": "object",
+      "properties": {
+        "events": {
+          "description": "Timeline events in ascending order. message.created items carry the message's current deliveries.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Event"
+          }
+        },
+        "has_more_before": {
+          "type": "boolean"
+        },
+        "has_more_after": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "events",
+        "has_more_before",
+        "has_more_after"
+      ],
+      "additionalProperties": false
+    },
+    "SendResult": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "$ref": "common.v1.schema.json#/$defs/Message"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "ContinueBudgetResult": {
+      "type": "object",
+      "properties": {
+        "hops": {
+          "$ref": "common.v1.schema.json#/$defs/Hops"
+        },
+        "rounds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.v1.schema.json#/$defs/Rounds"
+          }
+        },
+        "released": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Held deliveries moved back to queued."
+        }
+      },
+      "required": [
+        "hops",
+        "rounds",
+        "released"
+      ],
+      "additionalProperties": false
+    },
+    "ResolveDeliveryResult": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "$ref": "common.v1.schema.json#/$defs/Ulid"
+        },
+        "delivery": {
+          "$ref": "common.v1.schema.json#/$defs/Delivery"
+        }
+      },
+      "required": [
+        "message",
+        "delivery"
+      ],
+      "additionalProperties": false
+    },
+    "HoldResult": {
+      "type": "object",
+      "properties": {
+        "member": {
+          "$ref": "common.v1.schema.json#/$defs/MemberRef"
+        },
+        "held_until": {
+          "description": "When the hold lapses; null once released.",
+          "oneOf": [
+            {
+              "$ref": "common.v1.schema.json#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "released": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Deliveries moved from held (person_control) back to queued by a release."
+        }
+      },
+      "required": [
+        "member",
+        "held_until",
+        "released"
+      ],
+      "additionalProperties": false
+    },
+    "RequestResult": {
+      "type": "object",
+      "properties": {
+        "request": {
+          "$ref": "common.v1.schema.json#/$defs/Request"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "additionalProperties": false
+    },
+    "WorktreeItem": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "$ref": "common.v1.schema.json#/$defs/Path"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo": {
+          "$ref": "common.v1.schema.json#/$defs/Path"
+        },
+        "base": {
+          "description": "The ref the branch was created from: a branch name, or a commit if the base was detached.",
+          "type": "string",
+          "minLength": 1
+        },
+        "member": {
+          "$ref": "common.v1.schema.json#/$defs/MemberRef"
+        },
+        "member_state": {
+          "$ref": "common.v1.schema.json#/$defs/MemberState"
+        },
+        "created_at": {
+          "$ref": "common.v1.schema.json#/$defs/Timestamp"
+        },
+        "git": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "$ref": "#/$defs/GitState"
+            },
+            "merged": {
+              "description": "Whether the branch is merged into `base`. Null when the branch is gone.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "ahead": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "behind": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          },
+          "required": [
+            "state",
+            "merged",
+            "ahead",
+            "behind"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "path",
+        "branch",
+        "repo",
+        "base",
+        "member",
+        "member_state",
+        "created_at",
+        "git"
+      ],
+      "additionalProperties": false
+    },
+    "WorktreesResult": {
+      "type": "object",
+      "properties": {
+        "worktrees": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorktreeItem"
+          }
+        }
+      },
+      "required": [
+        "worktrees"
+      ],
+      "additionalProperties": false
+    },
+    "RemoveWorktreesResult": {
+      "type": "object",
+      "properties": {
+        "removed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "$ref": "common.v1.schema.json#/$defs/Path"
+              },
+              "branch": {
+                "type": "string",
+                "minLength": 1
+              },
+              "branch_outcome": {
+                "$ref": "#/$defs/BranchOutcome"
+              }
+            },
+            "required": [
+              "path",
+              "branch",
+              "branch_outcome"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "refused": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "$ref": "common.v1.schema.json#/$defs/Path"
+              },
+              "reason": {
+                "$ref": "#/$defs/WorktreeRefusal"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "path",
+              "reason",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "removed",
+        "refused"
+      ],
+      "additionalProperties": false
+    },
+    "StartHerdrResult": {
+      "type": "object",
+      "properties": {
+        "herdr": {
+          "$ref": "common.v1.schema.json#/$defs/HerdrInfo"
+        },
+        "started": {
+          "type": "boolean",
+          "description": "false when the server was already running."
+        },
+        "method": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/HerdrStartMethod"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "herdr",
+        "started",
+        "method"
+      ],
+      "additionalProperties": false
+    },
+    "WatchLine": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Event"
+        },
+        {
+          "$ref": "#/$defs/HeartbeatLine"
+        },
+        {
+          "$ref": "#/$defs/WatchLiveLine"
+        },
+        {
+          "$ref": "#/$defs/WatchErrorLine"
+        }
+      ]
+    },
+    "HeartbeatLine": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "heartbeat"
+        },
+        "cursor": {
+          "$ref": "common.v1.schema.json#/$defs/Cursor"
+        },
+        "at": {
+          "$ref": "common.v1.schema.json#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "type",
+        "cursor",
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "WatchLiveLine": {
+      "description": "Marks the end of the replay: every line after it is live.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "watch.live"
+        },
+        "cursor": {
+          "$ref": "common.v1.schema.json#/$defs/Cursor"
+        },
+        "at": {
+          "$ref": "common.v1.schema.json#/$defs/Timestamp"
+        },
+        "protocol": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "type",
+        "cursor",
+        "at",
+        "protocol"
+      ],
+      "additionalProperties": false
+    },
+    "WatchErrorLine": {
+      "description": "The last line of a watch that fails, including one whose request was invalid.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "error"
+        },
+        "at": {
+          "$ref": "common.v1.schema.json#/$defs/Timestamp"
+        },
+        "error": {
+          "$ref": "common.v1.schema.json#/$defs/Error"
+        }
+      },
+      "required": [
+        "type",
+        "at",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "Event": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/TeamAppliedEvent"
+        },
+        {
+          "$ref": "#/$defs/TeamStateChangedEvent"
+        },
+        {
+          "$ref": "#/$defs/RunnerStateChangedEvent"
+        },
+        {
+          "$ref": "#/$defs/MemberAddedEvent"
+        },
+        {
+          "$ref": "#/$defs/MemberStateChangedEvent"
+        },
+        {
+          "$ref": "#/$defs/MemberActivityChangedEvent"
+        },
+        {
+          "$ref": "#/$defs/MemberSessionAddedEvent"
+        },
+        {
+          "$ref": "#/$defs/MemberRemovedEvent"
+        },
+        {
+          "$ref": "#/$defs/LeaseChangedEvent"
+        },
+        {
+          "$ref": "#/$defs/MessageCreatedEvent"
+        },
+        {
+          "$ref": "#/$defs/DeliveryChangedEvent"
+        },
+        {
+          "$ref": "#/$defs/TurnStartedEvent"
+        },
+        {
+          "$ref": "#/$defs/TurnFinishedEvent"
+        },
+        {
+          "$ref": "#/$defs/PolicyDeniedEvent"
+        },
+        {
+          "$ref": "#/$defs/BudgetChangedEvent"
+        },
+        {
+          "$ref": "#/$defs/RoundsChangedEvent"
+        },
+        {
+          "$ref": "#/$defs/RequestChangedEvent"
+        },
+        {
+          "$ref": "#/$defs/AuthRejectedEvent"
+        },
+        {
+          "$ref": "#/$defs/WorktreeRemovedEvent"
+        }
+      ]
+    },
+    "EventEnvelope": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "common.v1.schema.json#/$defs/EventType"
+        },
+        "cursor": {
+          "$ref": "common.v1.schema.json#/$defs/Cursor"
+        },
+        "at": {
+          "$ref": "common.v1.schema.json#/$defs/Timestamp"
+        },
+        "team": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TeamRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeline": {
+          "type": "boolean",
+          "description": "Whether this event is a timeline item."
+        },
+        "data": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "type",
+        "cursor",
+        "at",
+        "team",
+        "timeline",
+        "data"
+      ]
+    },
+    "TeamAppliedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "team.applied"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "team": {
+              "$ref": "common.v1.schema.json#/$defs/TeamStatus"
+            }
+          },
+          "required": [
+            "team"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "TeamStateChangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "team.state_changed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "team": {
+              "$ref": "common.v1.schema.json#/$defs/TeamStatus"
+            },
+            "from": {
+              "$ref": "common.v1.schema.json#/$defs/TeamState"
+            },
+            "to": {
+              "$ref": "common.v1.schema.json#/$defs/TeamState"
+            }
+          },
+          "required": [
+            "team",
+            "from",
+            "to"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "RunnerStateChangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "runner.state_changed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "team": {
+              "$ref": "common.v1.schema.json#/$defs/TeamStatus"
+            },
+            "from": {
+              "$ref": "common.v1.schema.json#/$defs/RunnerState"
+            },
+            "to": {
+              "$ref": "common.v1.schema.json#/$defs/RunnerState"
+            }
+          },
+          "required": [
+            "team",
+            "from",
+            "to"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "MemberAddedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "member.added"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "member": {
+              "$ref": "common.v1.schema.json#/$defs/Member"
+            }
+          },
+          "required": [
+            "member"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "MemberStateChangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "member.state_changed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "member": {
+              "$ref": "common.v1.schema.json#/$defs/Member"
+            },
+            "from": {
+              "$ref": "common.v1.schema.json#/$defs/MemberState"
+            },
+            "to": {
+              "$ref": "common.v1.schema.json#/$defs/MemberState"
+            },
+            "reason": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/StopReason"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "member",
+            "from",
+            "to",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "MemberActivityChangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "member.activity_changed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "member": {
+              "$ref": "common.v1.schema.json#/$defs/MemberRef"
+            },
+            "from": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/Activity"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "to": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/Activity"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "member",
+            "from",
+            "to"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "MemberSessionAddedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "member.session_added"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "member": {
+              "$ref": "common.v1.schema.json#/$defs/Member"
+            },
+            "session": {
+              "$ref": "common.v1.schema.json#/$defs/MemberSession"
+            }
+          },
+          "required": [
+            "member",
+            "session"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "MemberRemovedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "member.removed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "member": {
+              "$ref": "common.v1.schema.json#/$defs/Member"
+            }
+          },
+          "required": [
+            "member"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "LeaseChangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "lease.changed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "member": {
+              "$ref": "common.v1.schema.json#/$defs/Member"
+            },
+            "from": {
+              "$ref": "common.v1.schema.json#/$defs/Driver"
+            },
+            "to": {
+              "$ref": "common.v1.schema.json#/$defs/Driver"
+            },
+            "generation": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "cause": {
+              "$ref": "common.v1.schema.json#/$defs/LeaseCause"
+            }
+          },
+          "required": [
+            "member",
+            "from",
+            "to",
+            "generation",
+            "cause"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "MessageCreatedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "message.created"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "$ref": "common.v1.schema.json#/$defs/Message"
+            }
+          },
+          "required": [
+            "message"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "DeliveryChangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "delivery.changed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "$ref": "common.v1.schema.json#/$defs/Ulid"
+            },
+            "from": {
+              "$ref": "common.v1.schema.json#/$defs/DeliveryState"
+            },
+            "delivery": {
+              "$ref": "common.v1.schema.json#/$defs/Delivery"
+            }
+          },
+          "required": [
+            "message",
+            "from",
+            "delivery"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "TurnStartedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "turn.started"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "turn": {
+              "$ref": "common.v1.schema.json#/$defs/Turn"
+            }
+          },
+          "required": [
+            "turn"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "TurnFinishedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "turn.finished"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "turn": {
+              "$ref": "common.v1.schema.json#/$defs/Turn"
+            }
+          },
+          "required": [
+            "turn"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "PolicyDeniedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "policy.denied"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "$ref": "common.v1.schema.json#/$defs/PolicyAction"
+            },
+            "actor": {
+              "$ref": "common.v1.schema.json#/$defs/MemberRef"
+            },
+            "target": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/MemberRef"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "message_id": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/Ulid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "error": {
+              "$ref": "common.v1.schema.json#/$defs/Error"
+            }
+          },
+          "required": [
+            "action",
+            "actor",
+            "target",
+            "message_id",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "BudgetChangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "budget.changed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "hops": {
+              "$ref": "common.v1.schema.json#/$defs/Hops"
+            },
+            "cause": {
+              "$ref": "common.v1.schema.json#/$defs/BudgetCause"
+            },
+            "by": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/MemberRef"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "hops",
+            "cause",
+            "by"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "RoundsChangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "rounds.changed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "rounds": {
+              "$ref": "common.v1.schema.json#/$defs/Rounds"
+            },
+            "cause": {
+              "$ref": "common.v1.schema.json#/$defs/BudgetCause"
+            },
+            "by": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/MemberRef"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "rounds",
+            "cause",
+            "by"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "RequestChangedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "request.changed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "$ref": "common.v1.schema.json#/$defs/Request"
+            }
+          },
+          "required": [
+            "request"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "AuthRejectedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "auth.rejected"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "claimed_member": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 128
+            },
+            "failure": {
+              "$ref": "common.v1.schema.json#/$defs/AuthFailure"
+            },
+            "face": {
+              "$ref": "common.v1.schema.json#/$defs/Face"
+            }
+          },
+          "required": [
+            "claimed_member",
+            "failure",
+            "face"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "WorktreeRemovedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EventEnvelope"
+        }
+      ],
+      "properties": {
+        "type": {
+          "const": "worktree.removed"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "$ref": "common.v1.schema.json#/$defs/Path"
+            },
+            "branch": {
+              "type": "string",
+              "minLength": 1
+            },
+            "member": {
+              "$ref": "common.v1.schema.json#/$defs/MemberRef"
+            },
+            "branch_outcome": {
+              "$ref": "#/$defs/BranchOutcome"
+            }
+          },
+          "required": [
+            "path",
+            "branch",
+            "member",
+            "branch_outcome"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    }
+  }
+}

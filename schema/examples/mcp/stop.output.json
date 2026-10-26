@@ -1,0 +1,8 @@
+{
+  "member": {
+    "id": "01M5W85YF0SS6YS3C4DWA7N360",
+    "name": "api",
+    "state": "stopped",
+    "stop_reason": "spawner"
+  }
+}

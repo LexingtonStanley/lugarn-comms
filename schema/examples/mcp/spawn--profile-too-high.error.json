@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "profile_too_high",
+    "message": "bypass is above lead's highest spawn profile, workspace",
+    "details": {
+      "requested": "bypass",
+      "highest": "workspace"
+    }
+  }
+}

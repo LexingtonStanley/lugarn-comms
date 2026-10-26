@@ -1,0 +1,63 @@
+{
+  "protocol": 1,
+  "op": "worktrees",
+  "ok": true,
+  "result": {
+    "worktrees": [
+      {
+        "path": "/home/lex/code/flare-wt/auth-rewrite-api",
+        "branch": "lugarn/auth-rewrite/api",
+        "repo": "/home/lex/code/flare",
+        "base": "main",
+        "member": {
+          "id": "01M5W85YF0SS6YS3C4DWA7N360",
+          "name": "api"
+        },
+        "member_state": "stopped",
+        "created_at": "2026-10-26T14:01:31.367Z",
+        "git": {
+          "state": "clean",
+          "merged": true,
+          "ahead": 0,
+          "behind": 2
+        }
+      },
+      {
+        "path": "/home/lex/code/flare-wt/auth-rewrite-web",
+        "branch": "lugarn/auth-rewrite/web",
+        "repo": "/home/lex/code/flare",
+        "base": "main",
+        "member": {
+          "id": "01M5W864AG1HYGCPWPQ5E6EYCN",
+          "name": "web"
+        },
+        "member_state": "stopped",
+        "created_at": "2026-10-26T14:03:25.585Z",
+        "git": {
+          "state": "dirty",
+          "merged": false,
+          "ahead": 3,
+          "behind": 2
+        }
+      },
+      {
+        "path": "/home/lex/code/flare-wt/auth-rewrite-docs",
+        "branch": "lugarn/auth-rewrite/docs",
+        "repo": "/home/lex/code/flare",
+        "base": "main",
+        "member": {
+          "id": "01M5W85VH8AWSH8VHTPRE95B9E",
+          "name": "docs"
+        },
+        "member_state": "stopped",
+        "created_at": "2026-10-26T14:02:30.550Z",
+        "git": {
+          "state": "missing",
+          "merged": null,
+          "ahead": null,
+          "behind": null
+        }
+      }
+    ]
+  }
+}

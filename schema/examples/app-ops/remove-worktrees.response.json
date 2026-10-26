@@ -1,0 +1,26 @@
+{
+  "protocol": 1,
+  "op": "remove-worktrees",
+  "ok": true,
+  "result": {
+    "removed": [
+      {
+        "path": "/home/lex/code/flare-wt/auth-rewrite-api",
+        "branch": "lugarn/auth-rewrite/api",
+        "branch_outcome": "deleted"
+      },
+      {
+        "path": "/home/lex/code/flare-wt/auth-rewrite-docs",
+        "branch": "lugarn/auth-rewrite/docs",
+        "branch_outcome": "kept_unmerged"
+      }
+    ],
+    "refused": [
+      {
+        "path": "/home/lex/code/flare-wt/auth-rewrite-web",
+        "reason": "dirty",
+        "message": "auth-rewrite-web has uncommitted changes: commit or clean them up first"
+      }
+    ]
+  }
+}
