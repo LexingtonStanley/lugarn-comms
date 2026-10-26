@@ -1,0 +1,14 @@
+=== RUN   TestIntegrationLiveFlows
+    integration_live_linux_test.go:239: app start-herdr server=lugarn-test-e052f0dfaaea168c started=true method=0x22a4ca278200
+=== RUN   TestIntegrationLiveFlows/e-empty-idle-teardown
+    integration_live_linux_test.go:387: app start-team live-e: state=running runner=0x22a4ca4e3f10 pane=0x22a4ca5847a0
+    integration_live_linux_test.go:391: verified 1 recorded live process identities exited
+    integration_live_linux_test.go:391: app stop-team live-e: stopped; 2 launch ids and 1 owned panes clean
+=== NAME  TestIntegrationLiveFlows
+    integration_live_linux_test.go:394: herdr --session lugarn-test-e052f0dfaaea168c server stop:  (<nil>)
+    integration_live_linux_test.go:394: delete own stopped session lugarn-test-e052f0dfaaea168c: deleted session lugarn-test-e052f0dfaaea168c
+         (<nil>)
+--- PASS: TestIntegrationLiveFlows (2.20s)
+    --- PASS: TestIntegrationLiveFlows/e-empty-idle-teardown (0.97s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/broker	2.211s
