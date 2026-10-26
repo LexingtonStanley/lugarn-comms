@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,11 +14,12 @@ import (
 type teardownHerdr struct {
 	HerdrAPI
 	closed []string
+	err    error
 }
 
 func (h *teardownHerdr) ClosePane(_ context.Context, pane string) error {
 	h.closed = append(h.closed, pane)
-	return nil
+	return h.err
 }
 func TestIntegrationTeardownEndsOwnedLaunchArtifacts(t *testing.T) {
 	b, _, m := headlessFixture(t, &headlessStub{})
@@ -28,7 +30,7 @@ func TestIntegrationTeardownEndsOwnedLaunchArtifacts(t *testing.T) {
 	must(t, os.WriteFile(pointer, []byte("test pointer"), 0600))
 	settings := filepath.Join(b.opts.StateDir, "launch", *m.Lease.Launch+".settings.json")
 	must(t, os.WriteFile(settings, []byte("{}"), 0600))
-	client := &teardownHerdr{}
+	client := &teardownHerdr{err: errors.New("server disappeared")}
 	i, e := NewIntegration(b, IntegrationOptions{HomeDir: home, Herdr: func(string) HerdrAPI { return client }})
 	must(t, e)
 	bridge, dir, e := i.runnerBridge()
@@ -49,7 +51,9 @@ func TestIntegrationTeardownEndsOwnedLaunchArtifacts(t *testing.T) {
 	}))
 	var team *store.Team
 	must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; team, e = tx.GetTeam("t"); return e }))
-	must(t, i.Close(ctx, *team, []model.Member{m}))
+	if e := i.Close(ctx, *team, []model.Member{m}); !errors.Is(e, client.err) {
+		t.Fatalf("missing collected error: %v", e)
+	}
 	if len(client.closed) != 1 || client.closed[0] != "root-owned" {
 		t.Fatal(client.closed)
 	}

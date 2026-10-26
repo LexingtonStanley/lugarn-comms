@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,11 +15,15 @@ import (
 // Close waits for cooperative runner shutdown, then removes only this team's
 // recorded processes/panes and ended launch artifacts. No process name is used.
 func (i *Integration) Close(ctx context.Context, t store.Team, members []model.Member) error {
-	placement, e := i.placement(t.ID)
-	if e != nil {
-		return e
+	var failures []error
+	record := func(e error) {
+		if e != nil {
+			failures = append(failures, e)
+		}
 	}
-	deadline := time.Now().Add(25 * time.Second)
+	placement, e := i.placement(t.ID)
+	record(e)
+	deadline := time.Now().Add(30 * time.Second)
 	for {
 		var up bool
 		e = i.b.db.Read(ctx, func(tx *store.Tx) error {
@@ -29,67 +34,61 @@ func (i *Integration) Close(ctx context.Context, t store.Team, members []model.M
 			return e
 		})
 		if e != nil {
-			return e
+			record(e)
+			break
 		}
 		if !up || time.Now().After(deadline) {
 			break
 		}
 		if e = i.b.opts.Wait(ctx, 100*time.Millisecond); e != nil {
-			return e
+			record(e)
+			break
 		}
 	}
-	// Save a Claude /clear before its launch and pointer disappear.
 	for _, m := range members {
-		if e = i.capturePointer(ctx, m); e != nil {
-			return e
-		}
+		record(i.capturePointer(ctx, m))
 	}
 	helper := NewRunner(i.b, t.ID, RunnerOptions{HomeDir: i.opts.HomeDir})
 	for _, m := range members {
 		var turn *model.Turn
 		e = i.b.db.Read(ctx, func(tx *store.Tx) error { var e error; turn, e = tx.GetLiveTurn(m.ID); return e })
 		if e != nil && !missing(e) {
-			return e
+			record(e)
+			continue
 		}
 		if turn != nil && turn.PID != nil {
 			state, e := (nativeProcesses{}).Inspect(ctx, *turn.PID)
 			if e != nil {
-				return e
+				record(e)
+				continue
 			}
 			if state.Alive {
 				birth := helper.processBirth(*turn)
 				if birth == "" {
-					return model.NewError(model.ErrorInternal, "cannot terminate an unverified turn process").WithDetail("turn", turn.ID)
+					record(model.NewError(model.ErrorInternal, "cannot terminate an unverified turn process").WithDetail("turn", turn.ID))
+					continue
 				}
-				if e = cancelOwnedTree(ctx, *turn.PID, birth); e != nil {
-					return e
-				}
+				record(cancelOwnedTree(ctx, *turn.PID, birth))
 			}
 		}
 	}
 	client := i.opts.Herdr(t.HerdrServer)
 	for _, m := range members {
 		if m.Lease != nil && m.Lease.Pane != nil {
-			if e = client.ClosePane(ctx, *m.Lease.Pane); e != nil {
-				return e
-			}
+			record(client.ClosePane(ctx, *m.Lease.Pane))
 		}
 	}
 	if placement.PID > 0 && placement.Birth != "" {
-		if e = cancelOwnedTree(ctx, placement.PID, placement.Birth); e != nil {
-			return e
-		}
+		record(cancelOwnedTree(ctx, placement.PID, placement.Birth))
 	}
 	root := t.Runner.Pane
 	if root == nil && placement.Pane != "" {
 		root = &placement.Pane
 	}
 	if root != nil {
-		if e = client.ClosePane(ctx, *root); e != nil {
-			return e
-		}
+		record(client.ClosePane(ctx, *root))
 	}
-	e = i.b.db.Write(ctx, func(tx *store.Tx) error {
+	record(i.b.db.Write(ctx, func(tx *store.Tx) error {
 		launches, e := tx.ListLaunches(t.ID)
 		if e != nil {
 			return e
@@ -102,35 +101,30 @@ func (i *Integration) Close(ctx context.Context, t store.Team, members []model.M
 			}
 		}
 		return nil
-	})
-	if e != nil {
-		return e
-	}
-	if e = helper.cleanLaunchFiles(ctx); e != nil {
-		return e
-	}
+	}))
+	record(helper.cleanLaunchFiles(ctx))
 	if placement.BridgeDir != "" {
-		// A sidecar is not authority to recursively remove an arbitrary host path.
+		// A sidecar never authorizes removing an arbitrary host directory.
 		if filepath.Clean(filepath.Dir(placement.BridgeDir)) != filepath.Clean(os.TempDir()) || !strings.HasPrefix(filepath.Base(placement.BridgeDir), "lugarn-runner-") {
-			return model.NewError(model.ErrorInternal, "invalid native runner bridge directory")
-		}
-		for until := time.Now().Add(3 * time.Second); ; {
-			e = os.RemoveAll(placement.BridgeDir)
-			if e == nil || time.Now().After(until) {
-				break
+			record(model.NewError(model.ErrorInternal, "invalid native runner bridge directory"))
+		} else {
+			for until := time.Now().Add(3 * time.Second); ; {
+				e = os.RemoveAll(placement.BridgeDir)
+				if e == nil || time.Now().After(until) {
+					break
+				}
+				if waitErr := i.b.opts.Wait(ctx, 50*time.Millisecond); waitErr != nil {
+					record(waitErr)
+					break
+				}
 			}
-			if e = i.b.opts.Wait(ctx, 50*time.Millisecond); e != nil {
-				return e
-			}
-		}
-		if e != nil {
-			return e
+			record(e)
 		}
 	}
 	if e = os.Remove(i.placementPath(t.ID)); e != nil && !os.IsNotExist(e) {
-		return e
+		record(e)
 	}
-	return nil
+	return errors.Join(failures...)
 }
 func (i *Integration) capturePointer(ctx context.Context, m model.Member) error {
 	if i.opts.HomeDir == "" || m.Harness == nil || *m.Harness != model.HarnessClaude || m.Lease == nil || m.Lease.Launch == nil {
