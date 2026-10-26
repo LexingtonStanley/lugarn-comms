@@ -180,6 +180,20 @@ must_reject({"protocol": 1, "op": "hold", "team": "t1", "member": "m1", "ttl_sec
 must_reject({"protocol": 1, "op": "remove-worktrees", "team": "t1", "paths": []},
             req_v, "remove-worktrees with no paths")
 
+# Older brokers omit error, including on launch failure. Current errors still
+# require an Error object when reason is launch_failed, and null otherwise.
+legacy = json.loads((EXAMPLES / "app-ops" / "timeline--launch-failed.response.json").read_text())
+event = legacy["result"]["events"][0]
+event_v = validator_for("app-ops.v1.schema.json", "/$defs/MemberStateChangedEvent")
+del event["data"]["error"]
+check(event, event_v, "legacy launch failure without error")
+event["data"]["reason"] = None
+check(event, event_v, "legacy state change without error")
+event["data"]["error"] = None
+check(event, event_v, "state change with null error")
+event["data"]["reason"] = "launch_failed"
+must_reject(event, event_v, "launch failure with null error")
+
 # 4. Enum table in docs/protocol.md ---------------------------------------------------------
 schema_enums: dict[str, list[str]] = {}
 for fname, doc in schemas.items():

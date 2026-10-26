@@ -105,20 +105,23 @@ recorded on the member.
 | `launch/<launch id>.settings.json` | Claude's `--settings` file for a pane launch: #136's SessionStart hook  | deleted when the launch ends |
 | `launch/<launch id>.opencode.json`| OpenCode's per-launch config (`OPENCODE_CONFIG`): the MCP registration and the profile's `permission` block | deleted when the launch ends |
 | `launch/<launch id>/msg-<message id>-<attempt>.md` | A pane delivery too long to inline ([Untrusted text](#untrusted-text)) | deleted when the launch ends |
-
 | `launch/<launch id>/bin/<harness>` | Link to the resolved native harness executable for the clean pane shell | deleted with the exact launch directory when the launch ends; link target survives |
 | `launch/<launch id>/clean-shell.json`, `shell-ready` | POSIX shell bootstrap capsule and readiness marker | deleted with the exact launch directory when the launch ends |
 | `launch/<launch id>/runner-launch.json`, `<turn id>.process.json` | Immutable launch description and process birth identity | deleted with the exact launch directory when the launch ends |
-| `launch/<launch id>/pane-launch.json` | Windows native harness executable, exact argv and per-launch environment | deleted with the exact launch directory when the launch ends |
+| `launch/<launch id>/pane-launch.json` | Windows native harness executable, exact argv and only the launch's own environment variables (no copied parent environment); owner-only and never logged | deleted with the exact launch directory when the launch ends |
 | `runner/<team id>.json` | Recorded workspace/pane and verified runner process; optional bridge ownership | retained across runner takeover; removed by stop-team |
-| `sessions/<member id>/<session hash>.json` | Private initialized-session metadata; Codex rollout remains authoritative for cwd | retained for future session resume |
+| `sessions/<member id>/<session hash>.json` | Private initialized-session metadata; Codex rollout remains authoritative for cwd | retained for session resume until the member is removed; its sessions directory is then deleted |
 | `login-path.json` | Login-shell PATH capture, shell, timestamp and issue | refreshed after one hour, and on every start-herdr/start-team |
-| `lugarn-runner-<random>/lugarn-comms[.exe]` | Native bridge only when the broker executable path needs one | removed by stop-team; state directory preferred when plain, otherwise OS temp directory |
+| `lugarn-runner-<random>/lugarn-comms[.exe]` | Native bridge plus `owner.sha256` (the state-directory hash), only when the broker executable path needs one | removed by stop-team; owned, unrecorded leftovers older than 60 seconds swept at runner start/takeover and stop-team; state directory preferred when plain, otherwise OS temp directory |
 
 Per-launch cleanup lists `launch/` before reading the store, recognizes only the exact
 ULID directory and documented suffixes, and uses `lstat`. Removing a directory never
 follows links inside it. All the files inside that directory share its lifetime. Unknown
 entries use the reconciliation grace period; pointer cleanup never deletes unknown ids.
+
+Bridge sweeps leave unmarked directories, other homes' markers and every bridge still
+recorded in a runner placement alone. A Windows executable still in use is retried by
+a later sweep.
 
 The directory and `launch/` are `0700` on POSIX; files are `0600`. On Windows each gets a
 protected DACL (inheritance off) with one entry: full control for the current user.
@@ -1466,8 +1469,11 @@ The broker doesn't keep an attention list; the app derives its Inbox items from 
 
 `member.state_changed`'s `error` is the failure when `reason` is `launch_failed`: an `Error`
 (`code`, `message`, `details`, with `details.cause` naming what failed, such as
-`workdir_missing`, `resume_picker` or `unresolvable`), else null. That's how the person
-learns why a launch failed. The runner's own log is in a pane they may never see.
+`workdir_missing`, `resume_picker` or `unresolvable`), else absent or null. Older brokers
+may omit `error` even for `launch_failed`. `details.cause` is an open set: the app shows
+`error.message` for any cause it does not know. The [Errors](#errors) privacy rule applies
+to this event too. That's how the person learns why a launch failed. The runner's own log
+is in a pane they may never see.
 
 Agent-written text in any of these is rendered as plain text.
 
@@ -1538,7 +1544,9 @@ The exit status is the error's exit code.
 
 One vocabulary for app ops, MCP tools and the CLI: `{ "code", "message", "details" }`.
 `message` is for people and may change; `code` is stable; `details` is an object, empty when
-there's nothing to add. The plan's `unsupported-version` is `unsupported_version` here.
+there's nothing to add. An error's `message` and `details` never include environment
+values, full argv or file contents; diagnostics identify only the failing thing's name
+and path. The plan's `unsupported-version` is `unsupported_version` here.
 
 | Code                  | Exit | Meaning                                                                                     |
 | --------------------- | ---- | ------------------------------------------------------------------------------------------- |
