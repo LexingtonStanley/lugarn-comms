@@ -282,6 +282,13 @@ func TestResetForStartRounds(t *testing.T) {
 	equal(t, "order", []string{r.Held[0].Message, r.Held[1].Message}, []string{"A", "B"})
 	equal(t, "renumbered", []int64{*r.Held[0].Round, *r.Held[1].Round}, []int64{1, 2})
 	equal(t, "released", r.Released, int64(2))
+
+	// Counters the store hasn't written yet (allowance 0) start fresh.
+	r = ResetForStart(BudgetState{Hops: model.Hops{Base: 16}, ReviewRounds: 3,
+		Rounds: []model.Rounds{{Writer: w, Reviewer: rv}}})
+	equal(t, "fresh", [2]any{r.Hops, r.Rounds[0]}, [2]any{model.Hops{Allowance: 16, Base: 16},
+		model.Rounds{Writer: w, Reviewer: rv, Allowance: 3, Base: 3}})
+	equal(t, "fresh events", r.Events, []Event{})
 }
 
 func TestBudgetEventData(t *testing.T) {

@@ -257,7 +257,8 @@ func spawnOf(s *model.SpawnSettings) spawnView {
 }
 
 // orderWarnings sorts warnings by member in spec order, keeping each
-// member's warnings in the order they were raised.
+// member's warnings in the order they were raised. Every v1 warning names
+// a member.
 func orderWarnings(spec model.TeamSpec, ws []Warning) []Warning {
 	out := make([]Warning, 0, len(ws))
 	for _, m := range spec.Members {
@@ -265,11 +266,6 @@ func orderWarnings(spec model.TeamSpec, ws []Warning) []Warning {
 			if w.Member != nil && *w.Member == m.ID {
 				out = append(out, w)
 			}
-		}
-	}
-	for _, w := range ws {
-		if w.Member == nil {
-			out = append(out, w)
 		}
 	}
 	return out

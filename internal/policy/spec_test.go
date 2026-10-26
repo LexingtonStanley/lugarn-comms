@@ -62,6 +62,11 @@ func TestApplyDefaults(t *testing.T) {
 	if s.Harnesses != nil {
 		t.Fatal("null harnesses must stay null: every supported harness")
 	}
+	in2 := baseSpec()
+	in2.Members[1].Spawn = &model.SpawnSettings{Enabled: true, Brief: ptr("b"), Harnesses: &[]model.Harness{model.HarnessCodex}}
+	out2 := ApplyDefaults(in2)
+	(*out2.Members[1].Spawn.Harnesses)[0] = model.HarnessPi
+	equal(t, "harnesses copied", (*in2.Members[1].Spawn.Harnesses)[0], model.HarnessCodex)
 	if out.Members[1].Spawn != nil {
 		t.Fatal("absent spawn settings must stay absent")
 	}
