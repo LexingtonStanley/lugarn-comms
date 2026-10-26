@@ -2,7 +2,6 @@ package broker
 
 import (
 	"context"
-	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/policy"
@@ -50,9 +49,8 @@ func (b *Broker) accept(tx *store.Tx, t *store.Team, from model.Member, to *mode
 		return zero, nil, nil, model.AsError(e)
 	}
 	now := b.now()
-	// Timestamps have millisecond precision. The upper bound includes earlier
-	// commits in this same millisecond; the new message hasn't been inserted yet.
-	recent, e := tx.CountMessagesToHuman(from.ID, model.Time{Time: now.Add(time.Millisecond)})
+	// Count before insertion so earlier commits with the same timestamp count.
+	recent, e := tx.CountMessagesToHuman(from.ID, now)
 	if e != nil {
 		return zero, nil, nil, e
 	}

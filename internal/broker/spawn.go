@@ -87,6 +87,9 @@ func (b *Broker) ToolSpawn(ctx context.Context, c service.Caller, r wire.SpawnIn
 			count = *v
 		}
 		d := policy.Spawn(policy.SpawnInput{Name: r.Name, Harness: r.Harness, Task: r.Task, Profile: r.Profile, Mode: r.Mode, TeamState: t.State, RunnerUp: b.fresh(t), Caller: *m, Settings: cfg, Live: live, Running: int(count.Running), SpawnedThisRun: int(count.ThisRun)}, h)
+		if err := hostError(h); err != nil {
+			return err
+		}
 		if d.Err != nil {
 			refusal = d.Err
 			return b.policyEvents(tx, t.ID, d.Events)

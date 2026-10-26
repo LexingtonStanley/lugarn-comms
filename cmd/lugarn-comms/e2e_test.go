@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,7 +25,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-var binaryPath string
+var binaryPath, probeSearch string
 
 func TestMain(m *testing.M) {
 	dir, e := os.MkdirTemp("", "lugarn-broker-e2e-")
@@ -42,6 +43,25 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "build e2e binary: %v\n%s", e, out)
 		os.RemoveAll(dir)
 		os.Exit(1)
+	}
+	// A native fake Herdr executable shadows any real Herdr even when git's
+	// directory is on PATH. It rejects probe argv without opening any store.
+	herdrName := "herdr"
+	if runtime.GOOS == "windows" {
+		herdrName += ".exe"
+	}
+	data, e := os.ReadFile(binaryPath)
+	if e == nil {
+		e = os.WriteFile(filepath.Join(dir, herdrName), data, 0700)
+	}
+	if e != nil {
+		fmt.Fprintln(os.Stderr, e)
+		os.RemoveAll(dir)
+		os.Exit(1)
+	}
+	probeSearch = dir
+	if git, e := exec.LookPath("git"); e == nil {
+		probeSearch += string(os.PathListSeparator) + filepath.Dir(git)
 	}
 	result := m.Run()
 	os.RemoveAll(dir)
@@ -141,10 +161,10 @@ func fixture(t *testing.T, hop int) *e2e {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	t.Cleanup(cancel)
-	f := &e2e{home: t.TempDir(), search: t.TempDir(), ctx: ctx, tokens: map[string]string{}, launches: map[string]string{}}
+	f := &e2e{home: t.TempDir(), search: probeSearch, ctx: ctx, tokens: map[string]string{}, launches: map[string]string{}}
 	t.Setenv("LUGARN_COMMS_HOME", f.home)
 	hello := f.app(t, "hello", map[string]any{"protocols": []int{1}, "app": map[string]any{"version": "e2e"}}).Result.(*wire.HelloResult)
-	if hello.Schemas.Store != 1 || hello.Host.StateDir != f.home || hello.Herdr.Installed {
+	if hello.Schemas.Store != 1 || hello.Host.StateDir != f.home || hello.Herdr.Running {
 		t.Fatal(hello)
 	}
 	contents, e := os.ReadFile(filepath.Join("..", "..", "schema", "examples", "team-spec", "writer-reviewer.json"))
@@ -519,4 +539,42 @@ func TestBinaryWatch(t *testing.T) {
 	}
 	emust(t, stdin.Close())
 	emust(t, cmd.Wait())
+}
+
+func TestBinaryNewerStoreErrors(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	f := &e2e{home: t.TempDir(), search: probeSearch, ctx: ctx}
+	emust(t, statedir.Ensure(f.home))
+	path := filepath.Join(f.home, "comms.db")
+	db, e := store.Open(ctx, path)
+	emust(t, e)
+	emust(t, db.Close())
+	raw, e := sql.Open("sqlite", path)
+	emust(t, e)
+	_, e = raw.ExecContext(ctx, "INSERT INTO schema_migrations(version,name,applied_at) VALUES (999, 'future', '2026-10-26T00:00:00.000Z')")
+	emust(t, e)
+	emust(t, raw.Close())
+	app := decode[wire.Response](t, checked(t, process(f.cmd("app", "status"), []byte(`{"protocol":1,"op":"status","request_id":"newer"}`)), 4))
+	if app.Error == nil || app.Error.Code != model.ErrorUnsupportedVersion || app.RequestID == nil || *app.RequestID != "newer" {
+		t.Fatal(app)
+	}
+	cli := decode[wire.ToolError](t, checked(t, process(f.cmd("team"), nil), 4))
+	if cli.Error.Code != model.ErrorUnsupportedVersion {
+		t.Fatal(cli)
+	}
+	cmd := f.cmd("mcp", "--member", "writer", "--token-file", filepath.Join(f.home, "missing.token"))
+	session, e := mcp.NewClient(&mcp.Implementation{Name: "newer", Version: "1"}, nil).Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
+	emust(t, e)
+	defer session.Close()
+	result, e := session.CallTool(ctx, &mcp.CallToolParams{Name: "team"})
+	emust(t, e)
+	if !result.IsError {
+		t.Fatal(result)
+	}
+	data, e := json.Marshal(result.StructuredContent)
+	emust(t, e)
+	if decode[wire.ToolError](t, data).Error.Code != model.ErrorUnsupportedVersion {
+		t.Fatal(string(data))
+	}
 }

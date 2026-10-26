@@ -107,6 +107,9 @@ func (b *Broker) ApplyTeam(ctx context.Context, r wire.ApplyTeamRequest) (wire.A
 			}
 		}
 		p, pe := policy.PlanApply(policy.ApplyInput{Spec: r.Spec, IfRevision: r.IfRevision, Facts: facts}, h)
+		if err := hostError(h); err != nil {
+			return err
+		}
 		if pe != nil {
 			return pe
 		}

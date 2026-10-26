@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/policy"
@@ -184,7 +185,9 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 	}
 	if e = b.opts.Launcher.Launch(ctx, started); e != nil {
 		launchErr := model.AsError(e)
-		if _, cleanup := b.StopTeam(ctx, wire.StopTeamRequest{Team: r.Team}); cleanup != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
+		if _, cleanup := b.StopTeam(cleanupCtx, wire.StopTeamRequest{Team: r.Team}); cleanup != nil {
 			return out, model.NewError(model.ErrorInternal, "runner launch and cleanup failed").WithDetails(map[string]any{"launch": launchErr, "cleanup": model.AsError(cleanup)})
 		}
 		return out, launchErr

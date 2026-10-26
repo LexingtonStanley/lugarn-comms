@@ -109,8 +109,14 @@ func (b *Broker) ResolveDelivery(ctx context.Context, r wire.ResolveDeliveryRequ
 		if e != nil {
 			return e
 		}
-		if _, e = b.member(tx, r.Team, r.Member); e != nil {
+		recipient, e := tx.GetMember(r.Member)
+		if e != nil {
 			return e
+		}
+		// Historical uncertain deliveries remain resolvable after the recipient
+		// leaves the live roster; member identities are never deleted.
+		if recipient.Team != r.Team {
+			return model.NewError(model.ErrorUnknownMember, "recipient is not in this team")
 		}
 		m, e := tx.GetMessage(r.Message)
 		if e != nil {

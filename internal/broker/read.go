@@ -125,9 +125,34 @@ func (b *Broker) Timeline(ctx context.Context, r wire.TimelineRequest) (wire.Tim
 		if e != nil {
 			return e
 		}
-		p, e := tx.Timeline(r.Team, before, after, limit)
-		if e != nil {
-			return e
+		var p *store.TimelinePage
+		// Store's zero means "no bound". The protocol also permits an
+		// explicit cursor at zero, which means before/after an empty log.
+		if (r.Before != nil && before == 0) || (r.After != nil && after == 0) {
+			events, err := tx.ReplayEvents(0, &r.Team, 0)
+			if err != nil {
+				return err
+			}
+			p = &store.TimelinePage{}
+			for _, event := range events {
+				if !event.Timeline {
+					continue
+				}
+				if r.Before != nil {
+					p.HasMoreAfter = true
+					break
+				}
+				if len(p.Events) == limit {
+					p.HasMoreAfter = true
+					break
+				}
+				p.Events = append(p.Events, event)
+			}
+		} else {
+			p, e = tx.Timeline(r.Team, before, after, limit)
+			if e != nil {
+				return e
+			}
 		}
 		out.HasMoreBefore = p.HasMoreBefore
 		out.HasMoreAfter = p.HasMoreAfter
@@ -175,6 +200,9 @@ func (b *Broker) ToolInbox(ctx context.Context, c service.Caller, r wire.InboxIn
 		limit := 20
 		if r.Limit != nil {
 			limit = int(*r.Limit)
+		}
+		if limit < 1 || limit > 100 {
+			return invalid("limit must be 1–100")
 		}
 		before := ""
 		if r.Before != nil {
