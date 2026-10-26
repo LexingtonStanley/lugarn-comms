@@ -10,9 +10,63 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
+
+// ErrGitTooOld reports that the installed git cannot safely remove a missing
+// worktree without force.
+var ErrGitTooOld = errors.New("git 2.20 or later is required")
+
+// CheckVersion verifies that the git on PATH supports broker worktrees.
+func CheckVersion(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", "--version")
+	cmd.WaitDelay = time.Second
+	cmd.Env = append(os.Environ(), "LC_ALL=C", "GIT_TERMINAL_PROMPT=0")
+	out, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if err != nil {
+		return fmt.Errorf("git --version: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return checkGitVersion(string(out))
+}
+
+func checkGitVersion(output string) error {
+	version, err := parseGitVersion(output)
+	if err != nil {
+		return err
+	}
+	if version.major < 2 || version.major == 2 && version.minor < 20 {
+		return fmt.Errorf("%w: git --version reported %q", ErrGitTooOld, strings.TrimSpace(output))
+	}
+	return nil
+}
+
+type gitVersion struct {
+	major, minor int
+}
+
+func parseGitVersion(output string) (gitVersion, error) {
+	fields := strings.Fields(output)
+	if len(fields) < 3 || fields[0] != "git" || fields[1] != "version" {
+		return gitVersion{}, fmt.Errorf("unrecognized git version output: %q", strings.TrimSpace(output))
+	}
+	parts := strings.Split(fields[2], ".")
+	if len(parts) < 2 {
+		return gitVersion{}, fmt.Errorf("unrecognized git version output: %q", strings.TrimSpace(output))
+	}
+	major, majorErr := strconv.Atoi(parts[0])
+	minor, minorErr := strconv.Atoi(parts[1])
+	if majorErr != nil || minorErr != nil || major < 0 || minor < 0 {
+		return gitVersion{}, fmt.Errorf("unrecognized git version output: %q", strings.TrimSpace(output))
+	}
+	return gitVersion{major: major, minor: minor}, nil
+}
 
 // GitState is the protocol enum, currently absent from internal/model.
 type GitState string
