@@ -32,6 +32,9 @@ func (b *Broker) Hello(ctx context.Context, r wire.HelloRequest) (wire.HelloResu
 		herdr.Running = false
 	}
 	out = wire.HelloResult{Broker: wire.HelloResultBroker{Version: version.Version, Commit: ptr(version.Commit), Protocol: 1, Protocols: []int64{1}}, Schemas: wire.HelloResultSchemas{TeamSpec: []int64{1}, Store: int64(b.db.Version())}, Capabilities: []string{"watch", "resolve-delivery", "hold", "worktrees"}, Host: wire.HelloResultHost{ID: b.db.HostID(), OS: h.OS, Arch: h.Arch, Hostname: h.Hostname, StateDir: b.opts.StateDir}, Herdr: herdr, Harnesses: b.opts.Probe.Harnesses(ctx)}
+	if b.integration != nil {
+		out.Capabilities = append(out.Capabilities, "spawn", "open-terminal", "return-headless", "start-herdr")
+	}
 	if l := b.opts.Probe.Logind(ctx); l != nil {
 		out.Host.Logind = &wire.LogindInfo{KillUserProcesses: l.KillUserProcesses, Linger: l.Linger}
 	}

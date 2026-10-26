@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/policy"
 	"github.com/LexingtonStanley/lugarn-comms/internal/service"
@@ -41,11 +42,30 @@ type NoopTeardown struct{}
 
 func (NoopTeardown) Close(context.Context, store.Team, []model.Member) error { return nil }
 
-func (b *Broker) StartHerdr(ctx context.Context, _ wire.StartHerdrRequest) (wire.StartHerdrResult, error) {
+func (b *Broker) StartHerdr(ctx context.Context, request wire.StartHerdrRequest) (wire.StartHerdrResult, error) {
 	if e := b.contact(ctx, nil); e != nil {
 		return wire.StartHerdrResult{}, e
 	}
-	return wire.StartHerdrResult{}, model.NewError(model.ErrorHerdrUnavailable, "the broker cannot start Herdr until C2").WithDetail("reason", "not_running")
+	if b.integration == nil {
+		return wire.StartHerdrResult{}, model.NewError(model.ErrorHerdrUnavailable, "the broker cannot start Herdr until C2").WithDetail("reason", "not_running")
+	}
+	server := model.DefaultHerdrServer
+	if request.Server != nil {
+		server = *request.Server
+	}
+	kill := false
+	if logind := b.opts.Probe.Logind(ctx); logind != nil {
+		kill = logind.KillUserProcesses
+	}
+	result, e := b.integration.opts.StartServer(ctx, b.integration.opts.HerdrBinary, server, herdr.KillUserProcesses(kill))
+	if e != nil {
+		return wire.StartHerdrResult{}, e
+	}
+	var method *wire.HerdrStartMethod
+	if result.Started {
+		method = ptr(wire.HerdrStartMethod(result.Method))
+	}
+	return wire.StartHerdrResult{Herdr: result.Status.Info(), Started: result.Started, Method: method}, nil
 }
 func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.StartTeamResult, error) {
 	var out wire.StartTeamResult
