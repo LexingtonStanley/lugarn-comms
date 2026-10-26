@@ -439,7 +439,9 @@ func (b *Broker) StopTeam(ctx context.Context, r wire.StopTeamRequest) (wire.Sto
 		}
 	}
 	if externalErr != nil {
-		return out, model.AsError(externalErr)
+		// AsError unwraps to the first protocol leaf and would discard the
+		// teardown step/target and any other failures from errors.Join.
+		return out, model.NewError(model.ErrorInternal, "team teardown failed").WithDetail("cause", externalErr.Error())
 	}
 	return out, nil
 }

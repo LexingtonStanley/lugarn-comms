@@ -4,6 +4,7 @@ package broker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"unsafe"
 
@@ -97,7 +98,7 @@ func (p nativeProcesses) killTree(ctx context.Context, pid uint32, expected stri
 	if state == windows.WAIT_OBJECT_0 {
 		return nil
 	}
-	return windows.TerminateProcess(h, 1)
+	return terminateWindowsProcess(h, windows.TerminateProcess, windows.WaitForSingleObject)
 }
 
 // TerminateJob receives only an exact name read from the turn's private process
@@ -107,4 +108,22 @@ func (nativeProcesses) TerminateJob(ctx context.Context, name string) (bool, err
 		return false, e
 	}
 	return harness.TerminateJob(name)
+}
+
+// A process can finish between the zero-time wait and TerminateProcess. Windows
+// then returns ACCESS_DENIED even for our verified process. Keep the same handle
+// pinned and accept that error only if it signals within this short bounded wait.
+func terminateWindowsProcess(handle windows.Handle, terminate func(windows.Handle, uint32) error, wait func(windows.Handle, uint32) (uint32, error)) error {
+	err := terminate(handle, 1)
+	if !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+		return err
+	}
+	state, waitErr := wait(handle, 500)
+	if waitErr != nil {
+		return errors.Join(err, fmt.Errorf("wait for terminating process: %w", waitErr))
+	}
+	if state == windows.WAIT_OBJECT_0 {
+		return nil
+	}
+	return err
 }

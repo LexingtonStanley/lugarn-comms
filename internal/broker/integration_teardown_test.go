@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
@@ -61,8 +62,8 @@ func TestIntegrationTeardownEndsOwnedLaunchArtifacts(t *testing.T) {
 	}))
 	var team *store.Team
 	must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; team, e = tx.GetTeam("t"); return e }))
-	if e := i.Close(ctx, *team, []model.Member{m}); !errors.Is(e, client.err) {
-		t.Fatalf("missing collected error: %v", e)
+	if e := i.Close(ctx, *team, []model.Member{m}); !errors.Is(e, client.err) || !strings.Contains(e.Error(), "close runner pane root-owned: server disappeared") {
+		t.Fatalf("missing step/target or collected error: %v", e)
 	}
 	if len(client.closed) != 1 || client.closed[0] != "root-owned" {
 		t.Fatal(client.closed)
