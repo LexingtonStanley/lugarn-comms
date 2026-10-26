@@ -1,0 +1,8 @@
+=== RUN   TestLive
+=== RUN   TestLive/opencode
+    live_test.go:227: opencode cancelling pid=3232543 tree=[3232543 3232615] after MCP tools/list (before turn completion)
+    live_test.go:236: opencode cancelled: exit=-1 acknowledged=false session= status=cancelled; all 2 processes dead
+--- PASS: TestLive (1.30s)
+    --- PASS: TestLive/opencode (1.30s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	1.302s

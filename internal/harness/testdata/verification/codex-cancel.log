@@ -1,0 +1,8 @@
+=== RUN   TestLive
+=== RUN   TestLive/codex
+    live_test.go:226: codex cancelling pid=3224234 tree=[3224234 3224494] while team call blocked
+    live_test.go:235: codex cancelled: exit=-1 acknowledged=true session=01a17951-c083-77b0-8241-9aa846eeddd1 status=cancelled; all 2 processes dead
+--- PASS: TestLive (6.82s)
+    --- PASS: TestLive/codex (6.82s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	6.822s

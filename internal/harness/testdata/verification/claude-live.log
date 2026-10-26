@@ -1,0 +1,29 @@
+=== RUN   TestLive
+=== RUN   TestLive/claude
+    live_test.go:134: claude first argv=["--model" "haiku" "-p" "--output-format" "stream-json" "--verbose" "--session-id" "f6f6c535-3088-4fb4-8d2f-bac6ddadb9e2" "--mcp-config=/tmp/TestLiveclaude3735786616/001/state/launch/01M5WMXGHMV2XBFZCJMYH84VWD.json" "--permission-mode" "plan" "--allowedTools=mcp__lugarn__send,mcp__lugarn__reply,mcp__lugarn__inbox,mcp__lugarn__team,mcp__lugarn__spawn,mcp__lugarn__stop"]; stdin="Call the lugarn team MCP tool once with {}. Reply with the word ok."
+    live_test.go:145: claude first pid=3214909 exit=0 acknowledged=true session=f6f6c535-3088-4fb4-8d2f-bac6ddadb9e2 final="ok" status=succeeded error="" usage=&{InputTokens:0x181335581420 OutputTokens:0x181335581428 CachedInputTokens:0x181335581430 ReasoningTokens:0x181335581438 CostUSD:0x181335581440}
+    live_test.go:147: MCP log:
+        start pid=3215018 member=member_1
+        server/discover  pid=3215018 member=member_1
+        initialize  pid=3215018 member=member_1
+        tools/list  pid=3215018 member=member_1
+        tools/call team pid=3215018 member=member_1
+    live_test.go:134: claude resumed argv=["--model" "haiku" "-p" "--output-format" "stream-json" "--verbose" "--resume" "f6f6c535-3088-4fb4-8d2f-bac6ddadb9e2" "--mcp-config=/tmp/TestLiveclaude3735786616/001/state/launch/01M5WMXGHMV2XBFZCJMYH84VWD.json" "--permission-mode" "plan" "--allowedTools=mcp__lugarn__send,mcp__lugarn__reply,mcp__lugarn__inbox,mcp__lugarn__team,mcp__lugarn__spawn,mcp__lugarn__stop"]; stdin="Call the lugarn team MCP tool once with {}. Reply with the word ok."
+    live_test.go:145: claude resumed pid=3215200 exit=0 acknowledged=true session=f6f6c535-3088-4fb4-8d2f-bac6ddadb9e2 final="ok" status=succeeded error="" usage=&{InputTokens:0x181335626000 OutputTokens:0x181335626008 CachedInputTokens:0x181335626010 ReasoningTokens:0x181335626018 CostUSD:0x181335626020}
+    live_test.go:147: MCP log:
+        start pid=3215018 member=member_1
+        server/discover  pid=3215018 member=member_1
+        initialize  pid=3215018 member=member_1
+        tools/list  pid=3215018 member=member_1
+        tools/call team pid=3215018 member=member_1
+        start pid=3215251 member=member_1
+        server/discover  pid=3215251 member=member_1
+        initialize  pid=3215251 member=member_1
+        tools/list  pid=3215251 member=member_1
+        tools/call team pid=3215251 member=member_1
+    live_test.go:189: claude cancelling pid=3215330 tree=[3215330 3215361] while team call blocked
+    live_test.go:198: claude cancelled: exit=-1 acknowledged=true session=f6f6c535-3088-4fb4-8d2f-bac6ddadb9e2 status=cancelled; all 2 processes dead
+--- PASS: TestLive (9.87s)
+    --- PASS: TestLive/claude (9.87s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	9.877s

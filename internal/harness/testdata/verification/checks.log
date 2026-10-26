@@ -1,0 +1,31 @@
+$ gofmt -l .
+[exit 0, no output]
+
+$ go vet ./...
+[exit 0, no output]
+
+$ go test -race ./...
+ok  	github.com/LexingtonStanley/lugarn-comms/cmd/lugarn-comms	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/agentops	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/appops	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/cli	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/gitwt	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	4.849s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/hostprobe	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/mcpserver	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/model	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/policy	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/internal/service	[no test files]
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/statedir	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/store	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/internal/version	[no test files]
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/wire	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/schema	[no test files]
+[exit 0]
+
+$ GOOS=windows GOARCH=amd64 go vet ./...
+[exit 0, no output]
+
+$ GOOS=darwin GOARCH=arm64 go vet ./...
+[exit 0, no output]
+

@@ -1,0 +1,14 @@
+=== RUN   TestLive
+=== RUN   TestLive/opencode
+    live_test.go:137: opencode first argv=["run" "--format" "json" "--standalone" "--model" "opencode-go/iceman-contributor-free"]; stdin="Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the first turn. Reply with the word ok."
+    live_test.go:149: opencode first pid=3260450 exit=1 acknowledged=true session=ses_e86a173e2ffemvDTAVnhoCFxrT final="" status=failed error="OpenCode: {\"message\":\"Upstream request failed: Endpoint is unavailable.\",\"response\":{\"body\":\"{\\\"error\\\":{\\\"type\\\":\\\"server_error\\\",\\\"message\\\":\\\"Upstream request failed: Endpoint is unavailable.\\\"}}\"},\"status\":503,\"type\":\"provider.internal\"}" usage=null
+    live_test.go:151: MCP log:
+        start pid=3260596 member=member_1
+        initialize  pid=3260596 member=member_1
+        tools/list  pid=3260596 member=member_1
+    live_test.go:153: turn failed or team tool not called: {ExitCode:1 Acknowledged:true SessionID:ses_e86a173e2ffemvDTAVnhoCFxrT FinalText: Usage:<nil> Error:OpenCode: {"message":"Upstream request failed: Endpoint is unavailable.","response":{"body":"{\"error\":{\"type\":\"server_error\",\"message\":\"Upstream request failed: Endpoint is unavailable.\"}}"},"status":503,"type":"provider.internal"} Cancelled:false TimedOut:false}
+--- FAIL: TestLive (94.17s)
+    --- FAIL: TestLive/opencode (94.17s)
+FAIL
+FAIL	github.com/LexingtonStanley/lugarn-comms/internal/harness	94.171s
+FAIL

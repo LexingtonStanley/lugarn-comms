@@ -1,0 +1,16 @@
+=== RUN   TestLive
+=== RUN   TestLive/opencode
+    live_test.go:137: opencode first argv=["run" "--format" "json" "--standalone" "--model" "opencode-go/iceman-contributor-free"]; stdin="Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the first turn. Reply with the word ok."
+    live_test.go:149: opencode first pid=3275030 exit=-1 acknowledged=true session=ses_e869cf1c3ffescBYWP1Z0X7SI7 final="I'll call it directly.\n" status=timed_out error="" usage={"input_tokens":13420,"output_tokens":52,"cached_input_tokens":73,"reasoning_tokens":572,"cost_usd":0}
+    live_test.go:151: MCP log:
+        start pid=3275172 member=member_1
+        initialize  pid=3275172 member=member_1
+        tools/list  pid=3275172 member=member_1
+        tools/call team pid=3275172 member=member_1
+    live_test.go:153: turn failed or team tool not called: {ExitCode:-1 Acknowledged:true SessionID:ses_e869cf1c3ffescBYWP1Z0X7SI7 FinalText:I'll call it directly.
+         Usage:0xe6d3bfd0d80 Error: Cancelled:true TimedOut:true}
+--- FAIL: TestLive (150.05s)
+    --- FAIL: TestLive/opencode (150.05s)
+FAIL
+FAIL	github.com/LexingtonStanley/lugarn-comms/internal/harness	150.055s
+FAIL

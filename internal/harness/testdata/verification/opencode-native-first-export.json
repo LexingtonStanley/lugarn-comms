@@ -1,0 +1,154 @@
+{
+  "info": {
+    "id": "ses_e869cf1c3ffescBYWP1Z0X7SI7",
+    "projectID": "a7a70f6a2e2ae11310dd9e4845b2a8ad1d507b6c",
+    "model": {
+      "id": "iceman-contributor-free",
+      "providerID": "opencode-go",
+      "variant": "default"
+    },
+    "cost": 0.0000516,
+    "tokens": {
+      "input": 13886,
+      "output": 62,
+      "reasoning": 572,
+      "cache": {
+        "read": 73,
+        "write": 0
+      }
+    },
+    "time": {
+      "created": 1793037897393,
+      "updated": 1793038040374
+    },
+    "title": "Lugarn MCP tool call",
+    "location": {
+      "directory": "/tmp/TestLiveopencode3270588694/001"
+    }
+  },
+  "messages": [
+    {
+      "id": "msg_179630ec0001uBkxG9ROrTzkxl",
+      "time": {
+        "created": 1793037898218
+      },
+      "text": "Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the first turn. Reply with the word ok.",
+      "files": [],
+      "type": "user"
+    },
+    {
+      "id": "msg_1796311f3001CmWmAKmScTK1Jv",
+      "time": {
+        "created": 1793037963226,
+        "streamed": 1793037965541,
+        "completed": 1793037965546
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "iceman-contributor-free",
+        "providerID": "opencode-go",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "tool",
+          "id": "60439ca6-f328-46e0-8aec-e8ab30e8149f",
+          "name": "execute",
+          "executed": false,
+          "state": {
+            "status": "completed",
+            "input": {
+              "code": "await tools.lugarn_team({})"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Unknown tool 'lugarn_team'.\nUse search to find available tools."
+              }
+            ],
+            "metadata": {
+              "toolCalls": [],
+              "error": true,
+              "truncated": false
+            }
+          },
+          "time": {
+            "created": 1793037965531,
+            "ran": 1793037965539,
+            "completed": 1793037965545
+          }
+        }
+      ],
+      "finish": "tool-calls",
+      "rawFinish": "tool_calls",
+      "cost": 0,
+      "tokens": {
+        "input": 6655,
+        "output": 27,
+        "reasoning": 70,
+        "cache": {
+          "read": 70,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_1796418ef001bO9BN3ghjK9u6N",
+      "time": {
+        "created": 1793037965556,
+        "streamed": 1793037977070,
+        "completed": 1793037977076
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "iceman-contributor-free",
+        "providerID": "opencode-go",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "I'll call it directly.\n"
+        },
+        {
+          "type": "tool",
+          "id": "aba89b4b-e18c-416f-9c0e-2cf47f709b8f",
+          "name": "lugarn_team",
+          "executed": false,
+          "state": {
+            "status": "completed",
+            "input": {},
+            "content": [
+              {
+                "type": "text",
+                "text": "ok"
+              }
+            ],
+            "metadata": {
+              "truncated": false
+            }
+          },
+          "time": {
+            "created": 1793037977062,
+            "ran": 1793037977068,
+            "completed": 1793037977075
+          }
+        }
+      ],
+      "finish": "tool-calls",
+      "rawFinish": "tool_calls",
+      "cost": 0,
+      "tokens": {
+        "input": 6765,
+        "output": 25,
+        "reasoning": 502,
+        "cache": {
+          "read": 3,
+          "write": 0
+        }
+      }
+    }
+  ]
+}

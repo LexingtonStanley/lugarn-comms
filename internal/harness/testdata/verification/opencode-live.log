@@ -1,0 +1,15 @@
+=== RUN   TestLive
+=== RUN   TestLive/opencode
+    live_test.go:148: opencode resumed argv=["run" "--format" "json" "--standalone" "--model" "opencode-go/iceman-contributor-free" "--session" "ses_e869cf1c3ffescBYWP1Z0X7SI7"]; stdin="Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the resumed turn. Reply with the word ok."
+    live_test.go:160: opencode resumed pid=3286590 exit=0 acknowledged=true session=ses_e869cf1c3ffescBYWP1Z0X7SI7 final="ok" status=succeeded error="" usage={"input_tokens":107,"output_tokens":19,"cached_input_tokens":6727,"reasoning_tokens":11,"cost_usd":0}
+    live_test.go:162: MCP log:
+        start pid=3286654 member=member_1
+        initialize  pid=3286654 member=member_1
+        tools/list  pid=3286654 member=member_1
+        tools/call team pid=3286654 member=member_1
+    live_test.go:235: opencode cancelling pid=3289788 tree=[3289788 3286654 3289830] after MCP tools/list (before turn completion)
+    live_test.go:244: opencode cancelled: exit=-1 acknowledged=false session=ses_e869cf1c3ffescBYWP1Z0X7SI7 status=cancelled; all 3 processes dead
+--- PASS: TestLive (55.52s)
+    --- PASS: TestLive/opencode (55.52s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	55.520s
