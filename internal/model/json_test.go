@@ -55,8 +55,38 @@ func TestOptionalAndNullableSpecFields(t *testing.T) {
 	if err := DecodeStrict([]byte(`{"task":null,"worktree":false,"host":null}`), &explicit); err != nil {
 		t.Fatal(err)
 	}
-	if explicit.Task == nil || *explicit.Task != nil || explicit.Host == nil || explicit.Worktree == nil || *explicit.Worktree {
-		t.Errorf("explicit null/false fields collapsed: %#v", explicit)
+	if explicit.Task != nil || explicit.Host != nil || explicit.Worktree == nil || *explicit.Worktree {
+		t.Errorf("explicit null/false fields decoded incorrectly: %#v", explicit)
+	}
+	for _, tt := range []struct {
+		dst    any
+		fields []string
+	}{
+		{&MemberSpec{}, []string{"task", "host"}},
+		{&SpawnSettings{}, []string{"harnesses", "brief"}},
+	} {
+		data, err := json.Marshal(tt.dst)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(data, &fields); err != nil {
+			t.Fatal(err)
+		}
+		for _, field := range tt.fields {
+			if string(fields[field]) != "null" {
+				t.Errorf("nil %T.%s must encode as null: %s", tt.dst, field, data)
+			}
+		}
+	}
+	for _, input := range []string{`{}`, `{"harnesses":null,"brief":null}`} {
+		var spawn SpawnSettings
+		if err := DecodeStrict([]byte(input), &spawn); err != nil {
+			t.Fatal(err)
+		}
+		if spawn.Harnesses != nil || spawn.Brief != nil {
+			t.Errorf("absent/null spawn settings must decode to nil: %#v", spawn)
+		}
 	}
 	var limits Limits
 	assertRoundTrip(t, []byte(`{}`), &limits)

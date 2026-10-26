@@ -155,7 +155,74 @@ func assertRoundTrip(t *testing.T, data []byte, dst any) {
 	if err := json.Unmarshal(got, &gotValue); err != nil {
 		t.Fatal(err)
 	}
+	normalizeSpecNulls(wantValue, dst)
+	normalizeSpecNulls(gotValue, dst)
 	if !reflect.DeepEqual(wantValue, gotValue) {
 		t.Errorf("round trip changed JSON\nwant: %s\n got: %s", data, got)
+	}
+}
+
+// Normalize only the four nullable spec fields at their schema locations.
+// All other absent fields, nulls and values remain distinct in comparisons.
+func normalizeSpecNulls(value any, dst any) {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return
+	}
+	var fields []string
+	switch dst.(type) {
+	case *TeamSpec:
+		members, _ := object["members"].([]any)
+		for _, member := range members {
+			normalizeSpecNulls(member, (*MemberSpec)(nil))
+		}
+	case *MemberSpec:
+		fields = []string{"task", "host"}
+		normalizeSpecNulls(object["spawn"], (*SpawnSettings)(nil))
+	case *SpawnSettings:
+		fields = []string{"harnesses", "brief"}
+	}
+	for _, field := range fields {
+		if _, exists := object[field]; !exists {
+			object[field] = nil
+		}
+	}
+}
+
+func TestSpecNullComparisonScope(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		dst         any
+		left, right string
+		equal       bool
+	}{
+		{"member nulls", &MemberSpec{}, `{}`, `{"task":null,"host":null}`, true},
+		{"spawn nulls", &SpawnSettings{}, `{}`, `{"harnesses":null,"brief":null}`, true},
+		{"nested nulls", &TeamSpec{}, `{"members":[{"spawn":{"enabled":false}}]}`, `{"members":[{"task":null,"host":null,"spawn":{"enabled":false,"harnesses":null,"brief":null}}]}`, true},
+		{"task value", &MemberSpec{}, `{"task":"first"}`, `{"task":"second"}`, false},
+		{"harness array", &SpawnSettings{}, `{}`, `{"harnesses":[]}`, false},
+		{"required brief", &MemberSpec{}, `{}`, `{"brief":null}`, false},
+		{"worktree", &MemberSpec{}, `{}`, `{"worktree":false}`, false},
+		{"spawn object", &MemberSpec{}, `{}`, `{"spawn":null}`, false},
+		{"herdr", &TeamSpec{}, `{}`, `{"herdr":null}`, false},
+		{"limits", &TeamSpec{}, `{}`, `{"limits":null}`, false},
+		{"spawn mode", &SpawnSettings{}, `{}`, `{"mode":null}`, false},
+		{"task outside member", &TeamSpec{}, `{}`, `{"task":null}`, false},
+		{"common record", &Member{}, `{}`, `{"host":null}`, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var left, right any
+			if err := json.Unmarshal([]byte(tt.left), &left); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal([]byte(tt.right), &right); err != nil {
+				t.Fatal(err)
+			}
+			normalizeSpecNulls(left, tt.dst)
+			normalizeSpecNulls(right, tt.dst)
+			if got := reflect.DeepEqual(left, right); got != tt.equal {
+				t.Errorf("equal=%v; want %v for %s and %s", got, tt.equal, tt.left, tt.right)
+			}
+		})
 	}
 }

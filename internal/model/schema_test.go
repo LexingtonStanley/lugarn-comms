@@ -82,16 +82,20 @@ func checkRecordFields(t *testing.T, typ reflect.Type, def schemaNode) {
 		}
 		seen[tag[0]] = true
 		required := slices.Contains(def.Required, tag[0])
-		if omitted := slices.Contains(tag, "omitempty"); omitted == required {
-			t.Errorf("%s.%s omitempty=%v; schema required=%v", typ, field.Name, omitted, required)
-		}
 		nullable := strings.Contains(string(property.Type), `"null"`) || len(property.OneOf) > 0
+		if omitted, want := slices.Contains(tag, "omitempty"), !required && !nullable; omitted != want {
+			t.Errorf("%s.%s omitempty=%v; want %v (required=%v, nullable=%v)", typ, field.Name, omitted, want, required, nullable)
+		}
 		if wantPointer := !required || nullable; (field.Type.Kind() == reflect.Pointer) != wantPointer {
 			t.Errorf("%s.%s pointer=%v; want %v", typ, field.Name, field.Type.Kind() == reflect.Pointer, wantPointer)
 		}
 		ft := field.Type
-		for ft.Kind() == reflect.Pointer {
+		if ft.Kind() == reflect.Pointer {
 			ft = ft.Elem()
+			if ft.Kind() == reflect.Pointer {
+				t.Errorf("%s.%s must use a single pointer", typ, field.Name)
+				continue
+			}
 		}
 		if len(property.OneOf) > 0 {
 			property = property.OneOf[0]
@@ -148,7 +152,7 @@ func checkRecordEmission(t *testing.T, typ reflect.Type, def schemaNode) {
 			continue
 		}
 		nullable := strings.Contains(string(property.Type), `"null"`) || len(property.OneOf) > 0
-		if nullable != isNull(raw) {
+		if nullable != (string(raw) == "null") {
 			t.Errorf("zero %s.%s = %s, nullable=%v", typ, name, raw, nullable)
 		}
 	}

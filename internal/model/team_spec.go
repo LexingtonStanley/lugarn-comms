@@ -1,10 +1,5 @@
 package model
 
-import (
-	"bytes"
-	"encoding/json"
-)
-
 // Schema defaults are exposed for the policy layer; decoding never applies them.
 const (
 	DefaultHerdrServer        = "default"
@@ -21,7 +16,9 @@ const (
 	DefaultSpawnMaxProfile    = ProfileWorkspace
 )
 
-// TeamSpec is the request-side v1 team specification.
+// TeamSpec is the v1 team specification shared by requests and get-team
+// responses. Optional non-nullable settings remain omitted until supplied;
+// nullable fields always marshal, using null when unset.
 type TeamSpec struct {
 	Version int            `json:"version"`
 	ID      string         `json:"id"`
@@ -47,9 +44,8 @@ type Limits struct {
 	TurnTimeoutSeconds *int `json:"turn_timeout_seconds,omitempty"`
 }
 
-// MemberSpec configures one agent. For Task, a nil outer pointer means omitted,
-// a pointer to a nil *string means explicit null, and two non-nil pointers mean
-// a supplied string. This preserves all three schema states on round trips.
+// MemberSpec configures one agent. An absent or null Task means no initial task;
+// Host is reserved as null in v1. Both fields marshal as null when nil.
 type MemberSpec struct {
 	ID       string         `json:"id"`
 	Name     string         `json:"name"`
@@ -60,22 +56,23 @@ type MemberSpec struct {
 	Profile  Profile        `json:"profile"`
 	Mode     Mode           `json:"mode"`
 	Brief    string         `json:"brief"`
-	Task     **string       `json:"task,omitempty"`
+	Task     *string        `json:"task"`
 	Spawn    *SpawnSettings `json:"spawn,omitempty"`
-	Host     *Null          `json:"host,omitempty"`
+	Host     *Null          `json:"host"`
 }
 
-// SpawnSettings controls whether and how a member may spawn workers. Harnesses
-// and Brief use the same omitted/null/value pointer convention as MemberSpec.Task.
+// SpawnSettings controls whether and how a member may spawn workers. Absent or
+// null Harnesses allows every supported harness; absent or null Brief means no
+// worker brief. Both fields marshal as null when nil.
 type SpawnSettings struct {
 	Enabled       bool         `json:"enabled"`
 	RunningAtOnce *int         `json:"running_at_once,omitempty"`
 	PerRun        *int         `json:"per_run,omitempty"`
-	Harnesses     **[]Harness  `json:"harnesses,omitempty"`
+	Harnesses     *[]Harness   `json:"harnesses"`
 	Mode          *Mode        `json:"mode,omitempty"`
 	Folder        *SpawnFolder `json:"folder,omitempty"`
 	MaxProfile    *Profile     `json:"max_profile,omitempty"`
-	Brief         **string     `json:"brief,omitempty"`
+	Brief         *string      `json:"brief"`
 }
 
 // GridEdge lists the capabilities from one agent to another.
@@ -84,47 +81,3 @@ type GridEdge struct {
 	To   string           `json:"to"`
 	Can  []GridCapability `json:"can"`
 }
-
-// UnmarshalJSON preserves explicit nulls that encoding/json otherwise collapses
-// into omitted pointers. The alias retains strict checking of nested objects.
-func (m *MemberSpec) UnmarshalJSON(data []byte) error {
-	type plain MemberSpec
-	var v plain
-	if err := DecodeStrict(data, &v); err != nil {
-		return err
-	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-	if isNull(fields["task"]) {
-		v.Task = new(*string)
-	}
-	if isNull(fields["host"]) {
-		v.Host = &Null{}
-	}
-	*m = MemberSpec(v)
-	return nil
-}
-
-func (s *SpawnSettings) UnmarshalJSON(data []byte) error {
-	type plain SpawnSettings
-	var v plain
-	if err := DecodeStrict(data, &v); err != nil {
-		return err
-	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-	if isNull(fields["harnesses"]) {
-		v.Harnesses = new(*[]Harness)
-	}
-	if isNull(fields["brief"]) {
-		v.Brief = new(*string)
-	}
-	*s = SpawnSettings(v)
-	return nil
-}
-
-func isNull(data []byte) bool { return bytes.Equal(bytes.TrimSpace(data), []byte("null")) }
