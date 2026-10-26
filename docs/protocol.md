@@ -858,7 +858,13 @@ it on explicitly (Flare):
    two fixed markers. Startup files may print too, so anything outside the markers is
    ignored. Stdin is the null device, the shell runs in its own process group, and the
    group is killed after 10 seconds. fish joins `"$PATH"` with `:` like the others. csh and
-   tcsh accept `-l` only on its own, so they aren't captured.
+   tcsh accept `-l` only on its own, so they aren't captured. The capture runs with
+   `LUGARN_PATH_CAPTURE=1` and `TERM=dumb` in its environment, so a startup file can skip
+   what doesn't belong in it. Without such a guard, a line that execs away (`[ -z "$TMUX" ]
+   && exec tmux`) or waits for an answer (an update prompt) ends the capture as `failed`
+   or `timeout`; with one (`[ -n "$LUGARN_PATH_CAPTURE" ] || exec tmux`) the capture works.
+   The app's text for those two issues says so (Flare). Control characters are removed
+   from the captured value, since startup files can print escapes onto its line.
 2. **Merge.** The captured entries come first, then the rest of the broker's own `PATH`,
    then the system directories (`/usr/local/bin`, `/usr/bin`, `/bin`, `/usr/sbin`, `/sbin`).
    Relative and empty entries are dropped, since one would resolve inside an agent's
@@ -866,7 +872,7 @@ it on explicitly (Flare):
    markers, an unsupported shell), the merge goes ahead without it, and the reason is kept.
 3. **Cache.** The capture is kept in `login-path.json` in the state directory, with the
    shell and the time. `start-herdr` and `start-team` always capture afresh; other ops use a
-   capture under an hour old, and capture otherwise. A startup file that starts something
+   capture under an hour old, from the same `$SHELL`, and capture otherwise. A startup file that starts something
    on every shell (`eval "$(ssh-agent)"`) leaves one behind per capture, which is why the
    capture is cached.
 4. **Use.** Harness resolution looks executables up on the merged `PATH`, both in `hello`'s

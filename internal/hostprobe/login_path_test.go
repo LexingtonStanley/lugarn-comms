@@ -30,6 +30,15 @@ func TestLoginPathCapture(t *testing.T) {
 			}
 		})
 	}
+	t.Setenv("LUGARN_PATH_FAKE", "escapes")
+	if p := capturePath(context.Background(), shell, "", time.Second); p.Login == nil || *p.Login != "]0;title/login/bin:[0m/usr/bin" {
+		t.Fatalf("control characters survived: %+v", p)
+	}
+	t.Setenv("LUGARN_PATH_FAKE", "env")
+	t.Setenv("TERM", "xterm-256color")
+	if p := capturePath(context.Background(), shell, "", time.Second); p.Login == nil || *p.Login != "1:dumb" {
+		t.Fatalf("capture environment: %+v", p)
+	}
 	p := capturePath(context.Background(), filepath.Join(dir, "csh"), "", time.Second)
 	if p.Issue == nil || *p.Issue != "unsupported_shell" {
 		t.Fatal(p)

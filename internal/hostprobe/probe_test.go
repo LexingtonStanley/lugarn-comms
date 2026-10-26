@@ -40,6 +40,10 @@ func fakeMain() {
 			os.Exit(7)
 		case "missing":
 			fmt.Print("noise")
+		case "escapes":
+			fmt.Print("\n" + pathBegin + "\n\x1b]0;title\x07/login/bin:\x1b[0m/usr/bin\r\n" + pathEnd + "\n")
+		case "env":
+			fmt.Print("\n" + pathBegin + "\n" + os.Getenv("LUGARN_PATH_CAPTURE") + ":" + os.Getenv("TERM") + "\n" + pathEnd + "\n")
 		default:
 			fmt.Print("noise\n" + pathBegin + "\n/login/bin:/usr/bin\n" + pathEnd + "\nnoise")
 		}

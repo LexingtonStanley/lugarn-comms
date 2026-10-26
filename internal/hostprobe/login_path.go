@@ -103,6 +103,10 @@ func capturePath(ctx context.Context, shell, inherited string, timeout time.Dura
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, shell, "-l", "-i", "-c", script)
+	// Startup files can skip what doesn't belong in a capture (an auto-started
+	// tmux, an update prompt) by testing LUGARN_PATH_CAPTURE. os/exec keeps the
+	// last value of a duplicated key, so these override the inherited ones.
+	cmd.Env = append(os.Environ(), "LUGARN_PATH_CAPTURE=1", "TERM=dumb")
 	setupCapture(cmd)
 	defer finishCapture(cmd)
 	var out output
@@ -126,7 +130,14 @@ func capturePath(ctx context.Context, shell, inherited string, timeout time.Dura
 	if !ok {
 		return issue("failed")
 	}
-	login := string(value)
+	// Startup files may print escapes onto the value's line; none of a PATH's
+	// characters may be a control character.
+	login := strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f || (r >= 0x80 && r < 0xa0) {
+			return -1
+		}
+		return r
+	}, string(value))
 	p.Login = &login
 	return p
 }
