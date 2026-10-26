@@ -452,6 +452,11 @@ func TestRunCommand(t *testing.T) {
 		{"echo", "$(x)"},
 		{"echo", "a;b"},
 		{"-rf"},
+		{"lugarn-comms", "--team=x"},
+		{"echo", "%PATH%"},
+		{"echo", "a,b"},
+		{"echo", "@args"},
+		{"echo", "~/x"},
 	} {
 		wantProtocol(t, c.RunCommand(ctx, "w1:p1", argv...), model.ErrorInvalidRequest, "")
 	}

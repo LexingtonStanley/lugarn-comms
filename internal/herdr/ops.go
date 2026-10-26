@@ -170,17 +170,19 @@ func (c *Client) ClosePane(ctx context.Context, id string) error {
 }
 
 // Herdr types `pane run` text into the pane's shell, so RunCommand only takes
-// words no shell (sh, zsh, fish, PowerShell, cmd) treats specially, and needs
-// no quoting. On Windows a backslash is a path separator, not an escape.
+// words no shell (sh, bash, zsh, fish, PowerShell, cmd) treats specially, and
+// needs no quoting: not zsh's =word, cmd's %VAR%, PowerShell's @ and ','. On
+// Windows a backslash is a path separator, not an escape.
 var (
-	plainWord   = regexp.MustCompile(`^[A-Za-z0-9_@%+=:,./-]+$`)
-	plainWordNT = regexp.MustCompile(`^[A-Za-z0-9_@%+=:,./\\-]+$`)
+	plainWord   = regexp.MustCompile(`^[A-Za-z0-9_./:-]+$`)
+	plainWordNT = regexp.MustCompile(`^[A-Za-z0-9_./:\\-]+$`)
 )
 
 // RunCommand types argv into the shell of a pane, then Enter: for the runner
 // pane (`lugarn-comms run --team <id>`), never for agent-written text. Each
-// word must be plain (letters, digits and _@%+=:,./-, plus \ on Windows),
-// since it reaches a shell unquoted; a path with a space is refused.
+// word must be plain (letters, digits and _./:-, plus \ on Windows) since it
+// reaches a shell unquoted, and the first can't start with '-'. A path with a
+// space is refused, and so is --flag=value: pass --flag value.
 func (c *Client) RunCommand(ctx context.Context, pane string, argv ...string) error {
 	if len(argv) == 0 {
 		return model.NewError(model.ErrorInvalidRequest, "a command is required")
