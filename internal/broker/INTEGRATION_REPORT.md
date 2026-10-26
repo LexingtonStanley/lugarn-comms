@@ -191,3 +191,232 @@ ok  	github.com/LexingtonStanley/lugarn-comms/internal/store	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/wire	(cached)
 ?   	github.com/LexingtonStanley/lugarn-comms/schema	[no test files]
 ```
+
+## C2d review addendum — 2026-10-26
+
+This addendum supersedes the implementation descriptions above where the review
+changed them. Read `git show 135d1cc` first, then the entire revision brief and the
+C2d safety/common brief. Fifteen focused commits implement the requested order:
+8, 11, 12, 13, 1, 2, 3, then 4, 5, 6, 7, 9, 10, 14, 15. Each carries the requested
+Codex co-author trailer. No push or PR was made.
+
+The earlier default-store fallback is now **confirmed by Lex's review**, rather
+than hypothetical. Lex inspected and moved that empty store aside. No inspection
+or modification of the person's `~/.lugarn` was performed in this revision round.
+No integration code or tool action opened a provider credential file or copied a
+provider config home. The live harness inherited the person's own config. All new real probes were opt-in and
+used fresh, explicitly named private Herdr sessions, stopped and deleted by their
+own session names. There were no name-based process kills.
+
+### Per-item changes and tests
+
+The live checks listed below were each attempted once. Other items use portable
+fakes or temporary scratch repositories; no additional paid verification was run.
+
+| Item / commit | Change | Regression coverage and live evidence |
+| --- | --- | --- |
+| **8** / `0e75171` | Pane preflight refuses existing panes, live turns, unavailable harnesses and unresolved binaries before worktree preparation or lease rotation. The failure defer runs only after a launch attempt begins. Session-before-pane uses an existing headless lease. | `TestOpenPreflightLeavesHeadlessMemberUnchanged` compares the complete before/after member for harness, resolution and live-turn refusals. `TestIntegrationPaneLaunchAndSessionBeforePane` covers an existing headless Codex lease and already-pane refusal. No paid run needed. |
+| **11** / `04cd980` | CLI response timeout is `kindTimeout`, separate from server-not-running/unavailable. State timeout is unknown; wait timeout remains working. Observation/settling failures log and back off without ending the runner. A transient follow-up observation during Exited also retries. | `TestNoAnswerIsTimeout` uses a delayed fake CLI and asserts not gone/unavailable. `TestPaneObservationErrorRetriesWithoutStoppingRunner` checks backoff, a subsequent successful observation, unchanged lease, and no fatal worker error. No live slowdown induced. |
+| **12** / `9654477` | A headless-home pane exit closes its owned tab before conversion. A recorded workspace with no owned runner pane gets a fresh runner tab, without any label lookup. | Extended `TestIntegrationPaneExitRestoresHeadlessWithoutWaitingOnItself` asserts closure. `TestIntegrationLauncherRecordsWorkspaceIDAndNativeBridge` removes placement and restarts in the same workspace, without creating another workspace. No model needed. |
+| **13** / `f2ccf21` | Teardown waits up to 30 seconds, attempts every cleanup stage, and returns `errors.Join` of the failures. Pointer capture, process cancellation, pane closure, ending launches, artifact cleanup, bridge cleanup and placement removal continue after individual errors. | `TestIntegrationTeardownEndsOwnedLaunchArtifacts` injects a pane-close failure and still checks removal of the bridge, token, settings and pointer. The original broker already completes store cleanup when external teardown reports an error. No live server was deliberately killed mid-team. |
+| **1** / `4252c6b` | `hostprobe.LoginPath` captures the login interactive shell with null stdin, fixed markers, a private process group and a 10-second deadline. Unsupported csh/tcsh and failures retain an issue. Merge removes empty, relative and duplicate entries. Cache lasts one hour. Executable app/agent/run entry points set process PATH **before constructing the real probe**; hostprobe resolution itself retains its existing API. Start-team/start-herdr refresh, and PATH is explicit in the runner pane, clean shell, detached server env, and systemd `--setenv`. `hello.host.path` is typed, schema-defined and covered by both POSIX and Windows examples. | `TestLoginPathCapture`, `TestLoginPathMergeAndCache`, `TestSystemdEnvironmentOption`, extended `TestStartServerDetaches`, `TestHelloPathCaptureWire`, schema examples. **Live passed:** 18 captured entries; local bin present; private systemd server's pane had it; bare user-manager command did not. [Raw log](testdata/revision-01-live.log). |
+| **2** / `ceb4624` | Clean POSIX shell uses `env -u ENV -u BASH_ENV HISTFILE= /bin/sh …`, still drops exported bash functions, and waits up to 20 seconds for rc completion. | `TestCleanShellHistoryIsEmpty` asserts empty assignment instead of unsetting. Existing shell-pin tests remain; hostile-rc live matrix was not repeated. The Codex live probe below exercised the changed bootstrap once. |
+| **3** / `9cc3879` | Codex's own regular matching rollout under `$CODEX_HOME/sessions` or `~/.codex/sessions` decides cwd. Only its first `session_meta` line is parsed; no other config-home file is read. Failures use `workdir_missing`, `workdir_changed`, or documented `rollout_missing`. Resume carries supported `--cd <validated cwd>`; before the first delivery per pane generation, recent unwrapped text is checked for the fixed `Working directory · resume` title. A match closes the pane and records launch_failed; no picker answer is sent. | `TestCodexWorkdirUsesRollout` covers missing rollout, matching cwd, mismatch and missing folder; `TestCodexResumePickerClosesWithoutDelivery` checks close/no submit. **Live passed:** one gpt-6-luna brief-only turn; removed A failed workdir_missing; a test-only Herdr proxy opened B and stripped --cd to demonstrate resume_picker detection and close. [Raw log](testdata/revision-03-live.log). |
+| **4** / `5d55063` | Plain broker executable paths are used directly. Only non-plain paths need a bridge: under the plain state directory when possible, otherwise the OS temp directory. Bootstrap comments make the runner's plain executable invariant explicit; its existing check rejects an unsafe path. | `TestIntegrationBridgeUsesPlainExecutable` and extended `TestIntegrationRunnerBridgeHandlesSourcePathWithSpaces`. Teardown accepts only validated bridge parents and prefix. **Windows:** if 8.3 names are disabled, a bridge under a plain state path still works; a fallback temp path containing spaces cannot be made plain and fails runner_unavailable/unresolvable. Windows runtime not verified here. |
+| **5** / `1098fe8` | Opt-in flow (b) now selects `opencode-go/kimi-k3.1-pro`. Fixed its readiness predicate so an initial stopped member without a stop reason is not confused with a completed launch failure. | **One live attempt failed in the test's readiness predicate**, before any turn was reported. It did not establish a provider or integration failure. Corrected predicate was not rerun live under the once-only rule. `TestOpenCodeSessionBeforePaneAndDelivery` now verifies brief-only/no consumption/no auto-reply, the pane lease, and a delivered message using a fake headless driver and Herdr. **Real Kimi pane delivery remains unverified.** [Raw failed-attempt log](testdata/revision-05-live.log). |
+| **6** / `ae9c3a5` | Added state-table rows for pin links, capsule, ready marker, immutable launch/process descriptions, placement, session metadata, PATH cache and optional bridge, with their lifetimes. Documented exact-name/lstat/no-link-traversal cleanup. | Existing `TestRunnerCleanup…` cases cover known ended launches, exact suffixes, unknown-age grace, listing-before-store ordering, and links whose outside targets survive. Teardown test also removes ended per-launch artifacts. No model run needed. |
+| **7** / `64c08b0` | Removed broker's duplicate hook writer. `harness.ClaudeHookSettings(launchID, platform, home)` now owns explicit-home quoting, umask 077 and a trailing newline. `Launch.Pane` controls pane-only settings generation; `PointerHome` never changes HOME/provider configuration. | `TestHookAndPointer` invokes two hooks with newline-free input, under an explicit temp pointer home different from HOME, then checks the pointer reader. `TestHeadlessClaudeHasNoPointerSettings` asserts no headless settings file. Full harness suite and Windows vet cover both generated command forms; no paid Claude rerun. |
+| **9** / `23db78b` | Stop-member waits, re-reads the member, then captures/closes the pane actually recorded at that time. | `TestStopMemberClosesPaneRecordedWhileWaiting` starts from a pane lease without a pane id and checks closure of the post-wait recorded pane. No live launch race induced. |
+| **10** / `d01a572` | Return-headless waits for worker/turn completion **and no delivering rows**, then waits explicitly for Herdr idle/done, captures the pointer, closes, and converts. | `TestReturnHeadlessWaitsForDeliveringBeforeHerdr` holds a delivering row and asserts both the Herdr wait and close come after its completion. No paid run needed. |
+| **14** / `36d9cea` | Tree snapshots contain pid, parent and birth together. These are rechecked before recursion and signalling. Linux opens pidfd first, re-verifies, then uses pidfd_send_signal; there is no unsafe fallback if pidfds are unavailable. Darwin rechecks birth and ppid immediately before signalling; it has no Linux pidfd equivalent. | `TestTreeKillRechecksSnapshotIdentity` simulates birth reuse, changed parent, and a change just before signal. Native cancellation and Linux adopted-child tests also pass. Darwin cross-vet passes; no macOS runtime check. |
+| **15a–e** / `69decc0` | Reserve worktree row before git, so crashes/cancel/generation loss cannot hide a created tree. Release pane-reason holds even during a person hold. Token-derived stores require an existing regular token and database and skip Ensure/chmod. Exited handles a missing pane id. Every pane close verifies membership in the team's recorded workspace; foreign reused ids are refused. | Worktree test passes a stale generation and asserts no git worktree was created. `TestReturnHeadlessReleasesPaneHoldsDuringPersonHold`, `TestTokenPathCannotCreateOrChmodAStore`, `TestPaneExitWithoutRecordedPaneID`, and `TestClosePaneRefusesReusedIDInForeignWorkspace` cover b–e. Stripped-environment SDK MCP/CLI tests still pass with existing owned token/store paths. No extra live run needed. |
+
+### Live commands and limits
+
+Only these three revision live commands ran, once each:
+
+```sh
+LUGARN_INTEGRATION_PATH_LIVE=1 LUGARN_HERDR_LIVE=0 LUGARN_HARNESS_LIVE=0 go test -v ./internal/broker -run '^TestIntegrationLiveLoginPath$' -count=1
+LUGARN_INTEGRATION_CODEX_CWD_LIVE=1 LUGARN_HERDR_LIVE=0 LUGARN_HARNESS_LIVE=0 go test -v ./internal/broker -run '^TestIntegrationLiveCodexWorkdir$' -count=1
+LUGARN_INTEGRATION_LIVE=1 LUGARN_HERDR_LIVE=0 LUGARN_HARNESS_LIVE=0 go test -v ./internal/broker -run '^TestIntegrationLiveFlows/b-opencode-pane$' -count=1
+```
+
+PATH evidence records shape only, never the captured PATH/environment:
+
+```text
+capture shape: entries=18 local_bin=true elapsed_with_server_ms=384
+server pane local_bin=true
+bare user-manager command local_bin=false
+```
+
+The 384 ms measurement includes the capture **and** start-herdr; it is an upper
+bound for capture time, not an isolated capture benchmark. Start-herdr received
+`KillUserProcesses(true)` from the injected logind report solely to select the
+real systemd method on this KillUserProcesses=no host. This changed no host
+logind setting. The bare systemd-run comparison printed only a presence boolean.
+Session `lugarn-test-ecafd397fb69c715` was stopped and deleted.
+
+Codex evidence:
+
+```text
+gpt-6-luna brief-only turn session=01a17a0a-e515-71f3-9e01-b4e84c417749
+removed rollout cwd A: launch_failed cause=workdir_missing
+test-only pane cwd B: launch_failed cause=resume_picker; pane closed; no delivery submitted
+```
+
+The test-only proxy bypass exists only in `_test.go`; production has no bypass
+flag. Session `lugarn-test-b5dcb93c897e0499` was stopped and deleted. One tiny
+brief-only model turn ran; no dollar cost was reported, so none is inferred.
+
+For the supported picker-prevention option I inspected `codex resume --help`
+and `codex --help`. The [official OpenAI CLI reference](https://learn.chatgpt.com/docs/developer-commands)
+also documents explicit `--cd` taking precedence over `tui.resume_cwd`; the
+[official sample config](https://learn.chatgpt.com/docs/config-file/config-sample)
+documents current/session preferences. I chose explicit --cd while still checking
+the visible fixed picker title. No user config file was read or edited.
+
+OpenCode evidence is a **failed** test run, retained verbatim. Its predicate
+observed the member's initial stopped/no-reason state, and no turn was listed
+before failure. The team and private server were cleaned up. This does not prove
+that no provider work started during the cleanup race, so no spend is inferred.
+Session `lugarn-test-729f2f99b95ef534` was stopped and deleted. The corrected test
+was deliberately not run again; real Kimi session-before-pane/delivery still needs
+verification. macOS, Windows, PowerShell and fish were not checked live this round.
+
+### PR-description follow-ups retained unchanged
+
+These remain follow-ups, not work added to this round:
+
+- Windows `KILL_ON_JOB_CLOSE` versus detach (Lex will take it on ufo).
+- MCP tool annotations.
+- The store accessor for worktree reassignment.
+- The Codex review-mode inconsistency (the original spec references were lines 154/1649 versus 1673).
+
+### Revision final checks
+
+`jsonschema==4.26.0` was installed with `python3 -m pip install --user`;
+this distro rejected that first command as externally managed. Repeating it with
+`--user --break-system-packages` installed only user packages and succeeded.
+No system package files were changed.
+
+All seven live switches were `0` for the final checks: `LUGARN_HERDR_LIVE`,
+`LUGARN_HARNESS_LIVE`, `LUGARN_INTEGRATION_SHELL_LIVE`, `LUGARN_INTEGRATION_LIVE`,
+`LUGARN_INTEGRATION_PROVIDER_DIAGNOSTIC`, `LUGARN_INTEGRATION_PATH_LIVE`, and
+`LUGARN_INTEGRATION_CODEX_CWD_LIVE`. PATH included `$HOME/.local/go/bin` for Go.
+
+The first complete unit pass caught a timestamp in the new hello example without
+the protocol's required milliseconds. It was corrected to `.000Z`; round-trip and
+schema validation now both pass. No outstanding portable check failures remain.
+Exact final stdout/stderr follows; empty output is left empty rather than invented.
+
+All six commands exited **0**. Full stdout/stderr:
+
+```text
+$ gofmt -l .
+$ go vet ./...
+$ GOOS=windows GOARCH=amd64 go vet ./...
+$ GOOS=darwin GOARCH=arm64 go vet ./...
+$ go test -race ./...
+ok  	github.com/LexingtonStanley/lugarn-comms/cmd/lugarn-comms	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/agentops	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/appops	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/broker	37.701s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/cli	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/gitwt	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/herdr	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/hostprobe	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/mcpserver	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/model	1.059s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/policy	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/internal/service	[no test files]
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/statedir	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/store	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/internal/version	[no test files]
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/wire	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/schema	[no test files]
+$ python3 scripts/validate-schemas.py
+ok    app-ops.v1.schema.json: valid draft 2020-12
+ok    common.v1.schema.json: valid draft 2020-12
+ok    mcp-tools.v1.schema.json: valid draft 2020-12
+ok    team-spec.v1.schema.json: valid draft 2020-12
+ok    app-ops/apply-team--revision-conflict.response.json
+ok    app-ops/apply-team.request.json
+ok    app-ops/apply-team.response.json
+ok    app-ops/continue-budget--rounds.request.json
+ok    app-ops/continue-budget.request.json
+ok    app-ops/continue-budget.response.json
+ok    app-ops/hello--windows.response.json
+ok    app-ops/hello.request.json
+ok    app-ops/hello.response.json
+ok    app-ops/hold--release.request.json
+ok    app-ops/hold--release.response.json
+ok    app-ops/hold.request.json
+ok    app-ops/hold.response.json
+ok    app-ops/members.request.json
+ok    app-ops/members.response.json
+ok    app-ops/open-terminal--lease-conflict.response.json
+ok    app-ops/open-terminal.request.json
+ok    app-ops/open-terminal.response.json
+ok    app-ops/remove-worktrees.request.json
+ok    app-ops/remove-worktrees.response.json
+ok    app-ops/resolve-delivery.request.json
+ok    app-ops/resolve-delivery.response.json
+ok    app-ops/send--all.request.json
+ok    app-ops/send.request.json
+ok    app-ops/send.response.json
+ok    app-ops/start-herdr.request.json
+ok    app-ops/start-herdr.response.json
+ok    app-ops/start-team--herdr-down.response.json
+ok    app-ops/start-team.request.json
+ok    app-ops/start-team.response.json
+ok    app-ops/status.request.json
+ok    app-ops/status.response.json
+ok    app-ops/timeline.request.json
+ok    app-ops/timeline.response.json
+ok    app-ops/watch--bad-cursor.ndjson (1 lines)
+ok    app-ops/watch.ndjson (8 lines)
+ok    app-ops/watch.request.json
+ok    app-ops/worktrees.request.json
+ok    app-ops/worktrees.response.json
+ok    mcp/inbox.input.json
+ok    mcp/inbox.output.json
+ok    mcp/reply.input.json
+ok    mcp/reply.output.json
+ok    mcp/send--denied.error.json
+ok    mcp/send--held.output.json
+ok    mcp/send--human-too-long.error.json
+ok    mcp/send.input.json
+ok    mcp/send.output.json
+ok    mcp/spawn--cap-reached.error.json
+ok    mcp/spawn--profile-too-high.error.json
+ok    mcp/spawn.input.json
+ok    mcp/spawn.output.json
+ok    mcp/stop.input.json
+ok    mcp/stop.output.json
+ok    mcp/team.input.json
+ok    mcp/team.output.json
+ok    team-spec/manager-workers.json
+ok    team-spec/orchestrator.json
+ok    team-spec/pipeline.json
+ok    team-spec/writer-reviewer.json
+ok    rejects: grid edge with wake but not message
+ok    rejects: member named human
+ok    rejects: spawn enabled without a worker brief
+ok    rejects: member host set in v1
+ok    rejects: per_recipient other than 1
+ok    rejects: send with both to and all
+ok    rejects: timeline with both before and after
+ok    rejects: continue-budget writer without kind rounds and reviewer
+ok    rejects: unknown request field
+ok    rejects: agent send to all
+ok    rejects: agent text to human over 8000 code points
+ok    rejects: hold with both ttl_seconds and release
+ok    rejects: hold ttl over 120 s
+ok    rejects: remove-worktrees with no paths
+ok    docs/protocol.md enum table matches the schemas (46 enums)
+
+4 schemas, 60 example files, 0 failure(s)
+```
+
+Raw check logs: [format](testdata/revision-check-gofmt.log), [Linux vet](testdata/revision-check-vet-linux.log), [Windows vet](testdata/revision-check-vet-windows.log), [Darwin vet](testdata/revision-check-vet-darwin.log), [race](testdata/revision-check-race.log), [schema validation](testdata/revision-check-schemas.log). `git diff --check 135d1cc..HEAD` also produced no output and exited 0.
