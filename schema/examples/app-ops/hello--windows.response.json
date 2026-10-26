@@ -32,7 +32,8 @@
       "os": "windows",
       "arch": "amd64",
       "hostname": "ufo",
-      "state_dir": "C:\\Users\\lex\\AppData\\Local\\Lugarn\\comms"
+      "state_dir": "C:\\Users\\lex\\AppData\\Local\\Lugarn\\comms",
+      "logind": null
     },
     "herdr": {
       "installed": true,

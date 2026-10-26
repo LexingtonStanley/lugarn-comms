@@ -125,7 +125,7 @@ The app owns the spec and pushes all of it with `apply-team`. Schema:
 | Field                  | Default | Range     | Meaning                                                                          |
 | ---------------------- | ------- | --------- | -------------------------------------------------------------------------------- |
 | `hop_budget`           | 16      | 1–1000    | Agent-originated messages in a row before deliveries pause; also the Continue step |
-| `review_rounds`        | 3       | 1–100     | Writer → reviewer rounds per pair before escalation; also its Continue step      |
+| `review_rounds`        | 3       | 1–100     | Reviews per writer–reviewer pair before escalation; also its Continue step       |
 | `per_recipient`        | 1       | 1 only    | Deliveries or turns in flight per recipient. A session has one driver.           |
 | `headless_turns`       | 3       | 1–24      | Headless turns running at once in the team                                       |
 | `turn_timeout_seconds` | 1800    | 60–86400  | A headless turn is cancelled after this long, status `timed_out`                 |
@@ -276,6 +276,8 @@ is fresh.
 3. Fails requests left `running` with `internal`, and executes `pending` ones.
 4. Checks each `pane` lease against Herdr. A pane that's gone is handled as a pane exit
    ([Leases](#leases-and-launches)).
+5. Deletes this team's files under `launch/` whose launch has ended, and any whose launch id
+   the store doesn't know, so a crash leaves no token behind.
 
 ### start-team
 
@@ -767,7 +769,9 @@ re-parses:
    its delivery attempt; `0600`, or the owner-only DACL on Windows), and the pane gets this
    fixed prompt instead:
    `[lugarn · <n> new message(s) for you are in <path> · read that file now · seal <seal>]`.
-   The file is deleted when the launch ends.
+   The file is deleted when the launch ends. On Linux and macOS an inline prompt sits in the
+   `herdr` client's argv while it runs, so other users on the host can read it with `ps` or in
+   `/proc/<pid>/cmdline` (unless `/proc` has `hidepid`). That's fine on a single-user host.
 3. **Pane launches** pass fixed arguments only: harness flags, broker-made paths and session
    ids that match their pattern. The brief and the task arrive afterwards as the first
    delivery, never in `herdr agent start … -- <args>`, which Herdr re-wraps in PowerShell on
@@ -804,8 +808,10 @@ likewise).
 
 ## Review rounds
 
-- **What counts:** each accepted message from a `writer`-role member to a `reviewer`-role
-  member, auto-replies included. Counts are per (writer, reviewer) pair.
+- **What counts:** each accepted message from a `reviewer`-role member to a `writer`-role
+  member, auto-replies included: one review, one round. The writer's messages to its
+  reviewer, clarifying questions included, don't count. Counts are per (writer, reviewer)
+  pair.
 - The message's round is the pair's new count. Over the pair's allowance (default
   `review_rounds`), it's accepted `held` (`rounds`), the pair is exhausted, and
   `rounds.changed` (`exhausted`) raises attention: the person decides.
@@ -928,6 +934,10 @@ call `herdr agent prompt` itself, and Herdr's socket has no permission check. Th
 confused agents, not hostile ones. A real boundary needs an OS user per agent, which is out of
 scope.
 
+Nothing is pruned in v1, so every message body stays in `comms.db` until the person deletes
+the state directory. Anything running as the user can read it. A retention op is planned
+after v1 (decision 63).
+
 ## App ops
 
 The app runs `lugarn-comms app <op>` over SSH exec, writes one JSON request to stdin, closes
@@ -981,7 +991,11 @@ Result:
 - `schemas`: `team_spec` (spec versions accepted), `store` (the store's migration version);
 - `capabilities`: feature flags. Known: `spawn`, `watch`, `open-terminal`, `return-headless`,
   `start-herdr`, `resolve-delivery`, `hold`, `worktrees`. Clients ignore unknown flags;
-- `host`: `id`, `os`, `arch`, `hostname`, `state_dir`;
+- `host`: `id`, `os`, `arch`, `hostname`, `state_dir`, and `logind`: on Linux with
+  systemd-logind, `kill_user_processes` (logind's `KillUserProcesses`) and `linger` (the
+  user's `Linger`); null elsewhere or when `loginctl` can't say. When the first is true and
+  the second false, logind kills Herdr, its runners and every agent when the person's last
+  session ends, `setsid` or not, so the app suggests `loginctl enable-linger`;
 - `herdr`: `installed`, `version`, `running`, `server` (`default`);
 - `harnesses`: per harness `installed`, `version`, `supported`, `issue`
   (`not_installed`, `unsupported_version`, `shim_only`) and `headless` (whether the broker can
@@ -1459,8 +1473,9 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 11. An exhausted budget holds messages (`held`, `budget`) instead of refusing them, so
     Continue releases them and agents don't need to retry. So there's no `budget_exhausted`
     error.
-12. A round is any writer-role → reviewer-role message, counted per pair. A message from the
-    person to either member resets the pair; `continue-budget` with `kind: rounds` continues it.
+12. A round is each reviewer-role → writer-role message, counted per pair, so a writer's
+    clarifying questions don't use rounds up. A message from the person to either member
+    resets the pair; `continue-budget` with `kind: rounds` continues it.
 13. Replies go through the grid like any message.
 14. `stop` from an agent is limited to its own workers; it isn't a grid capability.
 
@@ -1520,7 +1535,8 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 
 40. The `events` table is the audit log, the watch source and (where flagged) the timeline.
     Budgets are `hop_counters` and `round_counters`; spawn counters are a view, so they can't
-    drift. Nothing is pruned in v1.
+    drift. Nothing is pruned in v1: message bodies stay in `comms.db`
+    ([Identity](#identity)).
 41. `app` ops repeat the op in the JSON, which must match argv, and exit with the mapped code.
 42. `watch` marks the end of replay with `watch.live`, sends a heartbeat every 15 s, and ends
     with an `error` line on failure.
@@ -1578,4 +1594,19 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 60. **One tool set.** The MCP server lists all six tools to every member, so Claude's
     `--allowedTools` and Codex's per-tool approvals are the same fixed list for every launch.
 61. **Herdr on POSIX.** `start-herdr` runs `herdr server` itself under `setsid`, with stdio on
-    the null device (`detached`, renamed from `daemon`); C2 verifies it survives.
+    the null device (`detached`, renamed from `daemon`); C2 verifies it survives. `setsid`
+    doesn't survive logind's `KillUserProcesses=yes`, so `hello` reports it and `Linger`.
+
+**Added after the review of #2**
+
+62. **Rounds count reviews.** A round is a reviewer's message to its writer, not the writer's
+    to its reviewer, so clarifying questions don't use rounds up (decision 12).
+63. **Open:** a retention op that prunes message bodies and events by age, per team. Until
+    then nothing is pruned, and the security notes say so ([Identity](#identity)).
+64. **Launch files after a crash.** Reconciling on runner start deletes `launch/` files with
+    no live launch, so a crashed runner leaves no token on disk.
+65. **Inline pane text on POSIX** is readable in the `herdr` client's argv by other users on
+    the host while it runs. Fine on a single-user host; a shared one would want the file path
+    for every delivery.
+66. **logind.** `hello` reports `host.logind` (`kill_user_processes`, `linger`) so the app can
+    ask for `loginctl enable-linger` before a logout kills the team.

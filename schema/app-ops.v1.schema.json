@@ -1193,6 +1193,30 @@
             },
             "state_dir": {
               "$ref": "common.v1.schema.json#/$defs/Path"
+            },
+            "logind": {
+              "description": "Linux with systemd-logind only; null elsewhere or when loginctl can't say.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kill_user_processes": {
+                      "type": "boolean"
+                    },
+                    "linger": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kill_user_processes",
+                    "linger"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
             }
           },
           "required": [
@@ -1200,7 +1224,8 @@
             "os",
             "arch",
             "hostname",
-            "state_dir"
+            "state_dir",
+            "logind"
           ],
           "additionalProperties": false
         },
