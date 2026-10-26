@@ -174,6 +174,9 @@ func (r *Runner) workMember(ctx context.Context, m model.Member) error {
 	if m.State == model.MemberStateRunning && m.Lease.Driver == model.DriverHeadless {
 		return r.runTurn(ctx, m)
 	}
+	if m.State == model.MemberStateRunning && m.Lease.Driver == model.DriverPane {
+		return r.runPane(ctx, m)
+	}
 	return nil
 }
 func (r *Runner) syncHolds(ctx context.Context, m model.Member) (bool, error) {
