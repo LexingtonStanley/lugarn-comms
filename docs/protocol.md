@@ -107,8 +107,9 @@ recorded on the member.
 | `launch/<launch id>/msg-<message id>-<attempt>.md` | A pane delivery too long to inline ([Untrusted text](#untrusted-text)) | deleted when the launch ends |
 
 | `launch/<launch id>/bin/<harness>` | Link to the resolved native harness executable for the clean pane shell | deleted with the exact launch directory when the launch ends; link target survives |
-| `launch/<launch id>/clean-shell.json`, `shell-ready` | Native bootstrap capsule and shell readiness marker | deleted with the exact launch directory when the launch ends |
+| `launch/<launch id>/clean-shell.json`, `shell-ready` | POSIX shell bootstrap capsule and readiness marker | deleted with the exact launch directory when the launch ends |
 | `launch/<launch id>/runner-launch.json`, `<turn id>.process.json` | Immutable launch description and process birth identity | deleted with the exact launch directory when the launch ends |
+| `launch/<launch id>/pane-launch.json` | Windows native harness executable, exact argv and per-launch environment | deleted with the exact launch directory when the launch ends |
 | `runner/<team id>.json` | Recorded workspace/pane and verified runner process; optional bridge ownership | retained across runner takeover; removed by stop-team |
 | `sessions/<member id>/<session hash>.json` | Private initialized-session metadata; Codex rollout remains authoritative for cwd | retained for future session resume |
 | `login-path.json` | Login-shell PATH capture, shell, timestamp and issue | refreshed after one hour, and on every start-herdr/start-team |

@@ -252,3 +252,17 @@ func TestTokenPathCannotCreateOrChmodAStore(t *testing.T) {
 		})
 	}
 }
+
+func TestPaneLaunchCommandValidation(t *testing.T) {
+	t.Setenv("LUGARN_COMMS_HOME", t.TempDir())
+	t.Setenv("LUGARN_COMMS_PANE_CONFIG", "")
+	for _, tc := range []struct {
+		args []string
+		code int
+	}{{[]string{"pane-launch"}, 64}, {[]string{"pane-launch", "bad"}, 2}, {[]string{"pane-launch", "00000000000000000000000001", "extra"}, 64}, {[]string{"pane-launch", "00000000000000000000000001"}, 2}} {
+		var out, diag bytes.Buffer
+		if code := runWithInput(context.Background(), tc.args, strings.NewReader(""), &out, &diag); code != tc.code {
+			t.Fatal(tc.args, code, diag.String())
+		}
+	}
+}

@@ -135,6 +135,16 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 		svc, closeStore := openAgentService(ctx, args)
 		defer closeStore()
 		return cli.Run(ctx, args, stdin, stdout, stderr, svc, svc)
+	case "pane-launch":
+		if len(args) != 2 {
+			return usageError(stderr, "usage: lugarn-comms pane-launch <launch id>")
+		}
+		code, e := broker.RunPaneLaunch(args[1], stdin, stdout, stderr)
+		if e != nil {
+			fmt.Fprintln(stderr, model.AsError(e))
+			return model.ExitCode(model.AsError(e).Code)
+		}
+		return code
 	case "pane-shell":
 		if e := broker.RunPaneShell(); e != nil {
 			fmt.Fprintln(stderr, model.AsError(e))

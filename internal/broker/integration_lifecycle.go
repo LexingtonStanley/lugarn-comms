@@ -221,7 +221,13 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	if e != nil {
 		return e
 	}
-	env, bootstrap, e := l.i.preparePaneShell(ctx, launch, binary)
+	var env map[string]string
+	var bootstrap []string
+	if l.i.windowsPanes {
+		env, bootstrap, e = l.i.prepareWindowsPane(launch, binary, args)
+	} else {
+		env, bootstrap, e = l.i.preparePaneShell(ctx, launch, binary)
+	}
 	if e != nil {
 		return e
 	}
@@ -254,10 +260,15 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	if e = client.RunCommand(ctx, tab.RootPane, bootstrap...); e != nil {
 		return e
 	}
-	if e = l.i.waitShell(ctx, id); e != nil {
-		return e
+	var agent herdr.Agent
+	if l.i.windowsPanes {
+		agent, e = l.i.detectWindowsPane(ctx, client, tab.RootPane, *team.HerdrWorkspace, herdr.AgentName(m.Team, m.Name), *m.Harness)
+	} else {
+		if e = l.i.waitShell(ctx, id); e != nil {
+			return e
+		}
+		agent, e = client.StartAgent(ctx, herdr.StartOptions{Name: herdr.AgentName(m.Team, m.Name), Harness: *m.Harness, Pane: tab.RootPane, Args: args})
 	}
-	agent, e := client.StartAgent(ctx, herdr.StartOptions{Name: herdr.AgentName(m.Team, m.Name), Harness: *m.Harness, Pane: tab.RootPane, Args: args})
 	if e != nil {
 		return e
 	}

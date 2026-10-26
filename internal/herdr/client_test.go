@@ -504,3 +504,24 @@ func TestRunCommand(t *testing.T) {
 		wantProtocol(t, err, model.ErrorInvalidRequest, "")
 	}
 }
+
+func TestRenameDetectedAgent(t *testing.T) {
+	f := newFake(t)
+	f.on("agent rename", ok(`{"type":"agent_renamed"}`))
+	mustRename := f.client().RenameAgent(testContext(t), "w1:p5", "writer-k2m9xa")
+	if mustRename != nil {
+		t.Fatal(mustRename)
+	}
+	wantArgs(t, onlyCall(t, f), "agent", "rename", "w1:p5", "writer-k2m9xa")
+	f.on("agent rename", fails("agent_name_taken", "name already used"))
+	if e := f.client().RenameAgent(testContext(t), "w1:p5", "writer-k2m9xa"); e == nil {
+		t.Fatal("ignored rename failure")
+	}
+	before := len(f.calls())
+	if e := f.client().RenameAgent(testContext(t), "w1:p5", "invalid name"); e == nil {
+		t.Fatal("accepted invalid name")
+	}
+	if len(f.calls()) != before {
+		t.Fatal("ran Herdr for invalid name")
+	}
+}
