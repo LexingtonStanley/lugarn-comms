@@ -147,3 +147,34 @@ func TestEnsureRejectsFile(t *testing.T) {
 		t.Fatal("file accepted as state directory")
 	}
 }
+
+// Protecting a directory that already holds files (comms.db and its WAL) must
+// leave them openable. On Windows a non-inheritable owner entry made Windows
+// strip the files' inherited entries, and every new SQLite connection failed.
+func TestEnsureKeepsExistingFilesOpenable(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "state")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	existing := filepath.Join(dir, "comms.db")
+	if err := os.WriteFile(existing, []byte("data"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if err := Ensure(dir); err != nil {
+			t.Fatal(err)
+		}
+		f, err := os.OpenFile(existing, os.O_RDWR, 0)
+		if err != nil {
+			t.Fatalf("existing file unopenable after Ensure: %v", err)
+		}
+		f.Close()
+		created := filepath.Join(dir, "created-after")
+		if err := os.WriteFile(created, []byte("x"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(created); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
