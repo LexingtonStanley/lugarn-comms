@@ -94,6 +94,7 @@ else about it is designed here.
 | `comms.db`, `-wal`, `-shm`        | The store (SQLite, WAL)                                                 | permanent                   |
 | `launch/<launch id>.token`        | The launch's token, one line                                            | deleted when the launch ends |
 | `launch/<launch id>.json`         | Claude's `--mcp-config` file for the launch                             | deleted when the launch ends |
+| `launch/<launch id>.settings.json` | Claude's `--settings` file for a pane launch: #136's SessionStart hook  | deleted when the launch ends |
 | `launch/<launch id>.opencode.json`| OpenCode's per-launch config (`OPENCODE_CONFIG`): the MCP registration and the profile's `permission` block | deleted when the launch ends |
 | `launch/<launch id>/msg-<message id>-<attempt>.md` | A pane delivery too long to inline ([Untrusted text](#untrusted-text)) | deleted when the launch ends |
 
@@ -724,7 +725,9 @@ A turn is one run of the harness's headless mode with one prompt, written to its
 | `timed_out` | Ran past `turn_timeout_seconds` and was cancelled                                            |
 | `lost`      | A restarted runner couldn't see how it ended                                                 |
 
-Cancelling kills the process group on POSIX (`Setpgid`) and the job object on Windows.
+Cancelling kills the process group on POSIX (`Setpgid`) and the job object on Windows. On
+POSIX that isn't enough on its own: Codex starts its MCP servers in a process group of their
+own (C2c), so the driver also kills every descendant of the harness it finds by ancestry.
 At most one live turn per member; at most `headless_turns` per team.
 
 A session's first turn draws its seal before the harness has reported an id; the runner keeps
