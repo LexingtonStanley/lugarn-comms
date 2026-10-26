@@ -28,6 +28,8 @@ type Git interface {
 // Nil dependencies use production defaults. Host, when supplied, overrides the
 // policy adapter; Probe still supplies hello's host information.
 type Options struct {
+	Launcher RunnerLauncher
+	Teardown TeamTeardown
 	StateDir string
 	Host     policy.Host
 	Probe    hostprobe.Probe
@@ -73,6 +75,12 @@ func New(db *store.Store, opts Options) *Broker {
 	}
 	if opts.RequestTimeout == 0 {
 		opts.RequestTimeout = 60 * time.Second
+	}
+	if opts.Launcher == nil {
+		opts.Launcher = UnavailableRunner{}
+	}
+	if opts.Teardown == nil {
+		opts.Teardown = NoopTeardown{}
 	}
 	return &Broker{db: db, opts: opts}
 }
