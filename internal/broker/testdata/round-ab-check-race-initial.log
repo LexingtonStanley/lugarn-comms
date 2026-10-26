@@ -1,0 +1,23 @@
+ok  	github.com/LexingtonStanley/lugarn-comms/cmd/lugarn-comms	7.651s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/agentops	1.031s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/appops	2.840s
+2026/10/26 21:32:29 pane observation for writer: temporary transport failure; retrying
+--- FAIL: TestSpawnLaunchFailureEvent (0.21s)
+    launch_failure_test.go:98: error = timeout: request is still pending; it may complete later, want launch_failed
+FAIL
+FAIL	github.com/LexingtonStanley/lugarn-comms/internal/broker	37.824s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/cli	1.099s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/gitwt	1.374s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	4.749s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/herdr	10.600s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/hostprobe	7.056s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/mcpserver	1.196s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/model	1.068s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/policy	1.118s
+?   	github.com/LexingtonStanley/lugarn-comms/internal/service	[no test files]
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/statedir	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/store	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/internal/version	[no test files]
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/wire	1.159s
+?   	github.com/LexingtonStanley/lugarn-comms/schema	[no test files]
+FAIL

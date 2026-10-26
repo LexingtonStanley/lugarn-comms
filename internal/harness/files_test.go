@@ -275,3 +275,16 @@ func TestHeadlessClaudeHasNoPointerSettings(t *testing.T) {
 		t.Fatal("headless wrote pane hook", e)
 	}
 }
+
+func TestOpenCode2ModelInLaunchOverlay(t *testing.T) {
+	l := testLaunch(t, model.HarnessOpenCode)
+	l.Version = "2.1.4"
+	l.Model = "opencode-go/kimi-k3.1-pro"
+	if e := WriteFiles(l); e != nil {
+		t.Fatal(e)
+	}
+	config := readJSON(t, l.path(".opencode.json"))
+	if config["model"] != l.Model || config["mcp"] == nil || config["permission"] == nil {
+		t.Fatal(config)
+	}
+}

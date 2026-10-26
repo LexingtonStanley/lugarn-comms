@@ -108,7 +108,13 @@ func writeFiles(l Launch, platform string) error {
 				"timeout": map[string]int{"startup": 30000, "catalog": 30000},
 			}}
 		}
-		return write(l.path(".opencode.json"), map[string]any{"mcp": mcp, "permission": permission})
+		config := map[string]any{"mcp": mcp, "permission": permission}
+		// OpenCode 2's full TUI has no --model flag. Select its trusted model
+		// through this launch-only overlay; headless run still accepts --model.
+		if major == 2 && l.Model != "" {
+			config["model"] = l.Model
+		}
+		return write(l.path(".opencode.json"), config)
 	}
 	return nil
 }

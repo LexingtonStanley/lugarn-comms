@@ -302,8 +302,47 @@ func TestIntegrationLiveFlows(t *testing.T) {
 	t.Run("b-opencode-pane", func(t *testing.T) {
 		f.applyStart(t, "live-b", []model.MemberSpec{liveMember("live-opencode", "worker", model.HarnessOpenCode, repo, model.ModePane)}, 2, []model.GridEdge{})
 		var member model.Member
+		var lastPaneText string
+		var lastPaneRead time.Time
+		t.Cleanup(func() {
+			if t.Failed() {
+				must(t, b.db.Read(ctx, func(tx *store.Tx) error {
+					events, e := tx.ReplayEvents(0, ptr("live-b"), 0)
+					if e != nil {
+						return e
+					}
+					for _, event := range events {
+						if event.Type == model.EventMemberStateChanged {
+							var data wire.MemberStateChangedEventData
+							if e = json.Unmarshal(event.Data, &data); e != nil {
+								return e
+							}
+							if data.Error != nil {
+								raw, _ := json.Marshal(data.Error)
+								t.Logf("durable launch error: %s", raw)
+							}
+						}
+					}
+					return nil
+				}))
+				if member.Lease != nil && member.Lease.Pane != nil {
+					if text, e := client.ReadAgent(ctx, *member.Lease.Pane, 100); e == nil {
+						lastPaneText = text
+					} else {
+						t.Logf("post-failure pane read: %v", e)
+					}
+				}
+				t.Logf("pane visible text captured through Herdr before teardown:\n%s", lastPaneText)
+			}
+		})
 		f.wait(t, "OpenCode session-before-pane", 100*time.Second, func() bool {
 			member = f.member(t, "live-b", "worker")
+			if member.Lease != nil && member.Lease.Pane != nil && time.Since(lastPaneRead) > time.Second {
+				lastPaneRead = time.Now()
+				if text, e := client.ReadAgent(ctx, *member.Lease.Pane, 100); e == nil {
+					lastPaneText = text
+				}
+			}
 			return member.State == model.MemberStateStopped && member.StopReason != nil || member.State == model.MemberStateRunning && member.Lease.Driver == model.DriverPane
 		})
 		f.reportTurns(t, "live-b")
@@ -323,6 +362,22 @@ func TestIntegrationLiveFlows(t *testing.T) {
 				return nil
 			}))
 			return done
+		})
+		if member.Session == nil {
+			t.Fatal("no headless session to verify")
+		}
+		var lastExport time.Time
+		f.wait(t, "OpenCode shared conversation contains pane reply", 45*time.Second, func() bool {
+			if time.Since(lastExport) < time.Second {
+				return false
+			}
+			lastExport = time.Now()
+			users, assistants := f.openCodeConversationCounts(t, *member.Session)
+			if users >= 2 && assistants >= 2 {
+				t.Logf("OpenCode pane resumed reported session=%s users=%d assistants=%d", *member.Session, users, assistants)
+				return true
+			}
+			return false
 		})
 		t.Log("OpenCode kimi-k3.1-pro: session-before-pane succeeded; pane delivery delivered")
 		f.stopAndCheck(t, "live-b")
@@ -392,4 +447,87 @@ func TestIntegrationLiveFlows(t *testing.T) {
 		f.stopAndCheck(t, "live-e")
 	})
 
+}
+
+func (f *liveIntegration) openCodeConversationCounts(t *testing.T, session string) (int, int) {
+	t.Helper()
+	cmd := exec.CommandContext(f.ctx, "opencode", "session", "export", "--standalone", "--sanitize", session)
+	cmd.Dir = f.repo
+	raw, e := cmd.Output()
+	if e != nil {
+		t.Fatalf("export exact test conversation: %v", e)
+	}
+	var envelope struct {
+		Info struct {
+			ID string `json:"id"`
+		} `json:"info"`
+		Messages []struct {
+			Type string `json:"type"`
+		} `json:"messages"`
+	}
+	if e = json.Unmarshal(raw, &envelope); e != nil {
+		t.Fatal(e)
+	}
+	if envelope.Info.ID != session {
+		t.Fatalf("export returned different conversation %q", envelope.Info.ID)
+	}
+	users, assistants, e := exportedConversationCounts(raw)
+	if e != nil {
+		t.Fatalf("decode exported conversation: %v", e)
+	}
+	// OpenCode 2 exports an idle event after each completed turn. Wait for the
+	// pane's answer too, so teardown does not cancel its tiny model response.
+	if len(envelope.Messages) == 0 || envelope.Messages[len(envelope.Messages)-1].Type != "idle" {
+		return users, 0
+	}
+	return users, assistants
+}
+
+func exportedConversationCounts(raw []byte) (int, int, error) {
+	var value any
+	if e := json.Unmarshal(raw, &value); e != nil {
+		return 0, 0, e
+	}
+	users, assistants := 0, 0
+	var visit func(any)
+	visit = func(v any) {
+		switch x := v.(type) {
+		case map[string]any:
+			role, ok := x["role"].(string)
+			if !ok {
+				role, _ = x["type"].(string)
+			}
+			if role != "" {
+				switch role {
+				case "user":
+					users++
+				case "assistant":
+					assistants++
+				}
+			}
+			for _, child := range x {
+				visit(child)
+			}
+		case []any:
+			for _, child := range x {
+				visit(child)
+			}
+		}
+	}
+	visit(value)
+	// The export is checked in memory; no prompt, provider configuration or
+	// credential is printed. Only this test-created conversation is selected.
+	return users, assistants, nil
+}
+
+func TestOpenCodeExportConversationFormats(t *testing.T) {
+	for _, raw := range []string{
+		`{"messages":[{"type":"user"},{"type":"assistant"},{"type":"user"},{"type":"assistant"},{"type":"idle"}]}`,
+		`{"messages":[{"info":{"role":"user"}},{"info":{"role":"assistant"}},{"info":{"role":"user"}},{"info":{"role":"assistant"}}]}`,
+	} {
+		users, assistants, e := exportedConversationCounts([]byte(raw))
+		if e != nil || users != 2 || assistants != 2 {
+			t.Fatal(users, assistants, e)
+		}
+	}
 }

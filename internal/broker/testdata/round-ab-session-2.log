@@ -1,0 +1,9 @@
+Exact-session public CLI verification during live attempt 2:
+opencode session export --standalone --sanitize ses_e85e364aaffeytxd2jSLeAHLtw
+exit=0 stdout_bytes=6204 stderr_bytes=0
+root_type=dict root_keys=['info', 'messages']
+message type counts: user=2 assistant=3
+The full-screen Herdr view showed the initial brief and its ok reply, followed
+by the pane message, a successful lugarn_reply tool call and the pane's ok reply.
+The live test's first verifier counted only role fields, whereas OpenCode 2's
+export uses type. This verifier bug is corrected before the final attempt.

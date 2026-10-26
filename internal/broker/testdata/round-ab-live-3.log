@@ -1,0 +1,17 @@
+=== RUN   TestIntegrationLiveFlows
+    integration_live_linux_test.go:239: app start-herdr server=lugarn-test-9a03da673a87434b started=true method=0x6b8f3ed2020
+=== RUN   TestIntegrationLiveFlows/b-opencode-pane
+    integration_live_linux_test.go:303: app start-team live-b: state=running runner=0x6b8f3faa340 pane=0x6b8f4274010
+    integration_live_linux_test.go:112: turn {"id":"01M5X1YR9C4J1G8F9CG1SNKQGE","team":"live-b","member":{"id":"live-opencode","name":"worker"},"launch":"01M5X1YR8VXME4RM47Z4EKMHM1","lease_generation":1,"harness":"opencode","session_id_start":null,"session_id_end":"ses_e85e09ddafferJJtK24tQvHzLm","pid":3985469,"status":"succeeded","exit_code":0,"error":null,"usage":null,"started_at":"2026-10-26T21:30:39.276Z","ended_at":"2026-10-26T21:30:53.960Z","consumed":[],"auto_replies":[]}
+    integration_live_linux_test.go:377: OpenCode pane resumed reported session=ses_e85e09ddafferJJtK24tQvHzLm users=2 assistants=3
+    integration_live_linux_test.go:382: OpenCode kimi-k3.1-pro: session-before-pane succeeded; pane delivery delivered
+    integration_live_linux_test.go:383: verified 1 recorded live process identities exited
+    integration_live_linux_test.go:383: app stop-team live-b: stopped; 2 launch ids and 2 owned panes clean
+=== NAME  TestIntegrationLiveFlows
+    integration_live_linux_test.go:450: herdr --session lugarn-test-9a03da673a87434b server stop:  (<nil>)
+    integration_live_linux_test.go:450: delete own stopped session lugarn-test-9a03da673a87434b: deleted session lugarn-test-9a03da673a87434b
+         (<nil>)
+--- PASS: TestIntegrationLiveFlows (48.44s)
+    --- PASS: TestIntegrationLiveFlows/b-opencode-pane (47.25s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/broker	48.443s

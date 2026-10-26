@@ -420,3 +420,178 @@ ok    docs/protocol.md enum table matches the schemas (46 enums)
 ```
 
 Raw check logs: [format](testdata/revision-check-gofmt.log), [Linux vet](testdata/revision-check-vet-linux.log), [Windows vet](testdata/revision-check-vet-windows.log), [Darwin vet](testdata/revision-check-vet-darwin.log), [race](testdata/revision-check-race.log), [schema validation](testdata/revision-check-schemas.log). `git diff --check 135d1cc..HEAD` also produced no output and exited 0.
+
+## Final C2d review round — launch errors and OpenCode panes
+
+Read Nova's commits `48b4f83` and `a4b8bba` before editing; included Nova's
+uncommitted attribution correction in item A (`dc2a85c`). Failed-launch
+`member.state_changed` events now persist the structured Error in the same
+transaction as the stopped/launch_failed state. Other state events emit null.
+Specific causes survive, including workdir_missing, resume_picker and
+unresolvable (the underlying diagnostic is retained separately). Spawn uses the
+same normalization. Fake tests cover durable replay and failed spawn; the schema
+and new timeline example cover the error field.
+
+**B's real cause:** OpenCode 2.1.4's full-screen TUI rejects `--model`; it printed
+`Unrecognized flag: --model in command opencode`, exited, and Herdr eventually
+reported a readiness timeout. The per-launch config now selects the model for
+2.x panes; headless run and 1.x retain their model flag. This uses the documented
+[OpenCode 2 model config](https://dev.opencode.ai/v2/docs/config/), without reading
+or editing global config. Version/mode argument and launch-overlay regression
+tests cover the fix.
+
+Three permitted live attempts used `opencode-go/kimi-k3.1-pro` and the person's
+own config, all behind the existing opt-in guard:
+
+```sh
+LUGARN_INTEGRATION_LIVE=1 LUGARN_HERDR_LIVE=0 LUGARN_HARNESS_LIVE=0 go test -v ./internal/broker -run '^TestIntegrationLiveFlows/b-opencode-pane$' -count=1
+```
+
+1. [Attempt 1](testdata/round-ab-live-1.log): reproduced the failed launch, logged its durable error and captured the visible flag rejection through Herdr before cleanup.
+2. [Attempt 2](testdata/round-ab-live-2.log): pane launch/delivery and Kimi response succeeded. The added export verifier failed because it counted only `role`; OpenCode 2 exports `type`. [Filtered exact-session verification](testdata/round-ab-session-2.log) confirmed both user messages in that same conversation. The parser now has a regression test for both formats.
+3. [Attempt 3](testdata/round-ab-live-3.log): **passed**, including exact exported session-id equality and waiting for the completed pane response. The same conversation contains the initial headless brief and the pane delivery, so Reading can find the history from its start:
+
+```text
+OpenCode pane resumed reported session=ses_e85e09ddafferJJtK24tQvHzLm users=2 assistants=3
+OpenCode kimi-k3.1-pro: session-before-pane succeeded; pane delivery delivered
+verified 1 recorded live process identities exited
+app stop-team live-b: stopped; 2 launch ids and 2 owned panes clean
+--- PASS: TestIntegrationLiveFlows (48.44s)
+    --- PASS: TestIntegrationLiveFlows/b-opencode-pane (47.25s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/broker	48.443s
+```
+
+All three private sessions were stopped and deleted by their own names:
+`lugarn-test-872467f91b56b876`, `lugarn-test-7eb924ba7db9cf0e`, and
+`lugarn-test-9a03da673a87434b`. No fourth run was made. The session exports selected
+only these test conversations, used `--standalone --sanitize`, and were inspected
+in memory; no provider credential file was opened or copied by integration code
+or tool actions. No real `~/.lugarn` access or global harness-config edit occurred.
+macOS/Windows runtime and OpenCode 1.x live behavior remain unverified. The four
+previously deferred follow-ups remain unchanged.
+
+The first race run caught the new spawn test inheriting a cap fixture's 1 ms
+request timeout. That test now uses a 5-second deadline; its targeted race test
+passes. [Initial failure output](testdata/round-ab-check-race-initial.log) is kept
+alongside the final rerun. Live-log blank-only indentation is trimmed; nonempty
+output is retained.
+
+All six final checks exited **0**, with all seven live switches disabled. Exact
+stdout/stderr follows (format and all three vets were silent):
+
+```text
+$ gofmt -l .
+$ go vet ./...
+$ GOOS=windows GOARCH=amd64 go vet ./...
+$ GOOS=darwin GOARCH=arm64 go vet ./...
+$ go test -race ./...
+ok  	github.com/LexingtonStanley/lugarn-comms/cmd/lugarn-comms	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/agentops	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/appops	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/broker	38.632s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/cli	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/gitwt	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/herdr	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/hostprobe	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/mcpserver	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/model	1.058s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/policy	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/internal/service	[no test files]
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/statedir	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/store	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/internal/version	[no test files]
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/wire	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/schema	[no test files]
+$ python3 scripts/validate-schemas.py
+ok    app-ops.v1.schema.json: valid draft 2020-12
+ok    common.v1.schema.json: valid draft 2020-12
+ok    mcp-tools.v1.schema.json: valid draft 2020-12
+ok    team-spec.v1.schema.json: valid draft 2020-12
+ok    app-ops/apply-team--revision-conflict.response.json
+ok    app-ops/apply-team.request.json
+ok    app-ops/apply-team.response.json
+ok    app-ops/continue-budget--rounds.request.json
+ok    app-ops/continue-budget.request.json
+ok    app-ops/continue-budget.response.json
+ok    app-ops/hello--windows.response.json
+ok    app-ops/hello.request.json
+ok    app-ops/hello.response.json
+ok    app-ops/hold--release.request.json
+ok    app-ops/hold--release.response.json
+ok    app-ops/hold.request.json
+ok    app-ops/hold.response.json
+ok    app-ops/members.request.json
+ok    app-ops/members.response.json
+ok    app-ops/open-terminal--lease-conflict.response.json
+ok    app-ops/open-terminal.request.json
+ok    app-ops/open-terminal.response.json
+ok    app-ops/remove-worktrees.request.json
+ok    app-ops/remove-worktrees.response.json
+ok    app-ops/resolve-delivery.request.json
+ok    app-ops/resolve-delivery.response.json
+ok    app-ops/send--all.request.json
+ok    app-ops/send.request.json
+ok    app-ops/send.response.json
+ok    app-ops/start-herdr.request.json
+ok    app-ops/start-herdr.response.json
+ok    app-ops/start-team--herdr-down.response.json
+ok    app-ops/start-team.request.json
+ok    app-ops/start-team.response.json
+ok    app-ops/status.request.json
+ok    app-ops/status.response.json
+ok    app-ops/timeline--launch-failed.response.json
+ok    app-ops/timeline.request.json
+ok    app-ops/timeline.response.json
+ok    app-ops/watch--bad-cursor.ndjson (1 lines)
+ok    app-ops/watch.ndjson (8 lines)
+ok    app-ops/watch.request.json
+ok    app-ops/worktrees.request.json
+ok    app-ops/worktrees.response.json
+ok    mcp/inbox.input.json
+ok    mcp/inbox.output.json
+ok    mcp/reply.input.json
+ok    mcp/reply.output.json
+ok    mcp/send--denied.error.json
+ok    mcp/send--held.output.json
+ok    mcp/send--human-too-long.error.json
+ok    mcp/send.input.json
+ok    mcp/send.output.json
+ok    mcp/spawn--cap-reached.error.json
+ok    mcp/spawn--profile-too-high.error.json
+ok    mcp/spawn.input.json
+ok    mcp/spawn.output.json
+ok    mcp/stop.input.json
+ok    mcp/stop.output.json
+ok    mcp/team.input.json
+ok    mcp/team.output.json
+ok    team-spec/manager-workers.json
+ok    team-spec/orchestrator.json
+ok    team-spec/pipeline.json
+ok    team-spec/writer-reviewer.json
+ok    rejects: grid edge with wake but not message
+ok    rejects: member named human
+ok    rejects: spawn enabled without a worker brief
+ok    rejects: member host set in v1
+ok    rejects: per_recipient other than 1
+ok    rejects: send with both to and all
+ok    rejects: timeline with both before and after
+ok    rejects: continue-budget writer without kind rounds and reviewer
+ok    rejects: unknown request field
+ok    rejects: agent send to all
+ok    rejects: agent text to human over 8000 code points
+ok    rejects: hold with both ttl_seconds and release
+ok    rejects: hold ttl over 120 s
+ok    rejects: remove-worktrees with no paths
+ok    docs/protocol.md enum table matches the schemas (46 enums)
+
+4 schemas, 61 example files, 0 failure(s)
+```
+
+Individual check logs: [format](testdata/round-ab-check-gofmt.log),
+[Linux vet](testdata/round-ab-check-vet-linux.log),
+[Windows vet](testdata/round-ab-check-vet-windows.log),
+[Darwin vet](testdata/round-ab-check-vet-darwin.log),
+[race](testdata/round-ab-check-race.log),
+[schemas](testdata/round-ab-check-schemas.log).

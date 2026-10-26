@@ -810,7 +810,10 @@ Notes:
   shell commands under `read-only` or `workspace`; that's a host fix the plan covers.
 - **OpenCode 2.x**'s background service ignores per-launch config, so every OpenCode headless
   turn and pane launch carries `--standalone`. Whether 1.x accepts the flag (it may have no
-  background service) is a C2d check on ufo.
+  background service) is a C2d check on ufo. OpenCode 2's full-screen TUI does not
+  accept `--model` (2.1.4 prints help and exits), so a trusted model selector goes
+  in the per-launch config's `model` field. Headless `run` and 1.x retain their
+  model flag. `--session <reported id>` resumes the same conversation in the pane.
 - **OpenCode's Code Mode** (2.x) wraps MCP tools in a catalog, and on a resumed turn it
   declared the lugarn tools gone even though the server had listed them (C2c). The per-launch
   config turns it off for `lugarn` (`codemode: false`), so they're ordinary tools

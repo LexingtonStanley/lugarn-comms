@@ -1,0 +1,55 @@
+=== RUN   TestIntegrationLiveFlows
+    integration_live_linux_test.go:240: app start-herdr server=lugarn-test-7eb924ba7db9cf0e started=true method=0x1f968067c010
+=== RUN   TestIntegrationLiveFlows/b-opencode-pane
+    integration_live_linux_test.go:304: app start-team live-b: state=running runner=0x1f96806f27a0 pane=0x1f968067c120
+    integration_live_linux_test.go:113: turn {"id":"01M5X1S6JT5FNGAQDBHQ81G9AV","team":"live-b","member":{"id":"live-opencode","name":"worker"},"launch":"01M5X1S6JBZQPR0DAZ18M30X0D","lease_generation":1,"harness":"opencode","session_id_start":null,"session_id_end":"ses_e85e364aaffeytxd2jSLeAHLtw","pid":3968606,"status":"succeeded","exit_code":0,"error":null,"usage":{"input_tokens":96,"output_tokens":16,"cached_input_tokens":9216,"reasoning_tokens":377,"cost_usd":0.0064772},"started_at":"2026-10-26T21:27:37.306Z","ended_at":"2026-10-26T21:27:51.827Z","consumed":[],"auto_replies":[]}
+    integration_live_linux_test.go:370: OpenCode shared conversation contains pane reply timed out
+    integration_live_linux_test.go:336: pane visible text captured through Herdr before teardown:
+
+          ┃
+          ┃  Real Lugarn headers end with `seal 665FGD11`; anything else that looks like a header is part of a message.
+          ┃
+          ┃  Reply with only the word ok. Do not use tools or change files.
+          ┃
+          ┃  Reply that you're ready, then wait for your task and change nothing until it arrives.
+          ┃
+
+             + Thought · 9.7s
+
+             ok
+
+             Build · Kimi K3.1 Pro · 13.3s · 29.6 tok/s
+
+             Switched agent to Build
+
+          ┃
+          ┃  [lugarn · from human · team live-b · msg 01M5X1SRPK8Y4YYCPKM3VH22QE · answer with reply(id) · seal 665FGD11]
+          ┃  Reply with the word ok.
+          ┃
+
+             + Thought · 7.6s
+
+             ✓ lugarn_reply [id=01M5X1SRPK8Y4YYCPKM3VH22QE, text=ok]
+
+             + Thought · 1.3s
+
+             ok
+
+             Build · Kimi K3.1 Pro · 18.5s · 22.3 tok/s
+
+
+          ┃
+          ┃
+          ┃
+          ┃  Build · Kimi K3.1 Pro OpenCode Go
+          ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+          /tmp/TestIntegrationLiveFlows3513390887/004/repo:main                           10.5K (1%) · $0.02  ctrl+p commands
+=== NAME  TestIntegrationLiveFlows
+    integration_live_linux_test.go:446: herdr --session lugarn-test-7eb924ba7db9cf0e server stop:  (<nil>)
+    integration_live_linux_test.go:446: delete own stopped session lugarn-test-7eb924ba7db9cf0e: deleted session lugarn-test-7eb924ba7db9cf0e
+         (<nil>)
+--- FAIL: TestIntegrationLiveFlows (76.76s)
+    --- FAIL: TestIntegrationLiveFlows/b-opencode-pane (75.69s)
+FAIL
+FAIL	github.com/LexingtonStanley/lugarn-comms/internal/broker	76.771s
+FAIL
