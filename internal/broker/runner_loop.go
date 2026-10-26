@@ -157,19 +157,19 @@ func (r *Runner) workMember(ctx context.Context, m model.Member) error {
 	if m.Lease == nil {
 		return nil
 	}
-	if m.Lease.Driver == model.DriverNone && m.Origin == model.MemberOriginSpec && m.StopReason == nil {
+	if m.Lease.Driver == model.DriverNone && m.Origin == model.MemberOriginSpec && (r.takeStart(m) || m.StopReason == nil) {
 		if m.Mode != nil && *m.Mode == model.ModeHeadless {
 			_, e = r.launchHeadless(ctx, m, model.LeaseCauseStart)
 		} else {
-			e = r.opts.PaneLifecycle.Open(ctx, m, model.LeaseCauseStart)
-			if e != nil {
-				e = r.launchFailed(ctx, m, e)
-			}
+			e = r.openPane(ctx, m, model.LeaseCauseStart)
 		}
 		if e != nil && model.AsError(e).Code == model.ErrorLaunchFailed {
 			return nil
 		}
 		return e
+	}
+	if m.State == model.MemberStateStopped && m.Lease.Driver == model.DriverNone {
+		return r.wakeMember(ctx, m)
 	}
 	if m.State == model.MemberStateRunning && m.Lease.Driver == model.DriverHeadless {
 		return r.runTurn(ctx, m)

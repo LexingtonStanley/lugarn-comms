@@ -63,6 +63,15 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 		if e != nil {
 			return e
 		}
+		if cause == model.LeaseCauseWake {
+			allowed, e := r.mayWake(tx, *current)
+			if e != nil {
+				return e
+			}
+			if !allowed {
+				return errRunnerGeneration
+			}
+		}
 		now := r.b.now()
 		next := model.Lease{Driver: model.DriverHeadless, Generation: m.Lease.Generation + 1, Launch: &id}
 		if e = tx.InsertLaunch(store.Launch{ID: id, MemberID: m.ID, Generation: next.Generation, Driver: model.ModeHeadless, SessionIDStart: current.Session, StartedAt: now}); e != nil {

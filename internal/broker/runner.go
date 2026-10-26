@@ -18,6 +18,8 @@ var errRunnerGeneration = model.NewError(model.ErrorLeaseConflict, "runner membe
 // Runner drives one team. Construct a new value for every run; Run is single-use.
 // Cancelling its context detaches live turns; a team stop cancels them instead.
 type Runner struct {
+	freshStart   bool
+	startMembers map[string]bool
 	workers      sync.WaitGroup
 	stopping     atomic.Bool
 	workerErrors chan error
@@ -70,7 +72,7 @@ func NewRunner(b *Broker, team string, opts RunnerOptions) *Runner {
 	if opts.Binary == nil {
 		opts.Binary = b.opts.Probe.Binary
 	}
-	return &Runner{b: b, team: team, opts: opts, busy: map[string]bool{}, orphans: map[string]runnerOrphan{}, workerErrors: make(chan error, 64), wake: make(chan struct{}, 1), handles: map[string]TurnHandle{}}
+	return &Runner{b: b, team: team, opts: opts, busy: map[string]bool{}, startMembers: map[string]bool{}, orphans: map[string]runnerOrphan{}, workerErrors: make(chan error, 64), wake: make(chan struct{}, 1), handles: map[string]TurnHandle{}}
 }
 func (r *Runner) owns(t *store.Team) bool {
 	return t.Runner.PID != nil && r.owner.PID != nil && *t.Runner.PID == *r.owner.PID && t.Runner.StartedAt != nil && r.owner.StartedAt != nil && t.Runner.StartedAt.Equal(r.owner.StartedAt.Time)
@@ -111,6 +113,7 @@ func (r *Runner) acquire(ctx context.Context) error {
 		if r.b.fresh(t) {
 			return model.NewError(model.ErrorLeaseConflict, "another runner has a fresh heartbeat")
 		}
+		r.freshStart = t.State == model.TeamStateStarting
 		now := r.b.now()
 		old := t.Runner.State
 		r.owner = model.Runner{State: model.RunnerStateUp, PID: &r.opts.PID, Pane: r.opts.Pane, StartedAt: &now, HeartbeatAt: &now}
