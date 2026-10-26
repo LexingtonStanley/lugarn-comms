@@ -25,21 +25,13 @@ func (r *Runner) prompt(tx *store.Tx, t *store.Team, m model.Member, items []sto
 	}
 	var brief *string
 	if needsBrief {
-		stored, e := tx.GetStoredMember(m.ID)
+		rendered, e := r.renderBrief(tx, t, m)
 		if e != nil {
 			return "", e
 		}
-		live, e := tx.ListMembers(t.ID, false)
-		if e != nil {
-			return "", e
-		}
-		cfg, e := tx.GetSpawnSettings(m.ID)
-		if e != nil && !missing(e) {
-			return "", e
-		}
-		rendered := policy.RenderBrief(*stored.Brief, policy.BriefFacts{Member: m, Team: t.Name, Live: live, Grid: grid, CanSpawn: cfg != nil && cfg.Enabled && m.Origin != model.MemberOriginSpawn})
 		brief = &rendered
 	}
+
 	messages := make([]policy.PromptMessage, 0, len(items))
 	for _, item := range items {
 		message, e := tx.GetMessage(item.MessageID)
@@ -118,4 +110,24 @@ func (r *Runner) autoReplies(tx *store.Tx, t *store.Team, w *runnerTurn, out Tur
 		}
 	}
 	return nil
+}
+
+func (r *Runner) renderBrief(tx *store.Tx, t *store.Team, m model.Member) (string, error) {
+	stored, e := tx.GetStoredMember(m.ID)
+	if e != nil {
+		return "", e
+	}
+	live, e := tx.ListMembers(t.ID, false)
+	if e != nil {
+		return "", e
+	}
+	edges, e := r.b.grid(tx, t.ID)
+	if e != nil {
+		return "", e
+	}
+	cfg, e := tx.GetSpawnSettings(m.ID)
+	if e != nil && !missing(e) {
+		return "", e
+	}
+	return policy.RenderBrief(*stored.Brief, policy.BriefFacts{Member: m, Team: t.Name, Live: live, Grid: policy.NewGrid(edges), CanSpawn: cfg != nil && cfg.Enabled && m.Origin != model.MemberOriginSpawn}), nil
 }

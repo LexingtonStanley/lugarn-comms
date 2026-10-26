@@ -2,6 +2,8 @@ package broker
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -11,6 +13,18 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	if os.Getenv("LUGARN_INTEGRATION_HELPER") == "argv-agent" {
+		binary, _ := os.Executable()
+		data, _ := json.Marshal(struct {
+			Binary string
+			Args   []string
+			Pane   string
+		}{binary, os.Args[1:], os.Getenv("HERDR_PANE_ID")})
+		_ = os.WriteFile(os.Getenv("LUGARN_INTEGRATION_ARGV_LOG"), data, 0600)
+		_, _ = os.Stdout.WriteString("\x1b[?2004hClaude Code\r\n❯ \r\nCodex\r\n› \r\n> ")
+		_, _ = io.Copy(io.Discard, os.Stdin)
+		os.Exit(0)
+	}
 	if os.Getenv("LUGARN_INTEGRATION_HELPER") == "exit-seven" {
 		os.Exit(7)
 	}

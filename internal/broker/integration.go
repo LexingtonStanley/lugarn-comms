@@ -85,6 +85,7 @@ func (i *Integration) Runner(team string, opts RunnerOptions) *Runner {
 	opts.Panes = i.panes
 	opts.HomeDir = i.opts.HomeDir
 	r := NewRunner(i.b, team, opts)
+	r.opts.PaneLifecycle = &integrationLifecycle{i: i, r: r}
 	r.onAcquire = func(ctx context.Context) error {
 		placement, e := i.placement(team)
 		if e != nil {
@@ -137,7 +138,10 @@ func (a *harnessAdapter) Write(ctx context.Context, d TurnLaunch) error {
 	if e != nil {
 		return e
 	}
-	return harness.WriteFiles(l)
+	if e := harness.WriteFiles(l); e != nil {
+		return e
+	}
+	return a.writePointerHook(l)
 }
 func (a *harnessAdapter) Delete(_ context.Context, id string) error {
 	if model.ValidateULID(id) != nil {

@@ -134,6 +134,12 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 		svc, closeStore := openService(ctx)
 		defer closeStore()
 		return cli.Run(ctx, args, stdin, stdout, stderr, svc, svc)
+	case "pane-shell":
+		if e := broker.RunPaneShell(); e != nil {
+			fmt.Fprintln(stderr, model.AsError(e))
+			return model.ExitCode(model.AsError(e).Code)
+		}
+		return 0
 	case "run":
 		return runTeam(ctx, args[1:], stderr)
 	default:

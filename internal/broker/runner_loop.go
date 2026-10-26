@@ -164,7 +164,7 @@ func (r *Runner) workMember(ctx context.Context, m model.Member) error {
 		} else {
 			e = r.openPane(ctx, m, model.LeaseCauseStart)
 		}
-		if e != nil && model.AsError(e).Code == model.ErrorLaunchFailed {
+		if e != nil && (model.AsError(e).Code == model.ErrorLaunchFailed || model.AsError(e).Code == model.ErrorHarnessUnavailable) {
 			return nil
 		}
 		return e

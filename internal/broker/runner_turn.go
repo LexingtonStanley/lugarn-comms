@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
+	"github.com/LexingtonStanley/lugarn-comms/internal/policy"
 	"github.com/LexingtonStanley/lugarn-comms/internal/store"
 	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
@@ -31,8 +32,11 @@ func (r *Runner) CancelTurn(member string) error {
 	return h.Cancel()
 }
 func (r *Runner) prepareTurn(ctx context.Context, m model.Member) (*runnerTurn, error) {
+	return r.prepareTurnKind(ctx, m, false)
+}
+func (r *Runner) prepareTurnKind(ctx context.Context, m model.Member, briefOnly bool) (*runnerTurn, error) {
 	var queued bool
-	if e := r.b.db.Read(ctx, func(tx *store.Tx) error { items, e := tx.NextDeliveries(m.ID, 1); queued = len(items) > 0; return e }); e != nil || !queued {
+	if e := r.b.db.Read(ctx, func(tx *store.Tx) error { items, e := tx.NextDeliveries(m.ID, 1); queued = len(items) > 0; return e }); e != nil || !queued && !briefOnly {
 		return nil, e
 	}
 	var w *runnerTurn
@@ -69,7 +73,7 @@ func (r *Runner) prepareTurn(ctx context.Context, m model.Member) (*runnerTurn, 
 			return e
 		}
 		for _, req := range rs {
-			if req.Member != nil && req.Member.ID == m.ID {
+			if !briefOnly && req.Member != nil && req.Member.ID == m.ID {
 				return nil
 			}
 		}
@@ -77,7 +81,7 @@ func (r *Runner) prepareTurn(ctx context.Context, m model.Member) (*runnerTurn, 
 		if e != nil {
 			return e
 		}
-		if len(items) == 0 {
+		if len(items) == 0 && !briefOnly {
 			return nil
 		}
 		seal, e := model.NewSeal()
@@ -99,7 +103,10 @@ func (r *Runner) prepareTurn(ctx context.Context, m model.Member) (*runnerTurn, 
 		if e = tx.InsertTurn(store.TurnParams{Turn: turn, MemberID: m.ID, Seal: &seal}); e != nil {
 			return e
 		}
-		picked, e := tx.PickUpDeliveries(m.ID, 0, ptr(model.DeliveryViaHeadless), &id, &turn.LeaseGeneration, r.b.now())
+		picked := []store.DeliveryItem{}
+		if !briefOnly {
+			picked, e = tx.PickUpDeliveries(m.ID, 0, ptr(model.DeliveryViaHeadless), &id, &turn.LeaseGeneration, r.b.now())
+		}
 		if e != nil {
 			return e
 		}
@@ -119,6 +126,13 @@ func (r *Runner) prepareTurn(ctx context.Context, m model.Member) (*runnerTurn, 
 		if e != nil {
 			return e
 		}
+		if briefOnly {
+			brief, e := r.renderBrief(tx, t, *current)
+			if e != nil {
+				return e
+			}
+			prompt = policy.FirstTurnPrompt(seal, brief)
+		}
 		timeout := r.opts.TurnTimeout
 		if timeout <= 0 {
 			timeout = time.Duration(t.TurnTimeoutSeconds) * time.Second
@@ -133,6 +147,10 @@ func (r *Runner) runTurn(ctx context.Context, m model.Member) (err error) {
 	if e != nil || w == nil {
 		return e
 	}
+	return r.runPreparedTurn(ctx, w)
+}
+func (r *Runner) runPreparedTurn(ctx context.Context, w *runnerTurn) (err error) {
+	m := w.member
 	binary, e := r.opts.Binary(*m.Harness)
 	if e != nil {
 		return r.completeTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
@@ -296,6 +314,11 @@ func (r *Runner) completeTurn(ctx context.Context, w *runnerTurn, out TurnOutcom
 	return e
 }
 func (r *Runner) acknowledge(ctx context.Context, w *runnerTurn, session *string) error {
+	if session != nil {
+		if e := r.b.rememberOrigin(w.member, *session); e != nil {
+			return e
+		}
+	}
 	write := func(ctx context.Context) error {
 		return r.write(ctx, &w.member, func(tx *store.Tx, _ *store.Team) error { return r.acknowledgeTx(tx, w, session) })
 	}
@@ -348,6 +371,11 @@ func (r *Runner) acknowledgeTx(tx *store.Tx, w *runnerTurn, session *string) err
 	return r.setActivity(tx, w.member, model.ActivityWorking)
 }
 func (r *Runner) finishTurn(ctx context.Context, w *runnerTurn, out TurnOutcome, timedOut bool) error {
+	if out.Session != nil {
+		if e := r.b.rememberOrigin(w.member, *out.Session); e != nil {
+			return e
+		}
+	}
 	return r.write(ctx, &w.member, func(tx *store.Tx, t *store.Team) error {
 		current, e := tx.GetTurn(w.turn.ID)
 		if e != nil {
