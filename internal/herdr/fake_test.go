@@ -70,6 +70,7 @@ type call struct {
 	Args     []string `json:"args"`
 	HerdrEnv []string `json:"herdr_env"`
 	Dir      string   `json:"dir"`
+	Path     string   `json:"path"`
 }
 
 // fakeHerdr answers from <dir>/script.json, keyed by verb ("agent prompt",
@@ -86,7 +87,7 @@ func fakeHerdr(dir string) int {
 		}
 	}
 	wd, _ := os.Getwd()
-	appendJSON(filepath.Join(dir, "calls.jsonl"), call{Args: args, HerdrEnv: herdrEnv, Dir: wd})
+	appendJSON(filepath.Join(dir, "calls.jsonl"), call{Args: args, HerdrEnv: herdrEnv, Dir: wd, Path: os.Getenv("PATH")})
 	if len(args) < 3 || args[0] != "--session" || args[1] == "" {
 		fmt.Fprintln(os.Stderr, "fake herdr: --session must come first")
 		return 91

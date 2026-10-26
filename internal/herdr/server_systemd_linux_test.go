@@ -88,7 +88,7 @@ func fakeSystemctl(dir string) int {
 func fakeSystemdRun(dir string) int {
 	args := os.Args[1:]
 	appendJSON(filepath.Join(dir, "calls.jsonl"), call{Args: append([]string{"systemd-run"}, args...)})
-	if len(args) < 5 || args[0] != "--user" || !strings.HasPrefix(args[1], "--unit=") || args[2] != "--collect" || args[3] != "--" {
+	if len(args) < 5 || args[0] != "--user" || !strings.HasPrefix(args[1], "--unit=") || args[2] != "--collect" {
 		return 90
 	}
 	unit := strings.TrimPrefix(args[1], "--unit=")
@@ -96,7 +96,17 @@ func fakeSystemdRun(dir string) int {
 		fmt.Fprintf(os.Stderr, "Failed to start transient service unit: Unit %s was already loaded or has a fragment file.\n", unit)
 		return 1
 	}
-	cmd := exec.Command(args[4], args[5:]...)
+	i := 3
+	var overrides []string
+	for i < len(args) && strings.HasPrefix(args[i], "--setenv=") {
+		overrides = append(overrides, strings.TrimPrefix(args[i], "--setenv="))
+		i++
+	}
+	if i >= len(args) || args[i] != "--" {
+		return 90
+	}
+	cmd := exec.Command(args[i+1], args[i+2:]...)
+	cmd.Env = append(os.Environ(), overrides...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	if err := cmd.Start(); err != nil {
 		return 1
@@ -255,5 +265,32 @@ func TestStartServerWithoutKillUserProcessesIsDetached(t *testing.T) {
 	}
 	if err != nil || res.Method != MethodDetached || len(systemdCalls(f)) != 0 {
 		t.Fatalf("result = %+v, %v; systemd calls %q", res, err, systemdCalls(f))
+	}
+}
+
+func TestSystemdEnvironmentOption(t *testing.T) {
+	f := systemdFake(t)
+	res, err := StartServer(testContext(t), f.bin, "lugarn-fake", KillUserProcesses(true), ServerEnvironment([]string{"PATH=/login/bin:/usr/bin"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.PID > 0 {
+		t.Cleanup(func() { stopFakeServer(t, f, res.PID) })
+	}
+	if res.Method != MethodSystemd {
+		t.Fatal(res)
+	}
+	found := false
+	for _, c := range f.calls() {
+		if len(c.Args) > 0 && c.Args[0] == "systemd-run" {
+			for _, a := range c.Args {
+				if a == "--setenv=PATH=/login/bin:/usr/bin" {
+					found = true
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("PATH was not sent to the user manager")
 	}
 }

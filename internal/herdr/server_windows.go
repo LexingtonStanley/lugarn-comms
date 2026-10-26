@@ -21,7 +21,7 @@ import (
 // other way inside an SSH session belongs to its job object and dies with the
 // connection; WMI's belongs to the WMI service. It isn't our child, so nothing
 // reports its exit: StartServer polls until its timeout.
-func startServerProcess(ctx context.Context, bin, session, dir string) (int, <-chan struct{}, StartMethod, error) {
+func startServerProcess(ctx context.Context, bin, session, dir string, overrides []string) (int, <-chan struct{}, StartMethod, error) {
 	pid, err := wmiCreate(ctx, []string{bin, "--session", session, "server"}, dir)
 	if err != nil {
 		return 0, nil, "", err

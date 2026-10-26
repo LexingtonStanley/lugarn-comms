@@ -269,3 +269,23 @@ func TestWatchTrailingInputAndCancellation(t *testing.T) {
 		t.Fatal("context cancellation did not stop watch")
 	}
 }
+
+func TestHelloPathCaptureWire(t *testing.T) {
+	var out bytes.Buffer
+	shell, login := "/bin/zsh", "/login/bin:/usr/bin"
+	fake := &service.Fake{HelloFunc: func(context.Context, wire.HelloRequest) (wire.HelloResult, error) {
+		return wire.HelloResult{Host: wire.HelloResultHost{Path: wire.HelloResultHostPath{Shell: &shell, Login: &login, Inherited: "/usr/bin"}}}, nil
+	}}
+	if exit := Run(context.Background(), "hello", strings.NewReader(`{"protocol":1,"op":"hello","protocols":[1],"app":{"version":"test"}}`), &out, fake); exit != 0 {
+		t.Fatal(out.String())
+	}
+	var response struct {
+		Result wire.HelloResult `json:"result"`
+	}
+	if e := json.Unmarshal(out.Bytes(), &response); e != nil {
+		t.Fatal(e)
+	}
+	if response.Result.Host.Path.Login == nil || *response.Result.Host.Path.Login != login || response.Result.Host.Path.Issue != nil {
+		t.Fatal(out.String())
+	}
+}

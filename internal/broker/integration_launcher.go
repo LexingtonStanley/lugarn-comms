@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
+	"github.com/LexingtonStanley/lugarn-comms/internal/hostprobe"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
 	"github.com/LexingtonStanley/lugarn-comms/internal/store"
@@ -102,28 +103,34 @@ func (i *Integration) rootEnv() map[string]string {
 	}
 	return env
 }
-func completeSystemPath() string {
-	paths := filepath.SplitList(os.Getenv("PATH"))
-	if runtime.GOOS == "windows" {
-		root := os.Getenv("SystemRoot")
-		paths = append(paths, filepath.Join(root, "System32"), root, filepath.Join(root, "System32", "WindowsPowerShell", "v1.0"))
-	} else {
-		paths = append(paths, "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin")
+func completeSystemPath() string { return (hostprobe.PathInfo{Inherited: os.Getenv("PATH")}).Merged() }
+
+// Entry points apply the capture before constructing their real probe. Each app
+// invocation serves one operation; the runner inherits this explicit PATH.
+func (i *Integration) refreshPath(ctx context.Context) error {
+	if i.b.opts.LoginPath == nil {
+		return nil
+	} // injected test probes have no host capture
+	info, e := hostprobe.LoginPath(ctx, i.b.opts.StateDir, true)
+	if e != nil {
+		return e
 	}
-	seen := map[string]bool{}
-	out := []string{}
-	for _, p := range paths {
-		if p != "" && !seen[p] {
-			seen[p] = true
-			out = append(out, p)
-		}
+	info.Inherited = i.b.opts.LoginPath.Inherited
+	i.b.opts.LoginPath = &info
+	if e = os.Setenv("PATH", info.Merged()); e != nil {
+		return e
 	}
-	return strings.Join(out, string(os.PathListSeparator))
+	i.b.opts.Probe = hostprobe.New()
+	i.adapter.probe = i.b.opts.Probe
+	return nil
 }
 
 // Launch starts a native bridge to this broker in the recorded workspace's root
 // pane. Only plain argv words reach RunCommand: no original path is shell-quoted.
 func (i *Integration) Launch(ctx context.Context, t store.Team) error {
+	if e := i.refreshPath(ctx); e != nil {
+		return e
+	}
 	client := i.opts.Herdr(t.HerdrServer)
 	previous, e := i.placement(t.ID)
 	if e != nil {

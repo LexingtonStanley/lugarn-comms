@@ -37,6 +37,13 @@
       "logind": {
         "kill_user_processes": false,
         "linger": true
+      },
+      "path": {
+        "shell": "/bin/zsh",
+        "login": "/home/lex/.local/bin:/usr/bin:/bin",
+        "issue": null,
+        "captured_at": "2026-10-26T21:00:00.000Z",
+        "inherited": "/usr/bin:/bin"
       }
     },
     "herdr": {

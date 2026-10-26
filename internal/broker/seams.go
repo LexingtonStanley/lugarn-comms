@@ -57,7 +57,10 @@ func (b *Broker) StartHerdr(ctx context.Context, request wire.StartHerdrRequest)
 	if logind := b.opts.Probe.Logind(ctx); logind != nil {
 		kill = logind.KillUserProcesses
 	}
-	result, e := b.integration.opts.StartServer(ctx, b.integration.opts.HerdrBinary, server, herdr.KillUserProcesses(kill))
+	if e := b.integration.refreshPath(ctx); e != nil {
+		return wire.StartHerdrResult{}, e
+	}
+	result, e := b.integration.opts.StartServer(ctx, b.integration.opts.HerdrBinary, server, herdr.KillUserProcesses(kill), herdr.ServerEnvironment([]string{"PATH=" + completeSystemPath()}))
 	if e != nil {
 		return wire.StartHerdrResult{}, e
 	}

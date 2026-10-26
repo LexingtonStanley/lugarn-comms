@@ -9,6 +9,7 @@ import (
 	"github.com/LexingtonStanley/lugarn-comms/internal/store"
 	"github.com/LexingtonStanley/lugarn-comms/internal/version"
 	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
+	"os"
 )
 
 func (b *Broker) Hello(ctx context.Context, r wire.HelloRequest) (wire.HelloResult, error) {
@@ -35,6 +36,14 @@ func (b *Broker) Hello(ctx context.Context, r wire.HelloRequest) (wire.HelloResu
 	if b.integration != nil {
 		out.Capabilities = append(out.Capabilities, "spawn", "open-terminal", "return-headless", "start-herdr")
 	}
+	out.Host.Path.Inherited = os.Getenv("PATH")
+	if p := b.opts.LoginPath; p != nil {
+		out.Host.Path = wire.HelloResultHostPath{Shell: p.Shell, Login: p.Login, Issue: p.Issue, Inherited: p.Inherited}
+		if p.CapturedAt != nil {
+			out.Host.Path.CapturedAt = ptr(model.Time{Time: *p.CapturedAt})
+		}
+	}
+
 	if l := b.opts.Probe.Logind(ctx); l != nil {
 		out.Host.Logind = &wire.LogindInfo{KillUserProcesses: l.KillUserProcesses, Linger: l.Linger}
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/LexingtonStanley/lugarn-comms/internal/appops"
 	"github.com/LexingtonStanley/lugarn-comms/internal/broker"
 	"github.com/LexingtonStanley/lugarn-comms/internal/cli"
+	"github.com/LexingtonStanley/lugarn-comms/internal/hostprobe"
 	"github.com/LexingtonStanley/lugarn-comms/internal/mcpserver"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/service"
@@ -225,7 +226,13 @@ func openServiceDir(ctx context.Context, dir string) (services, func()) {
 	if err != nil {
 		return errorService{model.AsError(err)}, func() {}
 	}
-	b := broker.New(db, broker.Options{StateDir: dir})
+	pathInfo, err := hostprobe.LoginPath(ctx, dir, false)
+	if err != nil {
+		_ = db.Close()
+		return errorService{model.AsError(err)}, func() {}
+	}
+	_ = os.Setenv("PATH", pathInfo.Merged())
+	b := broker.New(db, broker.Options{StateDir: dir, LoginPath: &pathInfo})
 	options, err := integrationOptions()
 	if err != nil {
 		_ = db.Close()

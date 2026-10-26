@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/broker"
+	"github.com/LexingtonStanley/lugarn-comms/internal/hostprobe"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
 	"github.com/LexingtonStanley/lugarn-comms/internal/store"
@@ -71,7 +72,12 @@ func runTeam(ctx context.Context, args []string, stderr io.Writer) int {
 		return fail(e)
 	}
 	defer db.Close()
-	b := broker.New(db, broker.Options{StateDir: dir})
+	pathInfo, e := hostprobe.LoginPath(ctx, dir, false)
+	if e != nil {
+		return fail(e)
+	}
+	_ = os.Setenv("PATH", pathInfo.Merged())
+	b := broker.New(db, broker.Options{StateDir: dir, LoginPath: &pathInfo})
 	opts, e := integrationOptions()
 	if e != nil {
 		return fail(e)

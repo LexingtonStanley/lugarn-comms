@@ -29,6 +29,22 @@ func TestMain(m *testing.M) {
 
 func fakeMain() {
 	name := strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe")
+	if name == "shell" {
+		if len(os.Args) != 5 || strings.Join(os.Args[1:4], " ") != "-l -i -c" {
+			os.Exit(97)
+		}
+		switch os.Getenv("LUGARN_PATH_FAKE") {
+		case "sleep":
+			time.Sleep(time.Minute)
+		case "exit":
+			os.Exit(7)
+		case "missing":
+			fmt.Print("noise")
+		default:
+			fmt.Print("noise\n" + pathBegin + "\n/login/bin:/usr/bin\n" + pathEnd + "\nnoise")
+		}
+		return
+	}
 	if log := os.Getenv("LUGARN_PROBE_LOG"); log != "" {
 		f, err := os.OpenFile(log, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {

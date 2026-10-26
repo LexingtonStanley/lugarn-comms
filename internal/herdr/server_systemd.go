@@ -33,7 +33,7 @@ var unitRunning = map[string]bool{"active": true, "activating": true, "reloading
 // that's already running is somebody else's start in flight: it waits for that
 // server instead of starting another. The service's stdout and stderr go to
 // the journal.
-func startSystemd(ctx context.Context, c *Client, bin string, st Status) (StartResult, error) {
+func startSystemd(ctx context.Context, c *Client, bin string, st Status, environment []string) (StartResult, error) {
 	session := c.session
 	unit := unitName(session)
 	res := StartResult{Status: st}
@@ -54,7 +54,12 @@ func startSystemd(ctx context.Context, c *Client, bin string, st Status) (StartR
 		// Its own failure doesn't matter: systemd-run's says whether it worked.
 		_, _, _ = systemctl(ctx, "reset-failed", unit)
 	}
-	out, code, err := runSystemd(ctx, "systemd-run", "--user", "--unit="+unit, "--collect", "--", bin, "--session", session, "server")
+	args := []string{"--user", "--unit=" + unit, "--collect"}
+	for _, kv := range environment {
+		args = append(args, "--setenv="+kv)
+	}
+	args = append(args, "--", bin, "--session", session, "server")
+	out, code, err := runSystemd(ctx, "systemd-run", args...)
 	if err != nil || code != 0 {
 		return res, startFailed(0, "systemd-run: "+strings.TrimSpace(out)+errText(err))
 	}

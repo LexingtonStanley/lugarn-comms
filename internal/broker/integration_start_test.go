@@ -25,7 +25,7 @@ func TestIntegrationStartHerdrAndCapabilities(t *testing.T) {
 	called := false
 	i, e := NewIntegration(b, IntegrationOptions{HomeDir: t.TempDir(), StartServer: func(_ context.Context, _, server string, options ...herdr.ServerOption) (herdr.StartResult, error) {
 		called = true
-		if server != "lugarn-test-fake12345" || len(options) != 1 {
+		if server != "lugarn-test-fake12345" || len(options) != 2 {
 			t.Fatal(server, len(options))
 		}
 		return herdr.StartResult{Started: true, Method: herdr.MethodSystemd, Status: herdr.Status{Installed: true, Running: true, Session: server, Version: "0.9.5"}}, nil

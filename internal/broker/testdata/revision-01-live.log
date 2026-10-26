@@ -1,0 +1,10 @@
+=== RUN   TestIntegrationLiveLoginPath
+    integration_path_live_linux_test.go:61: capture shape: entries=18 local_bin=true elapsed_with_server_ms=384
+    integration_path_live_linux_test.go:73: server pane local_bin=true
+    integration_path_live_linux_test.go:88: bare user-manager command local_bin=false
+    integration_path_live_linux_test.go:92: herdr --session lugarn-test-ecafd397fb69c715 server stop:  (<nil>)
+    integration_path_live_linux_test.go:92: delete own stopped session lugarn-test-ecafd397fb69c715: deleted session lugarn-test-ecafd397fb69c715
+         (<nil>)
+--- PASS: TestIntegrationLiveLoginPath (0.85s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/broker	0.862s
