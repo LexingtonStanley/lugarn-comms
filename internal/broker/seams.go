@@ -210,6 +210,7 @@ func (b *Broker) StopTeam(ctx context.Context, r wire.StopTeamRequest) (wire.Sto
 	var team store.Team
 	var members []model.Member
 	already := false
+	stopFrom := model.TeamStateStopping
 	e := b.db.Write(ctx, func(tx *store.Tx) error {
 		t, e := tx.GetTeam(r.Team)
 		if e != nil {
@@ -226,6 +227,10 @@ func (b *Broker) StopTeam(ctx context.Context, r wire.StopTeamRequest) (wire.Sto
 			return e
 		}
 		from := t.State
+		if from == model.TeamStateStarting {
+			// A failed start has no public stopping state.
+			stopFrom = model.TeamStateStarting
+		}
 		if e = tx.UpdateTeam(t.ID, store.TeamPatch{State: ptr(model.TeamStateStopping)}, b.now()); e != nil {
 			return e
 		}
@@ -234,7 +239,7 @@ func (b *Broker) StopTeam(ctx context.Context, r wire.StopTeamRequest) (wire.Sto
 		if e != nil {
 			return e
 		}
-		if from == model.TeamStateStopping {
+		if from == model.TeamStateStarting || from == model.TeamStateStopping {
 			return nil
 		}
 		return b.event(tx, &t.ID, model.EventTeamStateChanged, true, nil, nil, wire.TeamStateChangedEventData{Team: s, From: from, To: model.TeamStateStopping})
@@ -377,7 +382,7 @@ func (b *Broker) StopTeam(ctx context.Context, r wire.StopTeamRequest) (wire.Sto
 				return e
 			}
 		}
-		return b.event(tx, &t.ID, model.EventTeamStateChanged, true, nil, nil, wire.TeamStateChangedEventData{Team: out.Team, From: model.TeamStateStopping, To: model.TeamStateStopped})
+		return b.event(tx, &t.ID, model.EventTeamStateChanged, true, nil, nil, wire.TeamStateChangedEventData{Team: out.Team, From: stopFrom, To: model.TeamStateStopped})
 	})
 	if e != nil {
 		return out, e

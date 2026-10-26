@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -93,8 +94,41 @@ func TestStartTeamSeam(t *testing.T) {
 	}
 	_, e = b.StopTeam(ctx, wire.StopTeamRequest{Team: "t"})
 	must(t, e)
+	var before int64
+	must(t, b.db.Read(ctx, func(tx *store.Tx) error {
+		var err error
+		before, err = tx.CurrentEventSeq()
+		return err
+	}))
 	_, e = b.StartTeam(ctx, wire.StartTeamRequest{Team: "t"})
 	code(t, e, model.ErrorRunnerUnavailable)
+	must(t, b.db.Read(ctx, func(tx *store.Tx) error {
+		events, err := tx.ReplayEvents(before, ptr("t"), 0)
+		if err != nil {
+			return err
+		}
+		var transitions []wire.TeamStateChangedEventData
+		for _, event := range events {
+			if event.Type != model.EventTeamStateChanged {
+				continue
+			}
+			var data wire.TeamStateChangedEventData
+			if err := json.Unmarshal(event.Data, &data); err != nil {
+				return err
+			}
+			transitions = append(transitions, data)
+		}
+		want := [][2]model.TeamState{{model.TeamStateStopped, model.TeamStateStarting}, {model.TeamStateStarting, model.TeamStateStopped}}
+		if len(transitions) != len(want) {
+			t.Fatalf("failed start transitions: %#v", transitions)
+		}
+		for i, transition := range transitions {
+			if transition.From != want[i][0] || transition.To != want[i][1] || transition.Team.State != transition.To {
+				t.Fatalf("transition %d: %#v, want %v", i, transition, want[i])
+			}
+		}
+		return nil
+	}))
 	if model.AsError(e).Details["reason"] != "not_built" {
 		t.Fatal(e)
 	}
