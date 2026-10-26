@@ -35,6 +35,18 @@ func stopIntegrationServer(t *testing.T, bin, session string, pid int) {
 	cmd := exec.CommandContext(ctx, bin, "--session", session, "server", "stop")
 	out, e := cmd.CombinedOutput()
 	t.Logf("herdr --session %s server stop: %s (%v)", session, out, e)
+	if e == nil {
+		client := herdr.New(bin, session)
+		for until := time.Now().Add(3 * time.Second); time.Now().Before(until); {
+			status, err := client.Status(ctx)
+			if err == nil && !status.Running {
+				removed, err := exec.CommandContext(ctx, bin, "--session", session, "session", "delete", session).CombinedOutput()
+				t.Logf("delete own stopped session %s: %s (%v)", session, removed, err)
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
 	if e != nil && pid > 0 {
 		state, inspect := (nativeProcesses{}).Inspect(ctx, int64(pid))
 		if inspect == nil && state.Alive {

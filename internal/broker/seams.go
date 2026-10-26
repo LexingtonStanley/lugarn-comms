@@ -72,6 +72,20 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 	if e := b.contact(ctx, &r.Team); e != nil {
 		return out, e
 	}
+	var preflight *store.Team
+	if e := b.db.Read(ctx, func(tx *store.Tx) error { var e error; preflight, e = tx.GetTeam(r.Team); return e }); e != nil {
+		return out, e
+	}
+	var host model.HerdrInfo
+	var hostErr error
+	if preflight.State == model.TeamStateStopped {
+		if b.integration != nil {
+			status, e := b.integration.opts.Herdr(preflight.HerdrServer).Status(ctx)
+			host, hostErr = status.Info(), e
+		} else {
+			host, hostErr = b.opts.Probe.Herdr(ctx, preflight.HerdrServer)
+		}
+	}
 	var started store.Team
 	e := b.db.Write(ctx, func(tx *store.Tx) error {
 		t, e := tx.GetTeam(r.Team)
@@ -86,10 +100,12 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 		if t.State != model.TeamStateStopped {
 			return model.NewError(model.ErrorLeaseConflict, "team is already starting or stopping")
 		}
-		herdr, e := b.opts.Probe.Herdr(ctx, t.HerdrServer)
-		if e != nil || !herdr.Running {
+		if preflight.State != model.TeamStateStopped || preflight.HerdrServer != t.HerdrServer {
+			return model.NewError(model.ErrorLeaseConflict, "team changed during Herdr preflight")
+		}
+		if hostErr != nil || !host.Running {
 			reason := "not_running"
-			if !herdr.Installed {
+			if !host.Installed {
 				reason = "not_installed"
 			}
 			return model.NewError(model.ErrorHerdrUnavailable, "the team's Herdr server is unavailable").WithDetail("reason", reason)
