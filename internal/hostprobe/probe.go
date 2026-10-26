@@ -4,6 +4,7 @@ package hostprobe
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -225,42 +226,64 @@ func (*Real) Logind(ctx context.Context) *LogindInfo {
 	if runtime.GOOS != "linux" {
 		return nil
 	}
-	binary, err := exec.LookPath("loginctl")
-	if err != nil {
-		return nil
-	}
 	u, err := user.Current()
 	if err != nil {
 		return nil
 	}
-	kill, err := run(ctx, binary, "show", "-p", "KillUserProcesses", "--value")
-	if err != nil {
-		return nil
-	}
-	linger, err := run(ctx, binary, "show-user", u.Uid, "-p", "Linger", "--value")
-	if err != nil {
-		return nil
-	}
-	k, ok := parseBool(kill)
-	if !ok {
-		return nil
-	}
-	l, ok := parseBool(linger)
-	if !ok {
-		return nil
-	}
-	return &LogindInfo{KillUserProcesses: k, Linger: l}
+	return probeLogind(ctx, u.Username, "/var/lib/systemd/linger")
 }
 
-func parseBool(s []byte) (bool, bool) {
-	switch strings.TrimSpace(string(s)) {
-	case "yes", "true", "1":
-		return true, true
-	case "no", "false", "0":
-		return false, true
-	default:
-		return false, false
+// Separate the host's linger location from the probe so tests can use a private
+// directory. Only an absent directory permits falling back to loginctl.
+func probeLogind(ctx context.Context, username, lingerDir string) *LogindInfo {
+	binary, err := exec.LookPath("busctl")
+	if err != nil {
+		return nil
 	}
+	kill, err := run(ctx, binary, "get-property", "org.freedesktop.login1", "/org/freedesktop/login1",
+		"org.freedesktop.login1.Manager", "KillUserProcesses")
+	if err != nil {
+		return nil
+	}
+	info := &LogindInfo{}
+	switch strings.TrimSuffix(string(kill), "\n") {
+	case "b true":
+		info.KillUserProcesses = true
+	case "b false":
+	default:
+		return nil
+	}
+	dir, err := os.Stat(lingerDir)
+	if err == nil {
+		if !dir.IsDir() {
+			return nil
+		}
+		_, err = os.Stat(filepath.Join(lingerDir, username))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		info.Linger = err == nil
+		return info
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	binary, err = exec.LookPath("loginctl")
+	if err != nil {
+		return nil
+	}
+	linger, err := run(ctx, binary, "show-user", username, "-p", "Linger", "--value")
+	if err != nil {
+		return nil
+	}
+	switch strings.TrimSuffix(string(linger), "\n") {
+	case "yes":
+		info.Linger = true
+	case "no":
+	default:
+		return nil
+	}
+	return info
 }
 
 // A bounded writer avoids unlimited memory use from a broken --version command.

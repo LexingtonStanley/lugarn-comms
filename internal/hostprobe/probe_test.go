@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -63,17 +62,16 @@ func fakeMain() {
 		}
 		return
 	}
-	if name == "loginctl" {
-		if strings.Join(os.Args[1:], " ") == "show -p KillUserProcesses --value" {
-			fmt.Println("yes")
-			return
-		}
-		u, err := user.Current()
-		if err != nil {
+	if name == "busctl" {
+		if strings.Join(os.Args[1:], " ") != "get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager KillUserProcesses" {
 			os.Exit(93)
 		}
-		if strings.Join(os.Args[1:], " ") == "show-user "+u.Uid+" -p Linger --value" {
-			fmt.Println("no")
+		fmt.Print(os.Getenv("LUGARN_PROBE_KILL"))
+		return
+	}
+	if name == "loginctl" {
+		if strings.Join(os.Args[1:], " ") == "show-user probe-user -p Linger --value" {
+			fmt.Print(os.Getenv("LUGARN_PROBE_LINGER"))
 			return
 		}
 		os.Exit(94)
@@ -99,6 +97,8 @@ func fixture(t *testing.T, names ...string) (string, string) {
 	t.Setenv("LUGARN_PROBE_SLEEP", "")
 	t.Setenv("GORACE", "atexit_sleep_ms=0")
 	t.Setenv("LUGARN_PROBE_STATUS", "")
+	t.Setenv("LUGARN_PROBE_KILL", "b false\n")
+	t.Setenv("LUGARN_PROBE_LINGER", "yes\n")
 	t.Setenv("LUGARN_PROBE_VERSIONS", `{"claude":"2.1.310 (Claude Code)","codex":"codex-cli 0.164.0","opencode":"2.1.4","pi":"0.99.0"}`)
 	for _, name := range names {
 		copyExecutable(t, filepath.Join(dir, executable(name)))
@@ -315,24 +315,83 @@ func TestHerdr(t *testing.T) {
 }
 
 func TestLogind(t *testing.T) {
-	fixture(t, "loginctl")
+	_, log := fixture(t, "busctl")
+	// Unknown KillUserProcesses must stop the public Linux probe before it
+	// reads host files; other OSes must not invoke any command at all.
+	t.Setenv("LUGARN_PROBE_KILL", "unknown\n")
 	info := New().Logind(context.Background())
+	if info != nil {
+		t.Fatalf("unknown logind: %+v", info)
+	}
 	if runtime.GOOS != "linux" {
-		if info != nil {
-			t.Fatal("logind on non-Linux")
+		if _, err := os.Stat(log); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("non-Linux probe invoked a command: %v", err)
 		}
-		return
 	}
-	if info == nil || !info.KillUserProcesses || info.Linger {
-		t.Fatalf("logind: %+v", info)
+}
+
+func TestLogindSources(t *testing.T) {
+	type testCase struct {
+		name, dir, kill, linger, fail, missing string
+		record, fallback                       bool
+		want                                   *LogindInfo
 	}
-	t.Setenv("LUGARN_PROBE_FAIL", "loginctl")
-	if New().Logind(context.Background()) != nil {
-		t.Fatal("failed loginctl produced facts")
+	cases := []testCase{
+		{name: "linger file", dir: "present", kill: "b false\n", record: true, fail: "loginctl", want: &LogindInfo{Linger: true}},
+		{name: "no linger file", dir: "present", kill: "b true\n", fail: "loginctl", want: &LogindInfo{KillUserProcesses: true}},
+		{name: "fallback yes", dir: "missing", kill: "b true\n", linger: "yes\n", fallback: true, want: &LogindInfo{KillUserProcesses: true, Linger: true}},
+		{name: "fallback no", dir: "missing", kill: "b false", linger: "no", fallback: true, want: &LogindInfo{}},
+		{name: "directory is a file", dir: "file", kill: "b false\n"},
+		{name: "busctl fails", dir: "present", kill: "b false\n", fail: "busctl"},
+		{name: "busctl missing", dir: "present", missing: "busctl"},
+		{name: "fallback fails", dir: "missing", kill: "b false\n", fail: "loginctl", fallback: true},
+		{name: "fallback missing", dir: "missing", kill: "b false\n", missing: "loginctl"},
+		{name: "fallback unknown", dir: "missing", kill: "b false\n", linger: "unknown\n", fallback: true},
+		{name: "fallback boolean alias", dir: "missing", kill: "b false\n", linger: "true\n", fallback: true},
 	}
-	fixture(t)
-	if New().Logind(context.Background()) != nil {
-		t.Fatal("missing loginctl produced facts")
+	for _, invalid := range []string{"", "false\n", "b 1\n", "b True\n", "b  false\n", " b false\n", "b false \n", "b true extra\n", "b true\nb false\n", "b false\n\n"} {
+		cases = append(cases, testCase{name: "invalid kill " + fmt.Sprintf("%q", invalid), dir: "missing", kill: invalid})
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			names := []string{}
+			for _, name := range []string{"busctl", "loginctl"} {
+				if name != tc.missing {
+					names = append(names, name)
+				}
+			}
+			_, log := fixture(t, names...)
+			t.Setenv("LUGARN_PROBE_KILL", tc.kill)
+			t.Setenv("LUGARN_PROBE_LINGER", tc.linger)
+			t.Setenv("LUGARN_PROBE_FAIL", tc.fail)
+			dir := filepath.Join(t.TempDir(), "linger")
+			switch tc.dir {
+			case "present":
+				if err := os.Mkdir(dir, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if tc.record {
+					if err := os.WriteFile(filepath.Join(dir, "probe-user"), nil, 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+			case "file":
+				if err := os.WriteFile(dir, nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			got := probeLogind(context.Background(), "probe-user", dir)
+			if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
+				t.Fatalf("logind: %+v; want %+v", got, tc.want)
+			}
+			data, err := os.ReadFile(log)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				t.Fatal(err)
+			}
+			if called := strings.Contains(string(data), `"loginctl"`); called != tc.fallback {
+				t.Fatalf("loginctl called = %v; want %v: %s", called, tc.fallback, data)
+			}
+		})
 	}
 }
 
