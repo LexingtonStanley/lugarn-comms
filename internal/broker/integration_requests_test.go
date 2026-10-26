@@ -198,3 +198,27 @@ func TestIntegrationUnusedClaudeSessionStartsThenResumesWithoutLosingBrief(t *te
 		t.Fatal("initialized but unbriefed session was not resumed with its brief", started.launch, started.prompt)
 	}
 }
+
+func TestStopMemberClosesPaneRecordedWhileWaiting(t *testing.T) {
+	b, r, m := paneFixture(t, &panesStub{})
+	h := &lifecycleHerdr{}
+	i, e := NewIntegration(b, IntegrationOptions{Herdr: func(string) HerdrAPI { return h }})
+	must(t, e)
+	l := &integrationLifecycle{i: i, r: r}
+	// The launch worker is still between its pane lease and pane-id writes.
+	initial := m
+	initial.Lease = &model.Lease{Driver: model.DriverPane, Generation: m.Lease.Generation, Launch: m.Lease.Launch}
+	r.mu.Lock()
+	r.busy[m.ID] = true
+	r.mu.Unlock()
+	b.opts.Wait = func(context.Context, time.Duration) error {
+		r.mu.Lock()
+		delete(r.busy, m.ID)
+		r.mu.Unlock()
+		return nil
+	}
+	must(t, l.stopMember(context.Background(), initial, model.StopReasonPerson, model.LeaseCauseStop))
+	if h.closed != 1 {
+		t.Fatal("post-wait recorded pane was orphaned", h.closed)
+	}
+}

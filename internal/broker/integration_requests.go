@@ -160,14 +160,8 @@ func (l *integrationLifecycle) closePane(ctx context.Context, m model.Member) er
 func (l *integrationLifecycle) stopMember(ctx context.Context, m model.Member, reason model.StopReason, cause model.LeaseCause) error {
 	stop, done := context.WithTimeout(ctx, 30*time.Second)
 	defer done()
-	if e := l.i.capturePointer(stop, m); e != nil {
-		return e
-	}
-	if m.Lease != nil && m.Lease.Driver == model.DriverPane {
-		if e := l.closePane(stop, m); e != nil {
-			return e
-		}
-	}
+	// A launch may have recorded a pane while the stop request waited.
+	// Decide what to close from the post-wait snapshot, never the initial one.
 	if cause == model.LeaseCauseStop {
 		if e := l.waitRecipient(stop, m, true); e != nil {
 			return e
@@ -178,6 +172,14 @@ func (l *integrationLifecycle) stopMember(ctx context.Context, m model.Member, r
 		return e
 	}
 	m = *current
+	if e := l.i.capturePointer(stop, m); e != nil {
+		return e
+	}
+	if m.Lease != nil && m.Lease.Driver == model.DriverPane {
+		if e := l.closePane(stop, m); e != nil {
+			return e
+		}
+	}
 	e = l.r.write(stop, &m, func(tx *store.Tx, _ *store.Team) error {
 		now := l.i.b.now()
 		if m.Lease != nil && m.Lease.Driver != model.DriverNone {
