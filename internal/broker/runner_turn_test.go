@@ -339,3 +339,49 @@ func TestRunnerUnavailableHarnessFailsBeforeLaunch(t *testing.T) {
 		return e
 	}))
 }
+
+type headlessStartFunc func(context.Context, TurnLaunch, string) (TurnHandle, error)
+
+func (f headlessStartFunc) Start(ctx context.Context, launch TurnLaunch, prompt string) (TurnHandle, error) {
+	return f(ctx, launch, prompt)
+}
+
+type trackedTurnHandle struct {
+	*turnStub
+	waited chan struct{}
+}
+
+func (h *trackedTurnHandle) Wait() TurnOutcome { out := h.turnStub.Wait(); close(h.waited); return out }
+
+func TestRunnerCancelsStartedTurnWhenPIDWriteLosesGeneration(t *testing.T) {
+	b, r, m := headlessFixture(t, &headlessStub{})
+	ctx := context.Background()
+	handle := &trackedTurnHandle{turnStub: newTurnStub(), waited: make(chan struct{})}
+	t.Cleanup(func() { handle.complete(TurnOutcome{Cancelled: true}) })
+	r.opts.Headless = headlessStartFunc(func(context.Context, TurnLaunch, string) (TurnHandle, error) {
+		must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+			return tx.CompareAndSwapLease(m.ID, model.DriverHeadless, m.Lease.Generation, model.Lease{Driver: model.DriverNone, Generation: m.Lease.Generation + 1}, b.now())
+		}))
+		return handle, nil
+	})
+	sendToWriter(t, b, "task")
+	err := r.runTurn(ctx, m)
+	code(t, err, model.ErrorLeaseConflict)
+	handle.mu.Lock()
+	cancelled := handle.cancelled
+	handle.mu.Unlock()
+	if cancelled == 0 {
+		t.Fatal("started harness was abandoned after the PID write failed")
+	}
+	select {
+	case <-handle.waited:
+	default:
+		t.Fatal("returned before the cancelled harness exited")
+	}
+	r.mu.Lock()
+	_, tracked := r.handles[m.ID]
+	r.mu.Unlock()
+	if tracked {
+		t.Fatal("completed handle was not released")
+	}
+}

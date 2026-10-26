@@ -128,7 +128,7 @@ func (r *Runner) prepareTurn(ctx context.Context, m model.Member) (*runnerTurn, 
 	})
 	return w, e
 }
-func (r *Runner) runTurn(ctx context.Context, m model.Member) error {
+func (r *Runner) runTurn(ctx context.Context, m model.Member) (err error) {
 	w, e := r.prepareTurn(ctx, m)
 	if e != nil || w == nil {
 		return e
@@ -173,9 +173,38 @@ func (r *Runner) runTurn(ctx context.Context, m model.Member) error {
 	r.mu.Lock()
 	r.handles[m.ID] = h
 	r.mu.Unlock()
-	defer func() { r.mu.Lock(); delete(r.handles, m.ID); r.mu.Unlock() }()
+	releaseHandle := true
+	defer func() {
+		if releaseHandle {
+			r.mu.Lock()
+			delete(r.handles, m.ID)
+			r.mu.Unlock()
+		}
+	}()
 	done := make(chan TurnOutcome, 1)
-	go func() { done <- h.Wait() }()
+	exited := make(chan struct{})
+	go func() { done <- h.Wait(); close(exited) }()
+	// Once Start succeeds, an error must not abandon a process that may never
+	// have reached the store. Reap it before dropping the in-memory handle.
+	// A normal runner cancellation returns nil and deliberately detaches instead.
+	defer func() {
+		if err == nil {
+			return
+		}
+		cancelErr := h.Cancel()
+		timeout := time.NewTimer(20 * time.Second)
+		defer timeout.Stop()
+		select {
+		case <-exited:
+		case <-timeout.C:
+			releaseHandle = false // Keep it reachable by stop/CancelTurn for a retry.
+			failure := model.NewError(model.ErrorInternal, "started harness did not exit during failure cleanup").WithDetail("cause", err.Error())
+			if cancelErr != nil {
+				failure.WithDetail("cancel_error", cancelErr.Error())
+			}
+			err = failure
+		}
+	}()
 	// Persist identity even if the runner context just ended, so the next runner
 	// can distinguish an orphan from a reused PID. This does not signal the child.
 	persist, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
