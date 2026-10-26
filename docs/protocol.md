@@ -106,6 +106,19 @@ recorded on the member.
 | `launch/<launch id>.opencode.json`| OpenCode's per-launch config (`OPENCODE_CONFIG`): the MCP registration and the profile's `permission` block | deleted when the launch ends |
 | `launch/<launch id>/msg-<message id>-<attempt>.md` | A pane delivery too long to inline ([Untrusted text](#untrusted-text)) | deleted when the launch ends |
 
+| `launch/<launch id>/bin/<harness>` | Link to the resolved native harness executable for the clean pane shell | deleted with the exact launch directory when the launch ends; link target survives |
+| `launch/<launch id>/clean-shell.json`, `shell-ready` | Native bootstrap capsule and shell readiness marker | deleted with the exact launch directory when the launch ends |
+| `launch/<launch id>/runner-launch.json`, `<turn id>.process.json` | Immutable launch description and process birth identity | deleted with the exact launch directory when the launch ends |
+| `runner/<team id>.json` | Recorded workspace/pane and verified runner process; optional bridge ownership | retained across runner takeover; removed by stop-team |
+| `sessions/<member id>/<session hash>.json` | Private initialized-session metadata; Codex rollout remains authoritative for cwd | retained for future session resume |
+| `login-path.json` | Login-shell PATH capture, shell, timestamp and issue | refreshed after one hour, and on every start-herdr/start-team |
+| `lugarn-runner-<random>/lugarn-comms[.exe]` | Native bridge only when the broker executable path needs one | removed by stop-team; state directory preferred when plain, otherwise OS temp directory |
+
+Per-launch cleanup lists `launch/` before reading the store, recognizes only the exact
+ULID directory and documented suffixes, and uses `lstat`. Removing a directory never
+follows links inside it. All the files inside that directory share its lifetime. Unknown
+entries use the reconciliation grace period; pointer cleanup never deletes unknown ids.
+
 The directory and `launch/` are `0700` on POSIX; files are `0600`. On Windows each gets a
 protected DACL (inheritance off) with one entry: full control for the current user.
 
