@@ -22,20 +22,21 @@ func (realGit) Remove(c context.Context, r, p, n string) (gitwt.BranchOutcome, e
 }
 
 type host struct {
-	ctx            context.Context
-	b              *Broker
-	harnesses      []model.HarnessInfo
-	repos          map[string]gitwt.Info
-	folders, paths map[string]bool
-	branches       map[[2]string]bool
-	err            error
+	ctx             context.Context
+	b               *Broker
+	harnesses       []model.HarnessInfo
+	harnessesLoaded bool
+	repos           map[string]gitwt.Info
+	folders, paths  map[string]bool
+	branches        map[[2]string]bool
+	err             error
 }
 
 func (b *Broker) host(ctx context.Context) policy.Host {
 	if b.opts.Host != nil {
 		return b.opts.Host
 	}
-	return &host{ctx: ctx, b: b, harnesses: b.opts.Probe.Harnesses(ctx), repos: map[string]gitwt.Info{}, folders: map[string]bool{}, paths: map[string]bool{}, branches: map[[2]string]bool{}}
+	return &host{ctx: ctx, b: b, repos: map[string]gitwt.Info{}, folders: map[string]bool{}, paths: map[string]bool{}, branches: map[[2]string]bool{}}
 }
 func (*host) OS() model.HostOS { return model.HostOS(runtime.GOOS) }
 func (h *host) FolderExists(p string) bool {
@@ -63,6 +64,10 @@ func (h *host) RepoRoot(p string) (string, bool) {
 	return v.MainWorktree, v.InGit
 }
 func (h *host) HarnessIssue(v model.Harness) model.HarnessIssue {
+	if !h.harnessesLoaded {
+		h.harnesses = h.b.opts.Probe.Harnesses(h.ctx)
+		h.harnessesLoaded = true
+	}
 	for _, x := range h.harnesses {
 		if x.Harness == v {
 			if x.Issue != nil {
