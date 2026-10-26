@@ -782,7 +782,10 @@ What the C2c drivers pass. **Verified headless only**, on lexbox on 2026-10-26, 
 | Prompt              | stdin                                                                                           | stdin                                                                                          | stdin                                                                                             |
 | Acknowledgement     | the init event                                                                                  | `thread.started`                                                                               | the first event, `step_start`, carrying `"sessionID"`                                             |
 
-Drivers add the event-output flags the reference MCPs in `claude_sdk_term` use. Notes:
+Drivers add the event-output flags the reference MCPs in `claude_sdk_term` use. Every
+harness, headless or in a pane, runs by the absolute path the broker resolved at launch,
+never by a name the person's shell resolves ([Untrusted text](#untrusted-text), item 3).
+Notes:
 
 - **Claude:** `--mcp-config` and `--allowedTools` take several values and swallow what follows
   unless written with `=`. Plan mode still writes Claude's own plan file under
@@ -828,6 +831,26 @@ re-parses:
    ids that match their pattern. The brief and the task arrive afterwards as the first
    delivery, never in `herdr agent start … -- <args>`: Herdr types that command line into the
    pane's shell, on Linux and macOS as well as in PowerShell on Windows (C2b).
+
+   **The harness runs by the broker's absolute path, never by a name the person's shell
+   resolves.** Because Herdr types the command into an interactive shell, that shell's rc
+   files apply, and an `alias claude="claude --dangerously-skip-permissions"` or a `codex`
+   wrapper function, common on dev boxes, would silently change the profile a member runs
+   with (Flare). And `herdr agent start --kind` types the kind's canonical name, not a path.
+   So before `agent start`, the broker replaces the pane's shell with a clean one (POSIX:
+   `/bin/sh` reading no rc file; Windows: PowerShell with `-NoProfile`), whose `PATH` starts
+   with a per-launch directory under `launch/<launch id>/` that holds only the harness's
+   executable name, linked to the absolute path the broker resolved at launch (`command -v`
+   on POSIX; on Windows the native `.exe` from rule 4, `Get-Command -CommandType
+   Application`). C2d pins the exact commands and verifies them under zsh, bash, fish and
+   PowerShell. If a host can't give that guarantee, the pane launch fails
+   (`harness_unavailable`, `details.reason: unresolvable`) rather than running whatever the
+   person's shell finds.
+   Every broker-made path in that command line must survive Herdr's typing into each of those
+   shells. C2d checks that Herdr quotes each argument for the shell it types into, using paths
+   with spaces (a Windows home like `C:\Users\First Last`, a macOS one). If it doesn't for some
+   shell, broker-made paths are restricted to `[A-Za-z0-9._/:\\-]` and a launch with any
+   other path fails with a clear issue.
 4. **On Windows**, every harness the broker execs must resolve to a native `.exe`: Claude's
    native install, and the native binaries that Codex's and OpenCode's npm packages ship
    behind their `.cmd` and `.ps1` shims. The broker never execs a `.cmd` or `.bat`:
