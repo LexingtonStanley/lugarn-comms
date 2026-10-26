@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,6 +43,18 @@ func TestIntegrationWorktreeCreationAndReuse(t *testing.T) {
 	must(t, r.acquire(ctx))
 	var m *model.Member
 	must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; m, e = tx.GetMember("writer"); return e }))
+	stale := *m
+	lease := *m.Lease
+	lease.Generation++
+	stale.Lease = &lease
+	if _, e := i.prepareWorktree(ctx, r, stale); e == nil {
+		t.Fatal("expected generation refusal")
+	}
+	out, e := exec.Command("git", "-C", repo, "worktree", "list", "--porcelain").Output()
+	must(t, e)
+	if strings.Count(string(out), "worktree ") != 1 {
+		t.Fatal("git ran before store reservation", string(out))
+	}
 	first, e := i.prepareWorktree(ctx, r, *m)
 	must(t, e)
 	if first.Worktree == nil || *first.Workdir == repo {

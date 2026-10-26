@@ -16,7 +16,7 @@ import (
 )
 
 func (h *lifecycleHerdr) Pane(context.Context, string) (herdr.Pane, error) {
-	return herdr.Pane{ID: "pane-owned", Tab: "tab-owned"}, nil
+	return herdr.Pane{ID: "pane-owned", Tab: "tab-owned", Workspace: "workspace-owned"}, nil
 }
 func TestIntegrationRequestConversionsAndStop(t *testing.T) {
 	b, _ := setup(t)
@@ -263,5 +263,65 @@ func TestReturnHeadlessWaitsForDeliveringBeforeHerdr(t *testing.T) {
 	must(t, l.toHeadless(ctx, m, model.LeaseCauseReturnHeadless, true))
 	if !h.waited || !ready {
 		t.Fatal("missing waits")
+	}
+}
+
+func TestReturnHeadlessReleasesPaneHoldsDuringPersonHold(t *testing.T) {
+	b, r, m := paneFixture(t, &panesStub{})
+	ctx := context.Background()
+	message := sendToWriter(t, b, "blocked")
+	must(t, r.paneHolds(ctx, m, ptr(model.DeliveryReasonRecipientBlocked)))
+	_, e := b.Hold(ctx, wire.HoldRequest{Team: m.Team, Member: m.ID, TTLSeconds: ptr(int64(60))})
+	must(t, e)
+	h := &lifecycleHerdr{}
+	i, e := NewIntegration(b, IntegrationOptions{Herdr: func(string) HerdrAPI { return h }})
+	must(t, e)
+	l := &integrationLifecycle{i: i, r: r}
+	must(t, l.toHeadless(ctx, m, model.LeaseCauseReturnHeadless, true))
+	must(t, b.db.Read(ctx, func(tx *store.Tx) error {
+		d, e := tx.GetDelivery(message.ID, m.ID)
+		if e == nil && (d.Reason != nil && (*d.Reason == model.DeliveryReasonRecipientBlocked || *d.Reason == model.DeliveryReasonRecipientUnknown)) {
+			t.Fatal("pane reason stranded under headless lease", d)
+		}
+		hold, e := tx.GetHold(m.ID)
+		if e == nil && hold.ReleasedAt != nil {
+			t.Fatal("conversion released person hold")
+		}
+		return e
+	}))
+}
+func TestPaneExitWithoutRecordedPaneID(t *testing.T) {
+	b, r, m := paneFixture(t, &panesStub{})
+	lease := *m.Lease
+	lease.Pane = nil
+	must(t, b.db.Write(context.Background(), func(tx *store.Tx) error {
+		return tx.CompareAndSwapLease(m.ID, m.Lease.Driver, m.Lease.Generation, lease, b.now())
+	}))
+	m.Lease = &lease
+	i, e := NewIntegration(b, IntegrationOptions{Herdr: func(string) HerdrAPI { return &lifecycleHerdr{} }})
+	must(t, e)
+	l := &integrationLifecycle{i: i, r: r}
+	must(t, l.Exited(context.Background(), m))
+	current, e := l.current(context.Background(), m.ID)
+	must(t, e)
+	if current.Lease.Driver != model.DriverHeadless {
+		t.Fatal(current)
+	}
+}
+
+type foreignPaneHerdr struct{ lifecycleHerdr }
+
+func (h *foreignPaneHerdr) Pane(context.Context, string) (herdr.Pane, error) {
+	return herdr.Pane{Workspace: "persons-workspace", Tab: "persons-tab"}, nil
+}
+func TestClosePaneRefusesReusedIDInForeignWorkspace(t *testing.T) {
+	b, r, m := paneFixture(t, &panesStub{})
+	h := &foreignPaneHerdr{}
+	i, e := NewIntegration(b, IntegrationOptions{Herdr: func(string) HerdrAPI { return h }})
+	must(t, e)
+	l := &integrationLifecycle{i: i, r: r}
+	code(t, l.closePane(context.Background(), m), model.ErrorLeaseConflict)
+	if h.closed != 0 {
+		t.Fatal("closed the person's tab")
 	}
 }

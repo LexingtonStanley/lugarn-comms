@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/store"
 )
@@ -17,6 +18,9 @@ type teardownHerdr struct {
 	err    error
 }
 
+func (h *teardownHerdr) Pane(context.Context, string) (herdr.Pane, error) {
+	return herdr.Pane{Workspace: "workspace-owned"}, nil
+}
 func (h *teardownHerdr) ClosePane(_ context.Context, pane string) error {
 	h.closed = append(h.closed, pane)
 	return h.err
@@ -42,7 +46,7 @@ func TestIntegrationTeardownEndsOwnedLaunchArtifacts(t *testing.T) {
 	bridge, dir, e := i.runnerBridge()
 	must(t, e)
 	defer os.RemoveAll(dir)
-	must(t, i.savePlacement("t", runnerPlacement{Pane: "root-owned", BridgeDir: dir, Binary: bridge}))
+	must(t, i.savePlacement("t", runnerPlacement{Workspace: "workspace-owned", Pane: "root-owned", BridgeDir: dir, Binary: bridge}))
 	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
 		team, e := tx.GetTeam("t")
 		if e != nil {

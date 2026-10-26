@@ -72,10 +72,13 @@ func (i *Integration) Close(ctx context.Context, t store.Team, members []model.M
 			}
 		}
 	}
-	client := i.opts.Herdr(t.HerdrServer)
+	workspace := placement.Workspace
+	if t.HerdrWorkspace != nil {
+		workspace = *t.HerdrWorkspace
+	}
 	for _, m := range members {
 		if m.Lease != nil && m.Lease.Pane != nil {
-			record(client.ClosePane(ctx, *m.Lease.Pane))
+			record(i.closeOwnedPane(ctx, t.HerdrServer, workspace, *m.Lease.Pane))
 		}
 	}
 	if placement.PID > 0 && placement.Birth != "" {
@@ -86,7 +89,7 @@ func (i *Integration) Close(ctx context.Context, t store.Team, members []model.M
 		root = &placement.Pane
 	}
 	if root != nil {
-		record(client.ClosePane(ctx, *root))
+		record(i.closeOwnedPane(ctx, t.HerdrServer, workspace, *root))
 	}
 	record(i.b.db.Write(ctx, func(tx *store.Tx) error {
 		launches, e := tx.ListLaunches(t.ID)

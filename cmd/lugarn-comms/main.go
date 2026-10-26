@@ -207,7 +207,14 @@ func openServiceForToken(ctx context.Context, tokenPath string) (services, func(
 	// Codex strips MCP environment variables. The per-launch token path already
 	// carries the state root, so an isolated launch must never fall back to home.
 	if filepath.IsAbs(tokenPath) && filepath.Base(filepath.Dir(tokenPath)) == "launch" && strings.HasSuffix(filepath.Base(tokenPath), ".token") && model.ValidateULID(strings.TrimSuffix(filepath.Base(tokenPath), ".token")) == nil {
-		return openServiceDir(ctx, filepath.Dir(filepath.Dir(tokenPath)))
+		dir := filepath.Dir(filepath.Dir(tokenPath))
+		for _, path := range []string{tokenPath, filepath.Join(dir, "comms.db")} {
+			info, e := os.Lstat(path)
+			if e != nil || !info.Mode().IsRegular() {
+				return errorService{model.NewError(model.ErrorUnauthenticated, "token path must belong to an existing store and regular launch token")}, func() {}
+			}
+		}
+		return openServiceDirMode(ctx, dir, false)
 	}
 	if os.Getenv("LUGARN_COMMS_HOME") != "" {
 		return openService(ctx)
@@ -215,8 +222,11 @@ func openServiceForToken(ctx context.Context, tokenPath string) (services, func(
 	return errorService{model.NewError(model.ErrorInvalidRequest, "MCP needs an absolute launch token path or LUGARN_COMMS_HOME")}, func() {}
 }
 func openServiceDir(ctx context.Context, dir string) (services, func()) {
+	return openServiceDirMode(ctx, dir, true)
+}
+func openServiceDirMode(ctx context.Context, dir string, ensure bool) (services, func()) {
 	dir, err := filepath.Abs(dir)
-	if err == nil {
+	if err == nil && ensure {
 		err = statedir.Ensure(dir)
 	}
 	if err != nil {

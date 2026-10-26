@@ -233,7 +233,7 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	success := false
 	defer func() {
 		if !success {
-			_ = client.CloseTab(context.WithoutCancel(ctx), tab.ID)
+			_ = l.i.closeOwnedPane(context.WithoutCancel(ctx), team.HerdrServer, *team.HerdrWorkspace, tab.RootPane)
 		}
 	}()
 	e = l.r.write(ctx, starting, func(tx *store.Tx, _ *store.Team) error {
@@ -291,11 +291,17 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	return nil
 }
 func (l *integrationLifecycle) Exited(ctx context.Context, m model.Member) error {
-	client := l.i.opts.Herdr(m.Herdr.Server)
-	_, e := client.Pane(ctx, *m.Lease.Pane)
+	if m.Lease == nil || m.Lease.Driver != model.DriverPane {
+		return nil
+	}
+	server, _ := paneIdentity(m)
+	var e error
+	if m.Lease.Pane != nil {
+		_, e = l.i.opts.Herdr(server).Pane(ctx, *m.Lease.Pane)
+	}
 	reason := model.StopReasonExited
 	cause := model.LeaseCausePaneExit
-	if herdr.IsGone(e) || herdr.IsUnavailable(e) {
+	if m.Lease.Pane == nil || herdr.IsGone(e) || herdr.IsUnavailable(e) {
 		reason = model.StopReasonDied
 		cause = model.LeaseCauseDied
 	} else if e != nil {

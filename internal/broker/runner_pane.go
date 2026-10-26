@@ -20,7 +20,7 @@ func (r *Runner) paneHolds(ctx context.Context, m model.Member, reason *model.De
 		if t.State != model.TeamStateRunning {
 			return errRunnerGeneration
 		}
-		if h, e := tx.GetHold(m.ID); e == nil && h.ReleasedAt == nil && h.HeldUntil.After(r.b.now().Time) {
+		if h, e := tx.GetHold(m.ID); e == nil && reason != nil && h.ReleasedAt == nil && h.HeldUntil.After(r.b.now().Time) {
 			return nil
 		} else if e != nil && !missing(e) {
 			return e

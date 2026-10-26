@@ -28,6 +28,7 @@ func (l *integrationLifecycle) Execute(ctx context.Context, req model.Request) e
 	}
 	switch req.Kind {
 	case model.RequestKindSpawn:
+		memberID := m.ID
 		m, e = l.i.prepareWorktree(ctx, l.r, *m)
 		if e == nil {
 			if m.Mode != nil && *m.Mode == model.ModeHeadless {
@@ -37,7 +38,7 @@ func (l *integrationLifecycle) Execute(ctx context.Context, req model.Request) e
 			}
 		}
 		if e != nil {
-			current, _ := l.current(context.WithoutCancel(ctx), m.ID)
+			current, _ := l.current(context.WithoutCancel(ctx), memberID)
 			if current != nil && (current.StopReason == nil || *current.StopReason != model.StopReasonLaunchFailed) {
 				_ = l.r.launchFailed(context.WithoutCancel(ctx), *current, e)
 			}
@@ -130,16 +131,18 @@ func (l *integrationLifecycle) closePane(ctx context.Context, m model.Member) er
 	}
 	server, _ := paneIdentity(m)
 	client := l.i.opts.Herdr(server)
-	pane, e := client.Pane(ctx, *m.Lease.Pane)
-	if e != nil && !herdr.IsGone(e) && !herdr.IsUnavailable(e) {
+	var workspace string
+	e := l.i.b.db.Read(ctx, func(tx *store.Tx) error {
+		t, e := tx.GetTeam(m.Team)
+		if e == nil && t.HerdrWorkspace != nil {
+			workspace = *t.HerdrWorkspace
+		}
+		return e
+	})
+	if e != nil {
 		return e
 	}
-	if e == nil && pane.Tab != "" {
-		e = client.CloseTab(ctx, pane.Tab)
-	} else {
-		e = client.ClosePane(ctx, *m.Lease.Pane)
-	}
-	if e != nil && !herdr.IsGone(e) {
+	if e = l.i.closeOwnedPane(ctx, server, workspace, *m.Lease.Pane); e != nil {
 		return e
 	}
 	deadline := time.Now().Add(5 * time.Second)

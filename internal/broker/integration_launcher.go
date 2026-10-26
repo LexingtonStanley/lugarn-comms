@@ -181,7 +181,7 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 	}
 	bridge, dir, e := i.runnerBridge()
 	if e != nil {
-		_ = client.ClosePane(context.WithoutCancel(ctx), pane)
+		_ = i.closeOwnedPane(context.WithoutCancel(ctx), t.HerdrServer, workspace, pane)
 		return e
 	}
 	placed := runnerPlacement{Workspace: workspace, Pane: pane, BridgeDir: dir, Binary: bridge}
@@ -189,7 +189,7 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 		if dir != "" {
 			_ = os.RemoveAll(dir)
 		}
-		_ = client.ClosePane(context.WithoutCancel(ctx), pane)
+		_ = i.closeOwnedPane(context.WithoutCancel(ctx), t.HerdrServer, workspace, pane)
 		return e
 	}
 	e = i.b.db.Write(ctx, func(tx *store.Tx) error {
@@ -239,7 +239,7 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 	if e != nil {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
-		_ = client.ClosePane(cleanup, pane)
+		_ = i.closeOwnedPane(cleanup, t.HerdrServer, workspace, pane)
 		if dir != "" {
 			_ = os.RemoveAll(dir)
 		}

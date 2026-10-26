@@ -81,13 +81,6 @@ func (i *Integration) prepareWorktree(ctx context.Context, r *Runner, m model.Me
 	if plan.Share {
 		return &m, nil
 	}
-	if !plan.Reuse {
-		if e = gitwt.AddWorktree(ctx, *m.Folder, plan.Path, plan.Branch); e != nil {
-			return nil, e
-		}
-	} else if _, e = os.Stat(plan.Path); e != nil {
-		return nil, model.NewError(model.ErrorLaunchFailed, "recorded worktree is missing").WithDetail("cause", e.Error())
-	}
 	base := "HEAD"
 	if !plan.Reuse {
 		probe, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -98,29 +91,35 @@ func (i *Integration) prepareWorktree(ctx context.Context, r *Runner, m model.Me
 			base = strings.TrimSpace(string(raw))
 		}
 	}
+	// Reserve before git: even a crash or generation loss after creation leaves
+	// an app-visible owned record that remove-worktrees can inspect and remove.
+	if !plan.Reuse {
+		id, e := i.b.opts.ID()
+		if e != nil {
+			return nil, e
+		}
+		e = r.write(ctx, &m, func(tx *store.Tx, _ *store.Team) error {
+			return tx.InsertWorktree(store.WorktreeRecord{ID: id, TeamID: m.Team, MemberID: m.ID, Repo: plan.Repo, Path: plan.Path, Branch: plan.Branch, Base: base, CreatedAt: i.b.now()})
+		})
+		if e != nil {
+			return nil, e
+		}
+		if e = gitwt.AddWorktree(ctx, *m.Folder, plan.Path, plan.Branch); e != nil {
+			return nil, e
+		}
+	} else if _, e = os.Stat(plan.Path); e != nil {
+		return nil, model.NewError(model.ErrorLaunchFailed, "recorded worktree is missing").WithDetail("cause", e.Error())
+	}
 	var ready *model.Member
 	e = r.write(ctx, &m, func(tx *store.Tx, _ *store.Team) error {
-		var id string
-		if plan.Reuse {
-			row, e := tx.GetWorktreeByPath(plan.Path)
-			if e != nil {
-				return e
-			}
-			id = row.ID
-		} else {
-			var e error
-			id, e = i.b.opts.ID()
-			if e != nil {
-				return e
-			}
-			if e = tx.InsertWorktree(store.WorktreeRecord{ID: id, TeamID: m.Team, MemberID: m.ID, Repo: plan.Repo, Path: plan.Path, Branch: plan.Branch, Base: base, CreatedAt: i.b.now()}); e != nil {
-				return e
-			}
+		row, e := tx.GetWorktreeByPath(plan.Path)
+		if e != nil {
+			return e
 		}
+		id := row.ID
 		if e := tx.UpdateMember(m.ID, store.MemberPatch{WorktreeID: ptr(&id)}, i.b.now()); e != nil {
 			return e
 		}
-		var e error
 		ready, e = tx.GetMember(m.ID)
 		return e
 	})
