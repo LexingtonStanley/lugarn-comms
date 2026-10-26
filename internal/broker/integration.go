@@ -28,6 +28,7 @@ type HerdrAPI interface {
 	Agent(context.Context, string) (herdr.Agent, error)
 	Prompt(context.Context, string, string) (herdr.Agent, error)
 	Wait(context.Context, string, []model.Activity, time.Duration) (herdr.Agent, error)
+	ReadAgent(context.Context, string, int) (string, error)
 }
 
 // IntegrationOptions supplies absolute broker/Herdr paths and the explicit home
@@ -73,7 +74,7 @@ func NewIntegration(b *Broker, opts IntegrationOptions) (*Integration, error) {
 	}
 	integration := &Integration{b: b, opts: opts}
 	integration.adapter = &harnessAdapter{binary: opts.Binary, state: b.opts.StateDir, home: opts.HomeDir, probe: b.opts.Probe, models: opts.Models, extra: opts.ExtraEnv}
-	integration.panes = &paneAdapter{clients: opts.Herdr, observed: map[string]model.Activity{}, submitted: map[string]bool{}}
+	integration.panes = &paneAdapter{clients: opts.Herdr, observed: map[string]model.Activity{}, submitted: map[string]bool{}, checked: map[string]int64{}}
 	return integration, nil
 }
 
@@ -92,6 +93,7 @@ func (i *Integration) Runner(team string, opts RunnerOptions) *Runner {
 	lifecycle := &integrationLifecycle{i: i, r: r}
 	r.opts.PaneLifecycle = lifecycle
 	r.opts.Requests = lifecycle
+	r.checkPane = lifecycle.checkPane
 	r.prepareMember = func(ctx context.Context, m model.Member) (*model.Member, error) { return i.prepareWorktree(ctx, r, m) }
 	r.onAcquire = func(ctx context.Context) error {
 		placement, e := i.placement(team)
@@ -215,6 +217,7 @@ type paneAdapter struct {
 	mu        sync.Mutex
 	observed  map[string]model.Activity
 	submitted map[string]bool
+	checked   map[string]int64
 }
 
 func paneIdentity(m model.Member) (string, string) {

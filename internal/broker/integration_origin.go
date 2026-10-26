@@ -1,10 +1,13 @@
 package broker
 
 import (
+	"bufio"
 	"encoding/json"
+	"errors"
+	"github.com/google/uuid"
+	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
@@ -42,34 +45,99 @@ func (b *Broker) rememberOrigin(m model.Member, session string) error {
 	}
 	return statedir.WriteSecret(path, raw)
 }
+
+// codexRolloutCWD opens only a matching regular rollout, and parses only its
+// first session_meta line. No config, auth store or other CODEX_HOME file is read.
+func codexRolloutCWD(session string) (string, error) {
+	if _, e := uuid.Parse(session); e != nil {
+		return "", e
+	}
+	home := os.Getenv("CODEX_HOME")
+	if home == "" {
+		user, e := os.UserHomeDir()
+		if e != nil {
+			return "", e
+		}
+		home = filepath.Join(user, ".codex")
+	}
+	var cwd string
+	err := filepath.WalkDir(filepath.Join(home, "sessions"), func(path string, d os.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !strings.HasPrefix(d.Name(), "rollout-") || !strings.HasSuffix(d.Name(), "-"+session+".jsonl") {
+			return nil
+		}
+		info, e := os.Lstat(path)
+		if e != nil {
+			return e
+		}
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+		file, e := os.Open(path)
+		if e != nil {
+			return e
+		}
+		defer file.Close()
+		line, e := bufio.NewReader(io.LimitReader(file, 1024*1024)).ReadBytes('\n')
+		if e != nil && e != io.EOF {
+			return e
+		}
+		var meta struct {
+			Type    string `json:"type"`
+			Payload struct {
+				ID  string `json:"id"`
+				CWD string `json:"cwd"`
+			} `json:"payload"`
+		}
+		if json.Unmarshal(line, &meta) != nil || meta.Type != "session_meta" || meta.Payload.ID != session || !filepath.IsAbs(meta.Payload.CWD) {
+			return errors.New("invalid Codex session_meta")
+		}
+		cwd = meta.Payload.CWD
+		return filepath.SkipAll
+	})
+	if err != nil {
+		return "", err
+	}
+	if cwd == "" {
+		return "", os.ErrNotExist
+	}
+	return cwd, nil
+}
 func (b *Broker) assertCodexWorkdir(m model.Member) error {
 	if m.Harness == nil || *m.Harness != model.HarnessCodex {
 		return nil
 	}
-	fail := func() error {
-		return model.NewError(model.ErrorHarnessUnavailable, "Codex pane workdir must match its recorded thread workdir").WithDetail("reason", "unresolvable")
+	fail := func(cause string) error {
+		return model.NewError(model.ErrorLaunchFailed, "Codex pane workdir precondition failed").WithDetail("cause", cause)
 	}
-	if m.Session == nil || m.Workdir == nil {
-		return fail()
-	}
-	raw, e := os.ReadFile(b.originPath(m.ID, *m.Session))
-	if e != nil {
-		return fail()
-	}
-	var origin sessionOrigin
-	if json.Unmarshal(raw, &origin) != nil {
-		return fail()
+	if m.Workdir == nil {
+		return fail("workdir_missing")
 	}
 	actual, e := filepath.EvalSymlinks(*m.Workdir)
 	if e != nil {
-		return fail()
+		return fail("workdir_missing")
 	}
-	equal := filepath.Clean(actual) == filepath.Clean(origin.Workdir)
-	if runtime.GOOS == "windows" {
-		equal = strings.EqualFold(filepath.Clean(actual), filepath.Clean(origin.Workdir))
+	if stat, e := os.Stat(actual); e != nil || !stat.IsDir() {
+		return fail("workdir_missing")
 	}
-	if !equal {
-		return fail()
+	if m.Session == nil {
+		return fail("rollout_missing")
+	}
+	recorded, e := codexRolloutCWD(*m.Session)
+	if e != nil {
+		return fail("rollout_missing")
+	}
+	origin, e := filepath.EvalSymlinks(recorded)
+	if e != nil {
+		return fail("workdir_missing")
+	}
+	if !sameNativePath(actual, origin) {
+		return fail("workdir_changed")
 	}
 	return nil
 }

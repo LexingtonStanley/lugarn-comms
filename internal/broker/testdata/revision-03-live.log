@@ -1,0 +1,10 @@
+=== RUN   TestIntegrationLiveCodexWorkdir
+    integration_codex_live_linux_test.go:112: gpt-6-luna brief-only turn session=01a17a0a-e515-71f3-9e01-b4e84c417749
+    integration_codex_live_linux_test.go:118: removed rollout cwd A: launch_failed cause=workdir_missing
+    integration_codex_live_linux_test.go:127: test-only pane cwd B: launch_failed cause=resume_picker; pane closed; no delivery submitted
+    integration_codex_live_linux_test.go:128: herdr --session lugarn-test-b5dcb93c897e0499 server stop:  (<nil>)
+    integration_codex_live_linux_test.go:128: delete own stopped session lugarn-test-b5dcb93c897e0499: deleted session lugarn-test-b5dcb93c897e0499
+         (<nil>)
+--- PASS: TestIntegrationLiveCodexWorkdir (10.16s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/broker	10.172s

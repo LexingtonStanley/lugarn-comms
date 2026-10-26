@@ -36,6 +36,7 @@ func TestIntegrationPaneLaunchAndSessionBeforePane(t *testing.T) {
 	for _, harness := range []model.Harness{model.HarnessClaude, model.HarnessCodex} {
 		t.Run(string(harness), func(t *testing.T) {
 			b, _ := setup(t)
+			t.Setenv("CODEX_HOME", t.TempDir())
 			ctx := context.Background()
 			must(t, b.db.Write(ctx, func(tx *store.Tx) error {
 				if e := tx.UpdateTeam("t", store.TeamPatch{HerdrWorkspace: ptr(ptr("workspace-owned"))}, b.now()); e != nil {
@@ -56,6 +57,9 @@ func TestIntegrationPaneLaunchAndSessionBeforePane(t *testing.T) {
 			var prompt string
 			r.opts.Headless = &headlessStub{fn: func(s turnStart) {
 				prompt = s.prompt
+				if harness == model.HarnessCodex {
+					writeCodexRollout(t, "00000000-0000-4000-8000-000000000001", s.launch.Workdir)
+				}
 				s.handle.complete(TurnOutcome{Acknowledged: true, Session: ptr("00000000-0000-4000-8000-000000000001"), ExitCode: ptr(int64(0)), Text: "ready"})
 			}}
 			must(t, r.acquire(ctx))

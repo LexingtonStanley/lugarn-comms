@@ -20,6 +20,7 @@ var errRunnerGeneration = model.NewError(model.ErrorLeaseConflict, "runner membe
 // Cancelling its context detaches live turns; a team stop cancels them instead.
 type Runner struct {
 	onStop        func(context.Context) error
+	checkPane     func(context.Context, model.Member) error
 	prepareMember func(context.Context, model.Member) (*model.Member, error)
 	onAcquire     func(context.Context) error
 	paneObserved  map[string]runnerPanePoll

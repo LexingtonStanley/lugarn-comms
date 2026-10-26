@@ -153,6 +153,14 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 	default:
 		return r.paneHolds(ctx, m, ptr(model.DeliveryReasonRecipientUnknown))
 	}
+	if r.checkPane != nil {
+		if e = r.checkPane(ctx, m); e != nil {
+			if model.AsError(e).Code == model.ErrorLaunchFailed {
+				return nil
+			}
+			return r.paneRetry(ctx, m, e)
+		}
+	}
 	if e = r.paneHolds(ctx, m, nil); e != nil {
 		return e
 	}

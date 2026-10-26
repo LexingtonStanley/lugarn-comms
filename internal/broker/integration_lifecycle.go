@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"path/filepath"
+	"strings"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/harness"
 	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
@@ -214,6 +215,9 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 		return e
 	}
 	args, e := harness.Args(launch, model.ModePane)
+	if launch.Harness == model.HarnessCodex {
+		args = append(args, "--cd", launch.WorkDir)
+	}
 	if e != nil {
 		return e
 	}
@@ -304,4 +308,35 @@ func (l *integrationLifecycle) Exited(ctx context.Context, m model.Member) error
 		return l.toHeadless(ctx, m, model.LeaseCausePaneExit, false)
 	}
 	return l.stopMember(ctx, m, reason, cause)
+}
+
+// Herdr's idle state includes Codex's resume picker. Before the first delivery
+// in each pane generation, inspect its fixed title, never its choices.
+func (l *integrationLifecycle) checkPane(ctx context.Context, m model.Member) error {
+	if m.Harness == nil || *m.Harness != model.HarnessCodex {
+		return nil
+	}
+	p := l.i.panes
+	key := paneKey(m)
+	p.mu.Lock()
+	generation, ok := p.checked[key]
+	p.mu.Unlock()
+	if ok && generation == m.Lease.Generation {
+		return nil
+	}
+	server, name := paneIdentity(m)
+	text, e := l.i.opts.Herdr(server).ReadAgent(ctx, name, 100)
+	if e != nil {
+		return e
+	}
+	if strings.Contains(strings.Join(strings.Fields(text), " "), "Working directory · resume") {
+		if e = l.closePane(ctx, m); e != nil {
+			return e
+		}
+		return l.r.launchFailed(ctx, m, model.NewError(model.ErrorLaunchFailed, "Codex resume picker").WithDetail("cause", "resume_picker"))
+	}
+	p.mu.Lock()
+	p.checked[key] = m.Lease.Generation
+	p.mu.Unlock()
+	return nil
 }

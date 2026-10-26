@@ -235,7 +235,11 @@ func (r *Runner) launchFailed(ctx context.Context, m model.Member, cause error) 
 			return e
 		}
 	}
-	return model.NewError(model.ErrorLaunchFailed, "member launch failed").WithDetail("cause", cause.Error())
+	failure := model.NewError(model.ErrorLaunchFailed, "member launch failed").WithDetail("cause", cause.Error())
+	if value, ok := model.AsError(cause).Details["cause"]; ok {
+		failure.WithDetail("cause", value)
+	}
+	return failure
 }
 func (r *Runner) removeLaunchFiles(ctx context.Context, id string) error {
 	if e := r.opts.Files.Delete(ctx, id); e != nil {

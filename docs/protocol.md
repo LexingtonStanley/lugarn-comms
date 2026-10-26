@@ -815,10 +815,16 @@ Notes:
   with the cwd Codex itself recorded for the thread (its rollout's `session_meta`). If that
   folder is gone (a removed worktree, say) or differs, the launch fails (`launch_failed`,
   `details.cause: workdir_missing` or `workdir_changed`) rather than opening anywhere else.
+  If its rollout cannot be found or its first `session_meta` cannot be read, the cause is
+  `rollout_missing`. Only the first line of a matching regular rollout under
+  `$CODEX_HOME/sessions/` (else `~/.codex/sessions/`) is read.
   And before the first delivery to a Codex pane, the runner checks that the pane has left
   the picker, since Herdr's `idle` alone doesn't show it. A pane still at the picker isn't
   answered: the launch fails (`details.cause: resume_picker`) and the pane closes. C2d
-  pins how the check is made.
+  uses an explicit `--cd <validated cwd>` on `codex resume` to avoid the working-directory
+  prompt (the supported CLI option), and still reads `agent read --source recent-unwrapped`
+  before the first delivery of each pane generation. The fixed title
+  `Working directory · resume` fails and closes the launch; no choice is sent.
 - **pi** gets no MCP registration; the brief points it at the CLI, and its identity travels in
   the environment.
 
