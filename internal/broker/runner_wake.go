@@ -8,6 +8,11 @@ import (
 )
 
 func (r *Runner) mayWake(tx *store.Tx, m model.Member) (bool, error) {
+	current, e := tx.GetMember(m.ID)
+	if e != nil {
+		return false, e
+	}
+	m = *current
 	deliveries, e := tx.NextDeliveries(m.ID, 0)
 	if e != nil {
 		return false, e
@@ -20,6 +25,13 @@ func (r *Runner) mayWake(tx *store.Tx, m model.Member) (bool, error) {
 		message, e := tx.GetMessage(item.MessageID)
 		if e != nil {
 			return false, e
+		}
+		// A launch failure consumes the old wake trigger. A new message may
+		// try again; the person's resend requeues an old delivery with a new
+		// updated_at. Open-terminal is an explicit request and bypasses waking.
+		if m.StopReason != nil && *m.StopReason == model.StopReasonLaunchFailed && m.StoppedAt != nil &&
+			!message.CreatedAt.After(m.StoppedAt.Time) && !item.Delivery.UpdatedAt.After(m.StoppedAt.Time) {
+			continue
 		}
 		from, e := tx.GetMember(message.From.ID)
 		if e != nil {
