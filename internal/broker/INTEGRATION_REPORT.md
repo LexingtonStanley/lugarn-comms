@@ -200,8 +200,8 @@ C2d safety/common brief. Fifteen focused commits implement the requested order:
 8, 11, 12, 13, 1, 2, 3, then 4, 5, 6, 7, 9, 10, 14, 15. Each carries the requested
 Codex co-author trailer. No push or PR was made.
 
-The earlier default-store fallback is now **confirmed by Lex's review**, rather
-than hypothetical. Lex inspected and moved that empty store aside. No inspection
+The earlier default-store fallback is now **confirmed by Nova's review**, rather
+than hypothetical. Nova inspected and moved that empty store aside. No inspection
 or modification of the person's `~/.lugarn` was performed in this revision round.
 No integration code or tool action opened a provider credential file or copied a
 provider config home. The live harness inherited the person's own config. All new real probes were opt-in and

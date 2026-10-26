@@ -42,7 +42,7 @@ func (l *integrationLifecycle) Execute(ctx context.Context, req model.Request) e
 			if current != nil && (current.StopReason == nil || *current.StopReason != model.StopReasonLaunchFailed) {
 				_ = l.r.launchFailed(context.WithoutCancel(ctx), *current, e)
 			}
-			return model.NewError(model.ErrorLaunchFailed, "spawn launch failed").WithDetail("cause", e.Error())
+			return launchFailure(e)
 		}
 		return nil
 	case model.RequestKindStopMember:

@@ -778,6 +778,7 @@ type MemberStateChangedEventData struct {
 	From   model.MemberState `json:"from"`
 	To     model.MemberState `json:"to"`
 	Reason *model.StopReason `json:"reason"`
+	Error  *model.Error      `json:"error"`
 }
 
 func (MemberStateChangedEventData) eventData() {}
