@@ -12,19 +12,24 @@ import (
 
 type nativeProcesses struct{}
 type runnerProcessRecord struct {
-	PID   int64  `json:"pid"`
-	Birth string `json:"birth"`
+	PID     int64  `json:"pid"`
+	Birth   string `json:"birth"`
+	JobName string `json:"job_name,omitempty"`
 }
 
 func (r *Runner) processPath(turn model.Turn) string {
 	return filepath.Join(r.b.opts.StateDir, "launch", turn.Launch, turn.ID+".process.json")
 }
-func (r *Runner) recordProcess(ctx context.Context, turn model.Turn, pid int64) error {
+func (r *Runner) recordProcess(ctx context.Context, turn model.Turn, pid int64, jobNames ...string) error {
 	state, e := r.opts.Processes.Inspect(ctx, pid)
 	if e != nil {
 		return e
 	}
-	data, e := json.Marshal(runnerProcessRecord{PID: pid, Birth: state.Birth})
+	record := runnerProcessRecord{PID: pid, Birth: state.Birth}
+	if len(jobNames) > 0 {
+		record.JobName = jobNames[0]
+	}
+	data, e := json.Marshal(record)
 	if e != nil {
 		return e
 	}

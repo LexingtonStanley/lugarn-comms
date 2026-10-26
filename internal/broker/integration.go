@@ -196,6 +196,7 @@ type harnessHandle struct {
 	acks   chan TurnAcknowledgement
 }
 
+func (h *harnessHandle) JobName() string                              { return h.handle.JobName }
 func (h *harnessHandle) PID() int64                                   { return int64(h.handle.PID) }
 func (h *harnessHandle) Acknowledgements() <-chan TurnAcknowledgement { return h.acks }
 func (h *harnessHandle) Cancel() error                                { h.handle.Cancel(); return nil }

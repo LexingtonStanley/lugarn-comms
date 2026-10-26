@@ -230,7 +230,11 @@ func (r *Runner) runPreparedTurn(ctx context.Context, w *runnerTurn) (err error)
 		return tx.UpdateTurn(w.turn.ID, &w.turn.LeaseGeneration, store.TurnPatch{PID: ptr(ptr(h.PID()))})
 	})
 	if e == nil {
-		e = r.recordProcess(persist, w.turn, h.PID())
+		jobName := ""
+		if job, ok := h.(interface{ JobName() string }); ok {
+			jobName = job.JobName()
+		}
+		e = r.recordProcess(persist, w.turn, h.PID(), jobName)
 	}
 	cancel()
 	if e != nil {
