@@ -34,9 +34,18 @@ func (p nativeProcesses) Cancel(ctx context.Context, pid int64, birth string) er
 	if birth == "" || birth != s.Birth {
 		return fmt.Errorf("refusing to kill unverified process %d", pid)
 	}
-	if e = unix.Kill(-int(pid), unix.SIGKILL); e == unix.ESRCH {
-		e = unix.Kill(int(pid), unix.SIGKILL)
+	group, e := unix.Getpgid(int(pid))
+	if e == unix.ESRCH {
+		return nil
 	}
+	if e != nil {
+		return e
+	}
+	target := int(pid)
+	if group == int(pid) {
+		target = -int(pid)
+	}
+	e = unix.Kill(target, unix.SIGKILL)
 	if e == unix.ESRCH {
 		return nil
 	}

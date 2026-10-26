@@ -64,7 +64,7 @@ func (r *Runner) pass(ctx context.Context) (bool, error) {
 		if e != nil {
 			return e
 		}
-		if !r.owns(team) {
+		if !r.owns(team) && team.State != model.TeamStateStopping && team.State != model.TeamStateStopped {
 			return errRunnerLost
 		}
 		members, e = tx.ListMembers(r.team, false)
@@ -326,6 +326,9 @@ func (r *Runner) stop(ctx context.Context) error {
 			return e
 		}
 		s.Runner = runner
+		if t.Runner.State == model.RunnerStateDown {
+			return nil
+		}
 		return r.b.event(tx, &t.ID, model.EventRunnerStateChanged, true, nil, nil, wire.RunnerStateChangedEventData{Team: s, From: t.Runner.State, To: model.RunnerStateDown})
 	})
 }

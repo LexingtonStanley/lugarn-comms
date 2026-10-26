@@ -45,14 +45,14 @@ func (p nativeProcesses) Cancel(ctx context.Context, pid int64, birth string) er
 	}
 	// C2c normally cancels the job. For an orphan, retain process handles while
 	// walking the snapshot, and terminate descendants before the verified root.
-	return p.killTree(ctx, uint32(pid), map[uint32]bool{})
+	return p.killTree(ctx, uint32(pid), birth, 0, map[uint32]bool{})
 }
-func (p nativeProcesses) killTree(ctx context.Context, pid uint32, seen map[uint32]bool) error {
+func (p nativeProcesses) killTree(ctx context.Context, pid uint32, expected string, parentBirth uint64, seen map[uint32]bool) error {
 	if seen[pid] {
 		return nil
 	}
 	seen[pid] = true
-	h, e := windows.OpenProcess(windows.PROCESS_TERMINATE|windows.SYNCHRONIZE, false, pid)
+	h, e := windows.OpenProcess(windows.PROCESS_TERMINATE|windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.SYNCHRONIZE, false, pid)
 	if e == windows.ERROR_INVALID_PARAMETER {
 		return nil
 	}
@@ -60,6 +60,17 @@ func (p nativeProcesses) killTree(ctx context.Context, pid uint32, seen map[uint
 		return e
 	}
 	defer windows.CloseHandle(h)
+	var created, exited, kernel, user windows.Filetime
+	if e = windows.GetProcessTimes(h, &created, &exited, &kernel, &user); e != nil {
+		return e
+	}
+	birth := uint64(created.HighDateTime)<<32 | uint64(created.LowDateTime)
+	if expected != "" && expected != fmt.Sprintf("%d:%d", created.HighDateTime, created.LowDateTime) {
+		return fmt.Errorf("refusing to kill reused process %d", pid)
+	}
+	if birth < parentBirth {
+		return nil
+	}
 	snap, e := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
 	if e != nil {
 		return e
@@ -69,7 +80,7 @@ func (p nativeProcesses) killTree(ctx context.Context, pid uint32, seen map[uint
 	e = windows.Process32First(snap, &entry)
 	for e == nil {
 		if entry.ParentProcessID == pid {
-			if e := p.killTree(ctx, entry.ProcessID, seen); e != nil {
+			if e := p.killTree(ctx, entry.ProcessID, "", birth, seen); e != nil {
 				return e
 			}
 		}

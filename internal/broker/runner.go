@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"errors"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -23,7 +24,6 @@ type Runner struct {
 	workers      sync.WaitGroup
 	stopping     atomic.Bool
 	workerErrors chan error
-	wake         chan struct{}
 	handles      map[string]TurnHandle
 	orphans      map[string]runnerOrphan
 	b            *Broker
@@ -63,7 +63,7 @@ func NewRunner(b *Broker, team string, opts RunnerOptions) *Runner {
 	if opts.PollInterval <= 0 || opts.PollInterval > 250*time.Millisecond {
 		opts.PollInterval = 250 * time.Millisecond
 	}
-	if opts.HeartbeatInterval <= 0 {
+	if opts.HeartbeatInterval <= 0 || opts.HeartbeatInterval > 5*time.Second {
 		opts.HeartbeatInterval = 5 * time.Second
 	}
 	if opts.PaneTimeout <= 0 {
@@ -72,7 +72,7 @@ func NewRunner(b *Broker, team string, opts RunnerOptions) *Runner {
 	if opts.Binary == nil {
 		opts.Binary = b.opts.Probe.Binary
 	}
-	return &Runner{b: b, team: team, opts: opts, busy: map[string]bool{}, startMembers: map[string]bool{}, orphans: map[string]runnerOrphan{}, workerErrors: make(chan error, 64), wake: make(chan struct{}, 1), handles: map[string]TurnHandle{}}
+	return &Runner{b: b, team: team, opts: opts, busy: map[string]bool{}, startMembers: map[string]bool{}, orphans: map[string]runnerOrphan{}, workerErrors: make(chan error, 64), handles: map[string]TurnHandle{}}
 }
 func (r *Runner) owns(t *store.Team) bool {
 	return t.Runner.PID != nil && r.owner.PID != nil && *t.Runner.PID == *r.owner.PID && t.Runner.StartedAt != nil && r.owner.StartedAt != nil && t.Runner.StartedAt.Equal(r.owner.StartedAt.Time)
@@ -152,7 +152,7 @@ func (r *Runner) heartbeat(ctx context.Context) error {
 			return e
 		}
 		if previous != model.RunnerStateUp {
-			t.Runner = r.owner
+			t.Runner = owner
 			s, e := r.b.status(tx, t)
 			if e != nil {
 				return e
@@ -179,7 +179,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	defer cancel()
 	heartbeatDone := make(chan struct{})
 	go func() { defer close(heartbeatDone); r.heartbeats(workCtx) }()
-	defer func() { cancel(); <-heartbeatDone }()
+	defer func() {
+		cancel()
+		<-heartbeatDone
+		detached := make(chan struct{})
+		go func() { r.workers.Wait(); close(detached) }()
+		select {
+		case <-detached:
+		case <-time.After(5 * time.Second):
+		}
+	}()
 	if e := r.reconcile(workCtx); e != nil {
 		if ctx.Err() != nil {
 			return nil
@@ -194,14 +203,13 @@ func (r *Runner) Run(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return nil
 			}
+			if errors.Is(e, errRunnerLost) && r.teamStopping(ctx) {
+				return r.shutdown(ctx, cancel)
+			}
 			return model.AsError(e)
 		}
 		if stop {
-			r.stopping.Store(true)
-			cancel()
-			cleanup, done := context.WithTimeout(context.WithoutCancel(ctx), 25*time.Second)
-			defer done()
-			return r.stop(cleanup)
+			return r.shutdown(ctx, cancel)
 		}
 		select {
 		case <-ctx.Done():
@@ -210,9 +218,34 @@ func (r *Runner) Run(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return nil
 			}
+			if errors.Is(e, errRunnerLost) && r.teamStopping(ctx) {
+				return r.shutdown(ctx, cancel)
+			}
 			return model.AsError(e)
 		case <-tick.C:
-		case <-r.wake:
 		}
 	}
+}
+
+func (r *Runner) teamStopping(ctx context.Context) bool {
+	var stopping bool
+	_ = r.b.db.Read(ctx, func(tx *store.Tx) error {
+		t, e := tx.GetTeam(r.team)
+		if e == nil {
+			stopping = t.State == model.TeamStateStopping || t.State == model.TeamStateStopped
+		}
+		return e
+	})
+	return stopping
+}
+func (r *Runner) shutdown(ctx context.Context, cancel context.CancelFunc) error {
+	r.stopping.Store(true)
+	cancel()
+	cleanup, done := context.WithTimeout(context.WithoutCancel(ctx), 25*time.Second)
+	defer done()
+	e := r.stop(cleanup)
+	if errors.Is(e, errRunnerLost) && r.teamStopping(cleanup) {
+		return nil
+	}
+	return e
 }

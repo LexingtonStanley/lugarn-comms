@@ -226,3 +226,90 @@ func TestRunnerStartFailureAndHeadlessCap(t *testing.T) {
 		t.Fatal("overlapping recipient turn")
 	}
 }
+
+func TestRunnerProfileEditWaitsForNextLaunch(t *testing.T) {
+	driver := &headlessStub{started: make(chan turnStart, 1), fn: func(s turnStart) {
+		s.handle.complete(TurnOutcome{Acknowledged: true, Session: ptr("thread"), ExitCode: ptr(int64(0))})
+	}}
+	b, r, m := headlessFixture(t, driver)
+	ctx := context.Background()
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		if e := tx.UpdateMember(m.ID, store.MemberPatch{Profile: ptr(ptr(model.ProfileReadOnly))}, b.now()); e != nil {
+			return e
+		}
+		v, e := tx.GetMember(m.ID)
+		if e == nil {
+			m = *v
+		}
+		return e
+	}))
+	sendToWriter(t, b, "task")
+	must(t, r.runTurn(ctx, m))
+	started := <-driver.started
+	if started.launch.Profile != model.ProfileWorkspace {
+		t.Fatalf("active launch changed profile to %s", started.launch.Profile)
+	}
+}
+
+func TestRunnerHeadlessTeamCapAndBatchOrder(t *testing.T) {
+	b, r, writer := headlessFixture(t, &headlessStub{})
+	ctx := context.Background()
+	var reviewer *model.Member
+	must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; reviewer, e = tx.GetMember("reviewer"); return e }))
+	reviewer, e := r.launchHeadless(ctx, *reviewer, model.LeaseCauseStart)
+	must(t, e)
+	first := sendToWriter(t, b, "first")
+	second := sendToWriter(t, b, "second")
+	_, e = b.ToolSend(ctx, service.Caller{TeamID: "t", MemberID: "writer"}, wire.SendInput{To: "reviewer", Text: "other recipient"})
+	must(t, e)
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		return tx.UpdateTeam("t", store.TeamPatch{HeadlessTurns: ptr(int64(1))}, b.now())
+	}))
+	w, e := r.prepareTurn(ctx, writer)
+	must(t, e)
+	if w == nil || len(w.items) != 2 || w.items[0].MessageID != first.ID || w.items[1].MessageID != second.ID {
+		t.Fatal(w)
+	}
+	blocked, e := r.prepareTurn(ctx, *reviewer)
+	must(t, e)
+	if blocked != nil {
+		t.Fatal("team headless_turns cap exceeded")
+	}
+	must(t, r.finishTurn(ctx, w, TurnOutcome{Error: "fake failure"}, false))
+	ready, e := r.prepareTurn(ctx, *reviewer)
+	must(t, e)
+	if ready == nil {
+		t.Fatal("team slot was not released")
+	}
+}
+
+func TestRunnerClaudeAssignedSessionAndResume(t *testing.T) {
+	b, _ := setup(t)
+	ctx := context.Background()
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		return tx.UpdateMember("writer", store.MemberPatch{Harness: ptr(ptr(model.HarnessClaude))}, b.now())
+	}))
+	runnerReady(t, b)
+	driver := &headlessStub{started: make(chan turnStart, 2), fn: func(s turnStart) { s.handle.complete(TurnOutcome{Acknowledged: true, ExitCode: ptr(int64(0))}) }}
+	r := NewRunner(b, "t", RunnerOptions{Headless: driver, Files: fakeLaunchFiles{}, Processes: &fakeProcesses{alive: true, birth: "fake"}, Binary: func(model.Harness) (string, error) { return "fake", nil }})
+	must(t, r.acquire(ctx))
+	var m *model.Member
+	must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; m, e = tx.GetMember("writer"); return e }))
+	m, e := r.launchHeadless(ctx, *m, model.LeaseCauseStart)
+	must(t, e)
+	if m.Session == nil || len(m.Sessions) != 1 || m.Sessions[0].Source != model.SessionSourceAssigned {
+		t.Fatal(m)
+	}
+	sendToWriter(t, b, "first")
+	must(t, r.runTurn(ctx, *m))
+	first := <-driver.started
+	if !first.launch.NewSession || first.launch.Session == nil || *first.launch.Session != *m.Session {
+		t.Fatal(first.launch)
+	}
+	sendToWriter(t, b, "second")
+	must(t, r.runTurn(ctx, *m))
+	second := <-driver.started
+	if second.launch.NewSession || *second.launch.Session != *m.Session {
+		t.Fatal(second.launch)
+	}
+}

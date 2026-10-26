@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/policy"
@@ -216,13 +217,13 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 	}
 	if e = r.opts.Panes.Submit(ctx, current, prompt); e != nil {
 		if ctx.Err() != nil {
-			return nil
+			return r.cancelledPane(ctx, current, items, false)
 		}
 		return r.finishPane(ctx, current, items, model.DeliveryStateHeld, ptr(model.DeliveryReasonDeliveryFailed))
 	}
 	activity, e := r.opts.Panes.WaitActivity(ctx, current, r.opts.PaneTimeout)
 	if ctx.Err() != nil {
-		return nil
+		return r.cancelledPane(ctx, current, items, activity && e == nil)
 	}
 	if e != nil || !activity {
 		return r.finishPane(ctx, current, items, model.DeliveryStateUncertain, ptr(model.DeliveryReasonNoActivity))
@@ -252,4 +253,16 @@ func (r *Runner) finishPane(ctx context.Context, m model.Member, items []store.D
 		}
 		return nil
 	})
+}
+
+func (r *Runner) cancelledPane(ctx context.Context, m model.Member, items []store.DeliveryItem, confirmed bool) error {
+	if !r.stopping.Load() {
+		return nil
+	}
+	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 20*time.Second)
+	defer cancel()
+	if confirmed {
+		return r.finishPane(cleanup, m, items, model.DeliveryStateDelivered, nil)
+	}
+	return r.finishPane(cleanup, m, items, model.DeliveryStateUncertain, ptr(model.DeliveryReasonNoActivity))
 }

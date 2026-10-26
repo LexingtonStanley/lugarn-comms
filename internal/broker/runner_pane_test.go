@@ -156,3 +156,68 @@ func TestRunnerPaneOverflowAndPointerSession(t *testing.T) {
 		return nil
 	}))
 }
+
+type lifecycleStub struct {
+	exits  int
+	member string
+}
+
+func (p *lifecycleStub) Open(context.Context, model.Member, model.LeaseCause) error {
+	return runnerNotBuilt()
+}
+func (p *lifecycleStub) Exited(_ context.Context, m model.Member) error {
+	p.exits++
+	p.member = m.ID
+	return nil
+}
+func TestRunnerReconcileGonePaneUsesLifecycle(t *testing.T) {
+	p := &panesStub{gone: true}
+	_, r, m := paneFixture(t, p)
+	lifecycle := &lifecycleStub{}
+	r.opts.PaneLifecycle = lifecycle
+	must(t, r.reconcile(context.Background()))
+	if lifecycle.exits != 1 || lifecycle.member != m.ID {
+		t.Fatal(lifecycle)
+	}
+}
+
+type blockingActivityPanes struct {
+	panesStub
+	submitted chan struct{}
+}
+
+func (p *blockingActivityPanes) Submit(context.Context, model.Member, string) error {
+	close(p.submitted)
+	return nil
+}
+func (p *blockingActivityPanes) WaitActivity(ctx context.Context, _ model.Member, _ time.Duration) (bool, error) {
+	<-ctx.Done()
+	return false, ctx.Err()
+}
+func TestRunnerStoppingMakesPaneSubmissionUncertain(t *testing.T) {
+	p := &blockingActivityPanes{panesStub: panesStub{activity: model.ActivityIdle}, submitted: make(chan struct{})}
+	b, r, m := paneFixture(t, p)
+	message := sendToWriter(t, b, "task")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	workCtx, stop := context.WithCancel(ctx)
+	r.worker(workCtx, m.ID, func(ctx context.Context) error { return r.runPane(ctx, m) })
+	select {
+	case <-p.submitted:
+	case <-ctx.Done():
+		t.Fatal("pane prompt was not submitted")
+	}
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		return tx.UpdateTeam("t", store.TeamPatch{State: ptr(model.TeamStateStopping)}, b.now())
+	}))
+	r.stopping.Store(true)
+	stop()
+	must(t, r.stop(ctx))
+	must(t, b.db.Read(ctx, func(tx *store.Tx) error {
+		d, e := tx.GetDelivery(message.ID, m.ID)
+		if e == nil && (d.State != model.DeliveryStateUncertain || *d.Reason != model.DeliveryReasonNoActivity) {
+			t.Fatal(d)
+		}
+		return e
+	}))
+}

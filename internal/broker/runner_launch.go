@@ -2,9 +2,11 @@ package broker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
@@ -15,9 +17,20 @@ import (
 
 func (r *Runner) memberState(tx *store.Tx, m model.Member, state model.MemberState, reason *model.StopReason) error {
 	now := r.b.now()
+	if state != model.MemberStateRunning {
+		if e := tx.SetMemberActivity(m.ID, nil, now); e != nil {
+			return e
+		}
+	}
+	if state == model.MemberStateStopped {
+		if e := tx.ReleaseHold(m.ID, now); e != nil && !missing(e) {
+			return e
+		}
+	}
 	var started, stopped **model.Time
 	if state == model.MemberStateRunning {
 		started = ptr(&now)
+		stopped = ptr((*model.Time)(nil))
 	}
 	if state == model.MemberStateStopped {
 		stopped = ptr(&now)
@@ -113,8 +126,13 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 	if e == nil {
 		e = r.opts.Files.Write(ctx, desc)
 	}
+	if e == nil {
+		e = r.saveLaunch(desc)
+	}
 	if e != nil {
-		return nil, r.launchFailed(context.WithoutCancel(ctx), *starting, e)
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		return nil, r.launchFailed(cleanup, *starting, e)
 	}
 	var ready *model.Member
 	e = r.write(ctx, starting, func(tx *store.Tx, t *store.Team) error {
@@ -132,6 +150,10 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 			return e
 		}
 		if e = r.setActivity(tx, *ready, model.ActivityIdle); e != nil {
+			return e
+		}
+		ready, e = tx.GetMember(m.ID)
+		if e != nil {
 			return e
 		}
 		return r.b.event(tx, &m.Team, model.EventLeaseChanged, true, &m.ID, nil, wire.LeaseChangedEventData{Member: *ready, From: m.Lease.Driver, To: model.DriverHeadless, Generation: ready.Lease.Generation, Cause: cause})
@@ -217,6 +239,7 @@ func (r *Runner) session(tx *store.Tx, m model.Member, id, seal string, source m
 		if e = tx.InsertMemberSession(rec); e != nil {
 			return e
 		}
+		existing = &rec
 		if e = tx.SetMemberSession(m.ID, &id, r.b.now()); e != nil {
 			return e
 		}
@@ -232,14 +255,45 @@ func (r *Runner) session(tx *store.Tx, m model.Member, id, seal string, source m
 		if e = tx.SetMemberSession(m.ID, &id, r.b.now()); e != nil {
 			return e
 		}
-		_ = existing
 	}
-	if briefed {
-		record, e := tx.GetMemberSession(m.ID, id)
-		if e != nil {
-			return e
-		}
-		return tx.MarkSessionBriefed(m.ID, record.Ordinal, r.b.now())
+	if briefed && existing.BriefedAt == nil {
+		return tx.MarkSessionBriefed(m.ID, existing.Ordinal, r.b.now())
 	}
 	return nil
+}
+
+// Keep effective launch settings separate from mutable member settings. A profile
+// edit applies to the next launch, including across runner restarts.
+func (r *Runner) launchDescriptionPath(id string) string {
+	return filepath.Join(r.b.opts.StateDir, "launch", id, "runner-launch.json")
+}
+func (r *Runner) saveLaunch(desc TurnLaunch) error {
+	raw, e := json.Marshal(desc)
+	if e != nil {
+		return e
+	}
+	path := r.launchDescriptionPath(desc.LaunchID)
+	if e = os.MkdirAll(filepath.Dir(path), 0700); e != nil {
+		return e
+	}
+	return statedir.WriteSecret(path, raw)
+}
+func (r *Runner) effectiveLaunch(desc TurnLaunch) (TurnLaunch, error) {
+	raw, e := os.ReadFile(r.launchDescriptionPath(desc.LaunchID))
+	if os.IsNotExist(e) {
+		return desc, nil
+	}
+	if e != nil {
+		return desc, e
+	}
+	var saved TurnLaunch
+	if e = model.DecodeStrict(raw, &saved); e != nil {
+		return desc, e
+	}
+	if saved.LaunchID != desc.LaunchID || saved.MemberID != desc.MemberID {
+		return desc, model.NewError(model.ErrorInternal, "launch description identity mismatch")
+	}
+	saved.Session = desc.Session
+	saved.NewSession = desc.NewSession
+	return saved, nil
 }

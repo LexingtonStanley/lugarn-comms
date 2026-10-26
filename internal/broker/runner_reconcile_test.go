@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
@@ -168,4 +169,47 @@ func TestRunnerReconcileLiveOrphanAndPIDReuse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRunnerOrphanTimeoutCancelsVerifiedProcess(t *testing.T) {
+	b, _ := setup(t)
+	must(t, statedir.Ensure(b.opts.StateDir))
+	turn, _ := installRunnerTurn(t, b)
+	processes := &fakeProcesses{alive: true, birth: "orphan"}
+	r := NewRunner(b, "t", RunnerOptions{Processes: processes, TurnTimeout: time.Millisecond})
+	must(t, r.recordProcess(context.Background(), turn, *turn.PID))
+	runnerReady(t, b)
+	must(t, r.acquire(context.Background()))
+	now := b.now().Add(time.Second)
+	b.opts.Clock = func() time.Time { return now }
+	must(t, r.reconcile(context.Background()))
+	if processes.cancelled != 1 || len(r.orphans) != 0 {
+		t.Fatalf("cancelled=%d, orphans=%d", processes.cancelled, len(r.orphans))
+	}
+	must(t, b.db.Read(context.Background(), func(tx *store.Tx) error {
+		v, e := tx.GetTurn(turn.ID)
+		if e == nil && v.Status != model.TurnStatusLost {
+			t.Fatal(v)
+		}
+		return e
+	}))
+}
+
+func TestRunnerReconcileInterruptedHeadlessLaunch(t *testing.T) {
+	b, r, m := headlessFixture(t, &headlessStub{})
+	ctx := context.Background()
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		return tx.SetMemberState(m.ID, model.MemberStateStarting, nil, nil, nil, b.now())
+	}))
+	must(t, r.reconcile(ctx))
+	must(t, b.db.Read(ctx, func(tx *store.Tx) error {
+		v, e := tx.GetMember(m.ID)
+		if e != nil {
+			return e
+		}
+		if v.State != model.MemberStateStopped || v.StopReason == nil || *v.StopReason != model.StopReasonLaunchFailed || v.Lease.Driver != model.DriverNone {
+			t.Fatal(v)
+		}
+		return nil
+	}))
 }

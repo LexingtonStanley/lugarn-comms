@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
@@ -134,24 +135,40 @@ func (r *Runner) runTurn(ctx context.Context, m model.Member) error {
 	}
 	binary, e := r.opts.Binary(*m.Harness)
 	if e != nil {
-		return r.finishTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
+		return r.completeTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
 	}
 	if ctx.Err() != nil {
 		return nil
 	}
 	desc := TurnLaunch{Harness: *m.Harness, Profile: *m.Profile, Workdir: *m.Workdir, StateDir: r.b.opts.StateDir, LaunchID: w.turn.Launch, MemberID: m.ID, Binary: binary, Session: w.turn.SessionIDStart}
 	if m.Harness != nil && *m.Harness == model.HarnessClaude && m.Session != nil {
-		_ = r.b.db.Read(ctx, func(tx *store.Tx) error {
+		e = r.b.db.Read(ctx, func(tx *store.Tx) error {
 			s, e := tx.GetMemberSession(m.ID, *m.Session)
 			if e == nil {
 				desc.NewSession = s.Source == model.SessionSourceAssigned && s.BriefedAt == nil
 			}
 			return e
 		})
+		if e != nil {
+			return r.completeTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
+		}
 	}
-	h, e := r.opts.Headless.Start(context.WithoutCancel(ctx), desc, w.prompt)
+	desc, e = r.effectiveLaunch(desc)
 	if e != nil {
-		return r.finishTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
+		return r.completeTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
+	}
+	if stat, err := os.Stat(desc.Workdir); err != nil || !stat.IsDir() {
+		message := "workdir is not a directory"
+		if err != nil {
+			message = err.Error()
+		}
+		return r.completeTurn(ctx, w, TurnOutcome{Error: message}, false)
+	}
+	startup, cancelStartup := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	h, e := r.opts.Headless.Start(startup, desc, w.prompt)
+	cancelStartup()
+	if e != nil {
+		return r.completeTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
 	}
 	r.mu.Lock()
 	r.handles[m.ID] = h
@@ -207,7 +224,7 @@ func (r *Runner) runTurn(ctx context.Context, m model.Member) error {
 				if acked {
 					out.Acknowledged = true
 				}
-				return r.finishTurn(ctx, w, out, true)
+				return r.completeTurn(ctx, w, out, true)
 			case <-ctx.Done():
 				return nil
 			case <-time.After(20 * time.Second):
@@ -228,12 +245,38 @@ func (r *Runner) runTurn(ctx context.Context, m model.Member) error {
 			if acked {
 				out.Acknowledged = true
 			}
-			return r.finishTurn(ctx, w, out, false)
+			return r.completeTurn(ctx, w, out, false)
 		}
 	}
 }
+func (r *Runner) completeTurn(ctx context.Context, w *runnerTurn, out TurnOutcome, timedOut bool) error {
+	if ctx.Err() != nil {
+		if !r.stopping.Load() {
+			return nil
+		}
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 20*time.Second)
+		defer cancel()
+		return r.finishTurn(cleanup, w, out, timedOut)
+	}
+	e := r.finishTurn(ctx, w, out, timedOut)
+	if e != nil && ctx.Err() != nil && r.stopping.Load() {
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 20*time.Second)
+		defer cancel()
+		return r.finishTurn(cleanup, w, out, timedOut)
+	}
+	return e
+}
 func (r *Runner) acknowledge(ctx context.Context, w *runnerTurn, session *string) error {
-	return r.write(ctx, &w.member, func(tx *store.Tx, _ *store.Team) error { return r.acknowledgeTx(tx, w, session) })
+	write := func(ctx context.Context) error {
+		return r.write(ctx, &w.member, func(tx *store.Tx, _ *store.Team) error { return r.acknowledgeTx(tx, w, session) })
+	}
+	e := write(ctx)
+	if e != nil && ctx.Err() != nil && r.stopping.Load() {
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 20*time.Second)
+		defer cancel()
+		return write(cleanup)
+	}
+	return e
 }
 func (r *Runner) acknowledgeTx(tx *store.Tx, w *runnerTurn, session *string) error {
 	current, e := tx.GetTurn(w.turn.ID)

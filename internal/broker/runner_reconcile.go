@@ -20,6 +20,7 @@ type runnerOrphan struct {
 
 func (r *Runner) reconcile(ctx context.Context) error {
 	var panes []model.Member
+	var interrupted []model.Member
 	e := r.write(ctx, nil, func(tx *store.Tx, t *store.Team) error {
 		ds, e := tx.ListTeamDeliveries(t.ID, model.DeliveryStateDelivering)
 		if e != nil {
@@ -45,6 +46,9 @@ func (r *Runner) reconcile(ctx context.Context) error {
 			if e == nil {
 				r.orphans[m.ID] = runnerOrphan{turn: *turn, member: m}
 			}
+			if missing(e) && m.State == model.MemberStateStarting && m.Lease != nil && m.Lease.Driver == model.DriverHeadless {
+				interrupted = append(interrupted, m)
+			}
 			if m.Lease != nil && m.Lease.Driver == model.DriverPane {
 				panes = append(panes, m)
 			}
@@ -64,6 +68,12 @@ func (r *Runner) reconcile(ctx context.Context) error {
 	})
 	if e != nil {
 		return e
+	}
+	for _, m := range interrupted {
+		e := r.launchFailed(ctx, m, errors.New("runner restarted during headless launch"))
+		if e != nil && model.AsError(e).Code != model.ErrorLaunchFailed {
+			return e
+		}
 	}
 	for id, o := range r.orphans {
 		o.birth = r.processBirth(o.turn)
@@ -213,7 +223,7 @@ func (r *Runner) cleanLaunchFiles(ctx context.Context) error {
 	root := filepath.Join(r.b.opts.StateDir, "launch")
 	entries, e := os.ReadDir(root)
 	if os.IsNotExist(e) {
-		return nil
+		e = nil
 	}
 	if e != nil {
 		return e
