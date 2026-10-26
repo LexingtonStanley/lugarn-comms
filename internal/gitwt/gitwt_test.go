@@ -230,9 +230,34 @@ func TestRemoveMergedAndMissingDirectory(t *testing.T) {
 				t.Fatalf("path retained: %v, %v", taken, err)
 			}
 			if strings.Contains(testGit(t, repo, "worktree", "list", "--porcelain"), "lugarn/test/remove") {
-				t.Fatal("worktree registration not pruned")
+				t.Fatal("worktree registration not removed")
 			}
 		})
+	}
+}
+
+func TestRemoveOnlySelectedMissingWorktree(t *testing.T) {
+	repo := newRepo(t)
+	selected := add(t, repo, "selected")
+	other := add(t, repo, "other")
+	for _, path := range []string{selected, other} {
+		if err := os.RemoveAll(path); err != nil {
+			t.Fatal(err)
+		}
+	}
+	outcome, err := Remove(context.Background(), repo, selected, "lugarn/test/selected")
+	if err != nil || outcome != BranchOutcomeDeleted {
+		t.Fatalf("Remove: %s, %v", outcome, err)
+	}
+	listed := testGit(t, repo, "worktree", "list", "--porcelain")
+	if strings.Contains(listed, "branch refs/heads/lugarn/test/selected") {
+		t.Fatal("selected worktree is still registered")
+	}
+	if !strings.Contains(listed, "branch refs/heads/lugarn/test/other") {
+		t.Fatalf("other missing worktree registration was removed: %s", listed)
+	}
+	if exists, err := BranchExists(context.Background(), repo, "lugarn/test/other"); err != nil || !exists {
+		t.Fatalf("other branch lost: %v, %v", exists, err)
 	}
 }
 

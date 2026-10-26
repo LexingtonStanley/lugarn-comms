@@ -203,11 +203,8 @@ func remove(ctx context.Context, repo, path, branch string) (BranchOutcome, erro
 	if state == GitStateDirty {
 		return "", &Refusal{Reason: WorktreeRefusalDirty, Err: fmt.Errorf("worktree has uncommitted or untracked files")}
 	}
-	if state == GitStateMissing {
-		_, err = git(ctx, repo, "worktree", "prune", "--expire", "now")
-	} else {
-		_, err = git(ctx, repo, "worktree", "remove", "--", path)
-	}
+	// remove also accepts a missing directory and affects only this registration.
+	_, err = git(ctx, repo, "worktree", "remove", "--", path)
 	if err != nil {
 		return "", err
 	}
