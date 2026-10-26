@@ -39,6 +39,32 @@ jobs:
         if: runner.os == 'Windows'
         run: go test ./...
 
+  git-2-20:
+    name: Worktrees on git 2.20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build the gitwt test binary
+        run: go test -c -o "$RUNNER_TEMP/gitwt.test" ./internal/gitwt
+      - name: Test with git 2.20.1
+        run: |
+          docker run --rm \
+            --volume "$RUNNER_TEMP/gitwt.test:/gitwt.test:ro" \
+            debian:buster \
+            sh -eu -c '
+              echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
+              apt-get -o Acquire::Check-Valid-Until=false update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git
+              command -v git
+              git --version
+              test "$(git --version)" = "git version 2.20.1"
+              /gitwt.test -test.v
+            '
+
   cross:
     runs-on: ubuntu-latest
     steps:
