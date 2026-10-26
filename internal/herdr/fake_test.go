@@ -20,6 +20,10 @@ import (
 // started through WMI gets the user's environment rather than the test's.
 var personas = map[string]func(dir string) int{"herdr": fakeHerdr}
 
+// helpers are modes a copy runs when LUGARN_HERDR_HELPER names one: the live
+// test starts them in panes and sessions.
+var helpers = map[string]func() int{"env": envHelper}
+
 func TestMain(m *testing.M) {
 	if exe, err := os.Executable(); err == nil {
 		name := strings.TrimSuffix(filepath.Base(exe), ".exe")
@@ -28,18 +32,18 @@ func TestMain(m *testing.M) {
 		}
 	}
 	if mode := os.Getenv("LUGARN_HERDR_HELPER"); mode != "" {
-		os.Exit(helperMain(mode))
+		run, ok := helpers[mode]
+		if !ok {
+			os.Exit(2)
+		}
+		os.Exit(run())
 	}
 	os.Exit(m.Run())
 }
 
-// helperMain runs a helper mode the live test asks for through a pane's
-// environment. "env" writes the LUGARN_* variables it sees, as JSON, to
+// envHelper writes the LUGARN_* variables it sees, as JSON, to
 // LUGARN_HERDR_HELPER_OUT.
-func helperMain(mode string) int {
-	if mode != "env" {
-		return 2
-	}
+func envHelper() int {
 	seen := map[string]string{}
 	for _, kv := range os.Environ() {
 		if name, value, _ := strings.Cut(kv, "="); strings.HasPrefix(name, "LUGARN_") {
