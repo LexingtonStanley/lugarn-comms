@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
@@ -63,7 +64,18 @@ func writeFiles(l Launch, platform string) error {
 		if err := write(l.path(".json"), config); err != nil {
 			return err
 		}
-		settings, err := ClaudeHookSettings(l.LaunchID, platform)
+		if !l.Pane {
+			return nil
+		}
+		home := l.PointerHome
+		if home == "" {
+			var e error
+			home, e = os.UserHomeDir()
+			if e != nil {
+				return e
+			}
+		}
+		settings, err := ClaudeHookSettings(l.LaunchID, platform, home)
 		if err != nil {
 			return err
 		}
@@ -96,22 +108,35 @@ func writeFiles(l Launch, platform string) error {
 				"timeout": map[string]int{"startup": 30000, "catalog": 30000},
 			}}
 		}
-		return write(l.path(".opencode.json"), map[string]any{"mcp": mcp, "permission": permission})
+		config := map[string]any{"mcp": mcp, "permission": permission}
+		// OpenCode 2's full TUI has no --model flag. Select its trusted model
+		// through this launch-only overlay; headless run still accepts --model.
+		if major == 2 && l.Model != "" {
+			config["model"] = l.Model
+		}
+		return write(l.path(".opencode.json"), config)
 	}
 	return nil
 }
 
 // ClaudeHookSettings returns #136's silent SessionStart hook, without pruning.
 // It is installed only for pane launches. Merely generating it touches no home.
-func ClaudeHookSettings(launchID, platform string) ([]byte, error) {
+func ClaudeHookSettings(launchID, platform, home string) ([]byte, error) {
 	if err := model.ValidateULID(launchID); err != nil {
 		return nil, err
 	}
-	command := `sh -c 'mkdir -p "$HOME/.lugarn/conversations" && cat >> "$HOME/.lugarn/conversations/` + launchID + `"'`
-	hook := map[string]any{"type": "command", "command": command, "timeout": 10}
+	if !filepath.IsAbs(home) {
+		return nil, model.NewError(model.ErrorInvalidRequest, "pointer home must be absolute")
+	}
+	dir := filepath.Join(home, ".lugarn", "conversations")
+	path := filepath.Join(dir, launchID)
+	q := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'" }
+	script := "umask 077; mkdir -p " + q(dir) + " && { cat; printf '\\n'; } >> " + q(path)
+	hook := map[string]any{"type": "command", "timeout": 10, "command": "sh -c " + q(script)}
 	if platform == "windows" {
+		q := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
 		hook["shell"] = "powershell"
-		hook["command"] = `$d = Join-Path $HOME '.lugarn\conversations'; [void][IO.Directory]::CreateDirectory($d); [IO.File]::AppendAllText((Join-Path $d '` + launchID + `'), [Console]::In.ReadToEnd().Trim() + [char]10)`
+		hook["command"] = "[void][IO.Directory]::CreateDirectory(" + q(dir) + "); [IO.File]::AppendAllText(" + q(path) + ", [Console]::In.ReadToEnd().Trim() + [char]10)"
 	}
 	return json.Marshal(map[string]any{"hooks": map[string]any{"SessionStart": []any{map[string]any{"hooks": []any{hook}}}}})
 }

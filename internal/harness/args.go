@@ -85,11 +85,15 @@ func Args(l Launch, mode model.Mode) ([]string, error) {
 			a = append(a, "resume", l.SessionID)
 		}
 	case model.HarnessOpenCode:
+		major, err := openCodeMajor(l.Version)
+		if err != nil {
+			return nil, err
+		}
 		if headless {
 			a = append(a, "run", "--format", "json")
 		}
 		a = append(a, "--standalone")
-		if l.Model != "" {
+		if l.Model != "" && (headless || major == 1) {
 			a = append(a, "--model", l.Model)
 		}
 		if l.Resume {

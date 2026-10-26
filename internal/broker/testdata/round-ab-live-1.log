@@ -1,0 +1,67 @@
+=== RUN   TestIntegrationLiveFlows
+    integration_live_linux_test.go:240: app start-herdr server=lugarn-test-872467f91b56b876 started=true method=0x32e8e17000b0
+=== RUN   TestIntegrationLiveFlows/b-opencode-pane
+    integration_live_linux_test.go:304: app start-team live-b: state=running runner=0x32e8e16a02f0 pane=0x32e8e15d3760
+    integration_live_linux_test.go:113: turn {"id":"01M5X1PHPC4HD8FTPF6MBYR2EQ","team":"live-b","member":{"id":"live-opencode","name":"worker"},"launch":"01M5X1PHNW6WA3M9JYMPKTAHVE","lease_generation":1,"harness":"opencode","session_id_start":null,"session_id_end":"ses_e85e4b83effePATC6l5vPa7R0n","pid":3964904,"status":"succeeded","exit_code":0,"error":null,"usage":null,"started_at":"2026-10-26T21:26:10.380Z","ended_at":"2026-10-26T21:26:34.337Z","consumed":[],"auto_replies":[]}
+    integration_live_linux_test.go:351: OpenCode pane launch stopped: 0x32e8e1467e20
+    integration_live_linux_test.go:323: durable launch error: {"code":"launch_failed","message":"herdr agent start timed out","details":{"cause":"timed out waiting for agent startup","herdr_code":"timeout","herdr_message":"timed out waiting for agent startup","herdr_op":"agent start"}}
+    integration_live_linux_test.go:336: pane visible text captured through Herdr before teardown:
+        exec /tmp/TestIntegrationLiveFlows2460944759/001/lugarn-comms pane-shell
+        lexde@lexbox /tmp/TestIntegrationLiveFlows2460944759/004/repo % exec /tmp/TestIntegrationLiveFlows2460944759/001/lugarn-comms pane-shell
+        $ opencode --standalone --model opencode-go/kimi-k3.1-pro --session ses_e85e4b83effePATC6l5vPa7R0n
+        DESCRIPTION
+          OpenCode command line interface
+
+        USAGE
+          opencode <subcommand> [flags] [<directory>]
+
+        ARGUMENTS
+          directory string    Directory to start OpenCode in (optional)
+
+        FLAGS
+          --standalone            Run with a private server instead of the background service
+          --server string         Connect to a server URL instead of the background service
+          --auto                  Auto-approve permissions that are not explicitly denied
+          --continue, -c          Continue the last session
+          --session, -s string    Session ID to continue, or to create if it does not exist
+          --prompt string         Prompt to use
+
+        GLOBAL FLAGS
+          --help, -h                                                          Show help information
+          --version, -v                                                       Show version information
+          --wizard                                                            Start wizard mode for a command
+          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
+          --print-logs                                                        Print logs to stderr (server logs require --standalone)
+
+        SUBCOMMANDS
+          upgrade, update    Upgrade OpenCode to the latest or a specific version
+          uninstall          Uninstall OpenCode, keeping session data, configuration, and state
+          acp                Start an Agent Client Protocol server
+          api                Make a request to the running server
+          debug              Debugging and troubleshooting tools
+          auth               manage integrations and credentials
+          mcp                Manage MCP (Model Context Protocol) servers
+          plugin             Manage plugins
+          models             List all available models
+          stats              Show shareable usage statistics
+          mini               Start the minimal interactive interface
+          run                Run OpenCode with a message
+          session            Manage sessions
+          service            Manage the background server
+          reload             Reload configuration
+          pair               Print one-time links to connect a browser or app
+          serve              Start the v2 API and web server
+
+        ERROR
+          Unrecognized flag: --model in command opencode
+        $
+=== NAME  TestIntegrationLiveFlows
+    integration_live_linux_test.go:446: herdr --session lugarn-test-872467f91b56b876 server stop:  (<nil>)
+    integration_live_linux_test.go:446: delete own stopped session lugarn-test-872467f91b56b876: deleted session lugarn-test-872467f91b56b876
+         (<nil>)
+--- FAIL: TestIntegrationLiveFlows (66.15s)
+    --- FAIL: TestIntegrationLiveFlows/b-opencode-pane (64.90s)
+FAIL
+FAIL	github.com/LexingtonStanley/lugarn-comms/internal/broker	66.156s
+FAIL

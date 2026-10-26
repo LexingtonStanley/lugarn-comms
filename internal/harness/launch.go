@@ -17,17 +17,21 @@ import (
 // config environment variables cannot be overridden.
 type Launch struct {
 	// Model is an optional trusted model selector (for example, haiku).
-	Model     string
-	Harness   model.Harness
-	Profile   model.Profile
-	WorkDir   string
-	StateDir  string
-	LaunchID  string
-	MemberID  string
-	Binary    string // Absolute lugarn-comms executable, not the harness executable.
-	SessionID string
-	Resume    bool
-	ExtraEnv  map[string]string
+	// Pane enables the pane-only Claude SessionStart settings file. PointerHome
+	// is explicit and never changes HOME or the provider's own configuration.
+	Pane        bool
+	PointerHome string
+	Model       string
+	Harness     model.Harness
+	Profile     model.Profile
+	WorkDir     string
+	StateDir    string
+	LaunchID    string
+	MemberID    string
+	Binary      string // Absolute lugarn-comms executable, not the harness executable.
+	SessionID   string
+	Resume      bool
+	ExtraEnv    map[string]string
 	// Version is the harness's version as hostprobe reports it: hello's
 	// harnesses[].version, such as "2.1.4". OpenCode needs it, because its
 	// per-launch config differs between 1.x and 2.x (WriteFiles). The caller

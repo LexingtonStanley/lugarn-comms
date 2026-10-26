@@ -83,7 +83,7 @@ func (r *Runner) wakeMember(ctx context.Context, m model.Member) error {
 	} else {
 		e = r.openPane(ctx, m, model.LeaseCauseWake)
 	}
-	if e != nil && model.AsError(e).Code == model.ErrorLaunchFailed {
+	if e != nil && (model.AsError(e).Code == model.ErrorLaunchFailed || model.AsError(e).Code == model.ErrorHarnessUnavailable) {
 		return nil
 	}
 	return e
@@ -114,7 +114,21 @@ func (r *Runner) openPane(ctx context.Context, m model.Member, cause model.Lease
 		return e
 	}
 	if e = r.opts.PaneLifecycle.Open(ctx, *starting, cause); e != nil {
-		return r.launchFailed(ctx, *starting, e)
+		var current *model.Member
+		if read := r.b.db.Read(context.WithoutCancel(ctx), func(tx *store.Tx) error { var e error; current, e = tx.GetMember(m.ID); return e }); read != nil {
+			return read
+		}
+		if current.StopReason != nil && *current.StopReason == model.StopReasonLaunchFailed {
+			return e
+		}
+		cleanup := r.launchFailed(ctx, *current, e)
+		if cleanup != nil && model.AsError(cleanup).Code != model.ErrorLaunchFailed {
+			return cleanup
+		}
+		if model.AsError(e).Code == model.ErrorHarnessUnavailable {
+			return e
+		}
+		return cleanup
 	}
 	return nil
 }

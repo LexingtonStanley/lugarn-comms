@@ -1,19 +1,18 @@
 package broker
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/LexingtonStanley/lugarn-comms/internal/harness"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/policy"
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
 	"github.com/LexingtonStanley/lugarn-comms/internal/store"
 	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
-	"github.com/google/uuid"
 )
 
 func (r *Runner) paneHolds(ctx context.Context, m model.Member, reason *model.DeliveryReason) error {
@@ -21,7 +20,7 @@ func (r *Runner) paneHolds(ctx context.Context, m model.Member, reason *model.De
 		if t.State != model.TeamStateRunning {
 			return errRunnerGeneration
 		}
-		if h, e := tx.GetHold(m.ID); e == nil && h.ReleasedAt == nil && h.HeldUntil.After(r.b.now().Time) {
+		if h, e := tx.GetHold(m.ID); e == nil && reason != nil && h.ReleasedAt == nil && h.HeldUntil.After(r.b.now().Time) {
 			return nil
 		} else if e != nil && !missing(e) {
 			return e
@@ -50,38 +49,21 @@ func (r *Runner) paneHolds(ctx context.Context, m model.Member, reason *model.De
 	})
 }
 func (r *Runner) pointerSession(m model.Member) (string, error) {
-	if r.opts.HomeDir == "" || m.Harness == nil || *m.Harness != model.HarnessClaude || m.Lease.Launch == nil {
+	if r.opts.HomeDir == "" || m.Harness == nil || *m.Harness != model.HarnessClaude || m.Lease == nil || m.Lease.Launch == nil {
 		return "", nil
 	}
-	f, e := os.Open(filepath.Join(r.opts.HomeDir, ".lugarn", "conversations", *m.Lease.Launch))
+	path := filepath.Join(r.opts.HomeDir, ".lugarn", "conversations", *m.Lease.Launch)
+	info, e := os.Lstat(path)
 	if os.IsNotExist(e) {
 		return "", nil
 	}
 	if e != nil {
 		return "", e
 	}
-	defer f.Close()
-	last := ""
-	scan := bufio.NewScanner(f)
-	scan.Buffer(make([]byte, 4096), 1<<20)
-	for scan.Scan() {
-		var line map[string]json.RawMessage
-		if json.Unmarshal(scan.Bytes(), &line) != nil {
-			continue
-		}
-		if _, subagent := line["agent_id"]; subagent {
-			continue
-		}
-		var id string
-		if json.Unmarshal(line["session_id"], &id) != nil {
-			continue
-		}
-		u, e := uuid.Parse(id)
-		if e == nil && id == u.String() {
-			last = id
-		}
+	if !info.Mode().IsRegular() {
+		return "", nil
 	}
-	return last, scan.Err()
+	return harness.ReadPointer(r.opts.HomeDir, *m.Lease.Launch)
 }
 
 type runnerPanePoll struct {
@@ -135,7 +117,7 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 	}
 	observation, e := r.opts.Panes.State(ctx, m)
 	if e != nil {
-		return e
+		return r.paneRetry(ctx, m, e)
 	}
 	if observation.Gone {
 		return r.opts.PaneLifecycle.Exited(ctx, m)
@@ -146,7 +128,7 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 			if ctx.Err() != nil {
 				return nil
 			}
-			return e
+			return r.paneRetry(ctx, m, e)
 		}
 		if observation.Gone {
 			return r.opts.PaneLifecycle.Exited(ctx, m)
@@ -170,6 +152,14 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 	case model.ActivityIdle, model.ActivityDone:
 	default:
 		return r.paneHolds(ctx, m, ptr(model.DeliveryReasonRecipientUnknown))
+	}
+	if r.checkPane != nil {
+		if e = r.checkPane(ctx, m); e != nil {
+			if model.AsError(e).Code == model.ErrorLaunchFailed {
+				return nil
+			}
+			return r.paneRetry(ctx, m, e)
+		}
 	}
 	if e = r.paneHolds(ctx, m, nil); e != nil {
 		return e
@@ -317,4 +307,11 @@ func (r *Runner) cancelledPane(ctx context.Context, m model.Member, items []stor
 		return r.finishPane(cleanup, m, items, model.DeliveryStateDelivered, nil)
 	}
 	return r.finishPane(cleanup, m, items, model.DeliveryStateUncertain, ptr(model.DeliveryReasonNoActivity))
+}
+
+// Observation failures are recipient-local; they never surrender the team lease.
+func (r *Runner) paneRetry(ctx context.Context, m model.Member, err error) error {
+	log.Printf("pane observation for %s: %v; retrying", m.ID, err)
+	_ = r.b.opts.Wait(ctx, time.Second)
+	return nil
 }

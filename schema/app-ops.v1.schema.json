@@ -1218,6 +1218,49 @@
                   "additionalProperties": false
                 }
               ]
+            },
+            "path": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "shell": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "login": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "issue": {
+                  "enum": [
+                    null,
+                    "timeout",
+                    "failed",
+                    "unsupported_shell"
+                  ]
+                },
+                "captured_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "inherited": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "shell",
+                "login",
+                "issue",
+                "captured_at",
+                "inherited"
+              ]
             }
           },
           "required": [
@@ -1226,7 +1269,8 @@
             "arch",
             "hostname",
             "state_dir",
-            "logind"
+            "logind",
+            "path"
           ],
           "additionalProperties": false
         },
@@ -2016,15 +2060,54 @@
                   "type": "null"
                 }
               ]
+            },
+            "error": {
+              "oneOf": [
+                {
+                  "$ref": "common.v1.schema.json#/$defs/Error"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
             "member",
             "from",
             "to",
-            "reason"
+            "reason",
+            "error"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "reason": {
+                    "const": "launch_failed"
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "error": {
+                    "$ref": "common.v1.schema.json#/$defs/Error"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "error": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "unevaluatedProperties": false

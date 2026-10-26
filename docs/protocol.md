@@ -106,6 +106,19 @@ recorded on the member.
 | `launch/<launch id>.opencode.json`| OpenCode's per-launch config (`OPENCODE_CONFIG`): the MCP registration and the profile's `permission` block | deleted when the launch ends |
 | `launch/<launch id>/msg-<message id>-<attempt>.md` | A pane delivery too long to inline ([Untrusted text](#untrusted-text)) | deleted when the launch ends |
 
+| `launch/<launch id>/bin/<harness>` | Link to the resolved native harness executable for the clean pane shell | deleted with the exact launch directory when the launch ends; link target survives |
+| `launch/<launch id>/clean-shell.json`, `shell-ready` | Native bootstrap capsule and shell readiness marker | deleted with the exact launch directory when the launch ends |
+| `launch/<launch id>/runner-launch.json`, `<turn id>.process.json` | Immutable launch description and process birth identity | deleted with the exact launch directory when the launch ends |
+| `runner/<team id>.json` | Recorded workspace/pane and verified runner process; optional bridge ownership | retained across runner takeover; removed by stop-team |
+| `sessions/<member id>/<session hash>.json` | Private initialized-session metadata; Codex rollout remains authoritative for cwd | retained for future session resume |
+| `login-path.json` | Login-shell PATH capture, shell, timestamp and issue | refreshed after one hour, and on every start-herdr/start-team |
+| `lugarn-runner-<random>/lugarn-comms[.exe]` | Native bridge only when the broker executable path needs one | removed by stop-team; state directory preferred when plain, otherwise OS temp directory |
+
+Per-launch cleanup lists `launch/` before reading the store, recognizes only the exact
+ULID directory and documented suffixes, and uses `lstat`. Removing a directory never
+follows links inside it. All the files inside that directory share its lifetime. Unknown
+entries use the reconciliation grace period; pointer cleanup never deletes unknown ids.
+
 The directory and `launch/` are `0700` on POSIX; files are `0600`. On Windows each gets a
 protected DACL (inheritance off) with one entry: full control for the current user.
 
@@ -327,7 +340,8 @@ team `starting`. With `resume: false`, the default, it also:
 With `resume: true`, members keep their current sessions, no task is posted, and last run's
 stopped workers stay (stopped, wakeable).
 
-Then it ensures the Herdr workspace and opens the runner pane. It returns once the runner's
+Then it ensures the Herdr workspace and opens the runner pane, passing a fresh capture of
+the person's `PATH` ([The person's `PATH`](#the-persons-path)). It returns once the runner's
 first heartbeat lands, or after 15 seconds closes the pane, sets the team `stopped` and fails
 with `runner_unavailable`.
 
@@ -796,7 +810,10 @@ Notes:
   shell commands under `read-only` or `workspace`; that's a host fix the plan covers.
 - **OpenCode 2.x**'s background service ignores per-launch config, so every OpenCode headless
   turn and pane launch carries `--standalone`. Whether 1.x accepts the flag (it may have no
-  background service) is a C2d check on ufo.
+  background service) is a C2d check on ufo. OpenCode 2's full-screen TUI does not
+  accept `--model` (2.1.4 prints help and exits), so a trusted model selector goes
+  in the per-launch config's `model` field. Headless `run` and 1.x retain their
+  model flag. `--session <reported id>` resumes the same conversation in the pane.
 - **OpenCode's Code Mode** (2.x) wraps MCP tools in a catalog, and on a resumed turn it
   declared the lugarn tools gone even though the server had listed them (C2c). The per-launch
   config turns it off for `lugarn` (`codemode: false`), so they're ordinary tools
@@ -809,9 +826,67 @@ Notes:
   pane closed (C2b), so pane launches carry the global `--no-daemon` too (verified in C2e: no
   app-server before, during or after the pane). A Codex pane must open in the same workdir
   its thread was recorded in. Otherwise Codex shows a "Working directory · resume" picker
-  that Herdr reports as `idle`, and a delivery would type into it.
+  that Herdr reports as `idle`, and a delivery would type into it. So it's a precondition,
+  not a hope (Flare). Before every Codex pane launch the broker compares the pane's workdir
+  with the cwd Codex itself recorded for the thread (its rollout's `session_meta`). If that
+  folder is gone (a removed worktree, say) or differs, the launch fails (`launch_failed`,
+  `details.cause: workdir_missing` or `workdir_changed`) rather than opening anywhere else.
+  If its rollout cannot be found or its first `session_meta` cannot be read, the cause is
+  `rollout_missing`. Only the first line of a matching regular rollout under
+  `$CODEX_HOME/sessions/` (else `~/.codex/sessions/`) is read.
+  And before the first delivery to a Codex pane, the runner checks that the pane has left
+  the picker, since Herdr's `idle` alone doesn't show it. A pane still at the picker isn't
+  answered: the launch fails (`details.cause: resume_picker`) and the pane closes. C2d
+  uses an explicit `--cd <validated cwd>` on `codex resume` to avoid the working-directory
+  prompt (the supported CLI option), and still reads `agent read --source recent-unwrapped`
+  before the first delivery of each pane generation. The fixed title
+  `Working directory · resume` fails and closes the launch; no choice is sent.
 - **pi** gets no MCP registration; the brief points it at the CLI, and its identity travels in
   the environment.
+
+### The person's `PATH`
+
+The harnesses, and the tools an agent runs (`npm`, `go`, `gh`), live where the person's
+shell startup files put them: `~/.local/bin`, `~/.opencode/bin`, nvm's or volta's node
+(which an npm-installed harness's `#!/usr/bin/env node` needs), cargo's and go's bins. None
+of the broker's own contexts reads those files. An SSH exec runs a non-interactive shell:
+zsh reads only `.zshenv`, and bash reads no `.profile`, while Ubuntu's `.bashrc` returns
+early. A Herdr server under `systemd-run` has the user manager's environment. Herdr's panes
+are interactive login shells only on macOS (its `shell_mode = "auto"`). And the clean pane
+shell reads nothing at all. So the broker works out the person's `PATH` itself and passes
+it on explicitly (Flare):
+
+1. **Capture.** It runs the person's shell (`$SHELL`, else `/bin/sh`) as a login,
+   interactive shell, `<shell> -l -i -c '<script>'`, where the script prints `PATH` between
+   two fixed markers. Startup files may print too, so anything outside the markers is
+   ignored. Stdin is the null device, the shell runs in its own process group, and the
+   group is killed after 10 seconds. fish joins `"$PATH"` with `:` like the others. csh and
+   tcsh accept `-l` only on its own, so they aren't captured. The capture runs with
+   `LUGARN_PATH_CAPTURE=1` and `TERM=dumb` in its environment, so a startup file can skip
+   what doesn't belong in it. Without such a guard, a line that execs away (`[ -z "$TMUX" ]
+   && exec tmux`) or waits for an answer (an update prompt) ends the capture as `failed`
+   or `timeout`; with one (`[ -n "$LUGARN_PATH_CAPTURE" ] || exec tmux`) the capture works.
+   The app's text for those two issues says so (Flare). Control characters are removed
+   from the captured value, since startup files can print escapes onto its line.
+2. **Merge.** The captured entries come first, then the rest of the broker's own `PATH`,
+   then the system directories (`/usr/local/bin`, `/usr/bin`, `/bin`, `/usr/sbin`, `/sbin`).
+   Relative and empty entries are dropped, since one would resolve inside an agent's
+   workdir, and so are duplicates. If the capture fails (timeout, a non-zero exit, no
+   markers, an unsupported shell), the merge goes ahead without it, and the reason is kept.
+3. **Cache.** The capture is kept in `login-path.json` in the state directory, with the
+   shell and the time. `start-herdr` and `start-team` always capture afresh; other ops use a
+   capture under an hour old, from the same `$SHELL`, and capture otherwise. A startup file that starts something
+   on every shell (`eval "$(ssh-agent)"`) leaves one behind per capture, which is why the
+   capture is cached.
+4. **Use.** Harness resolution looks executables up on the merged `PATH`, both in `hello`'s
+   probe and in the runner's launches. `start-herdr` gives the merged `PATH` to the server
+   (`systemd-run --setenv=PATH=…`, or the `setsid` child's environment). `start-team` gives
+   it to the runner's pane (`--env`). Headless turns inherit the runner's `PATH`. A pane
+   launch's clean shell gets the per-launch directory first, then the runner's `PATH`
+   ([Untrusted text](#untrusted-text), item 3).
+
+On Windows none of this applies. Every process's `PATH` comes from the registry, not from
+startup files, so the broker uses its own. `hello` reports the result as `host.path`.
 
 ### Untrusted text
 
@@ -842,12 +917,19 @@ re-parses:
    wrapper function, common on dev boxes, would silently change the profile a member runs
    with (Flare). And `herdr agent start --kind` types the kind's canonical name, not a path.
    So before `agent start`, the broker replaces the pane's shell with a clean one (POSIX:
-   `/bin/sh` reading no rc file; Windows: PowerShell with `-NoProfile`), whose `PATH` starts
+   `/bin/sh` reading no rc file; Windows: PowerShell with `-NoProfile`). Its `PATH` starts
    with a per-launch directory under `launch/<launch id>/` that holds only the harness's
    executable name, linked to the absolute path the broker resolved at launch (`command -v`
    on POSIX; on Windows the native `.exe` from rule 4, `Get-Command -CommandType
-   Application`). C2d pins the exact commands and verifies them under zsh, bash, fish and
-   PowerShell. If a host can't give that guarantee, the pane launch fails
+   Application`). The runner's `PATH` follows ([The person's `PATH`](#the-persons-path)). On
+   POSIX the clean shell starts through `env -u ENV -u BASH_ENV HISTFILE=`, for three
+   reasons:
+   - an interactive POSIX `sh` reads the file `ENV` names;
+   - bash reads `BASH_ENV`, and exported bash functions (`BASH_FUNC_*`) are dropped too;
+   - bash sets a default `HISTFILE` when it's unset, and saves the typed launch lines there
+     on exit. An empty one saves nothing (Flare).
+
+   C2d pins the exact commands and verifies them under zsh, bash, fish and PowerShell. If a host can't give that guarantee, the pane launch fails
    (`harness_unavailable`, `details.reason: unresolvable`) rather than running whatever the
    person's shell finds.
    Every broker-made path in that command line must survive Herdr's typing into each of those
@@ -1096,7 +1178,17 @@ Result:
   under the user's service manager instead ([start-herdr](#start-herdr)), which outlives the
   person's sessions only with linger on: the app suggests `loginctl enable-linger` when
   `kill_user_processes` is true and `linger` is false. With `kill_user_processes` false,
-  `setsid` is enough and linger doesn't matter;
+  `setsid` is enough and linger doesn't matter.
+  `path` ([The person's `PATH`](#the-persons-path)) has these fields:
+  - `shell`: the shell captured from;
+  - `login`: its `PATH`, or null when the capture failed;
+  - `issue`: null, `timeout`, `failed` or `unsupported_shell`;
+  - `captured_at`;
+  - `inherited`: the broker's own `PATH`, from the SSH exec.
+
+  Harnesses are probed on the merged `PATH`, so the app can say when one is found only
+  through the login shell, or name the capture's issue. On Windows, `login`, `shell`,
+  `captured_at` and `issue` are null;
 - `herdr`: `installed`, `version`, `running`, `server` (`default`);
 - `harnesses`: per harness `installed`, `version`, `supported`, `issue`
   (`not_installed`, `unsupported_version`, `shim_only`) and `headless` (whether the broker can
@@ -1252,8 +1344,10 @@ Request: `server` (default `default`). Result: `herdr`, `started`, `method` (`de
   is-active lugarn-herdr-<server>.service` first and runs `systemctl --user reset-failed` on it before
   starting (Flare). The `.service` suffix is explicit, so a server named `x.timer` can't name
   a unit of another type. The server then has the user manager's environment, not the login
-  shell's, and every pane inherits it. The runner and every pane are the server's children, so they
-  live and die with it.
+  shell's, and every pane inherits it, so the broker passes the person's `PATH` with
+  `--setenv=PATH=…` ([The person's `PATH`](#the-persons-path)). The `setsid` start below gets
+  it in its environment too, since an SSH exec's own `PATH` lacks it. The runner and every
+  pane are the server's children, so they live and die with it.
 - Otherwise, on Linux and macOS, the broker starts `herdr server` itself, detached: in its
   own session (`setsid`), with stdin, stdout and stderr on the null device (`detached`). C2b
   verified on lexbox that it survives its parent exiting and the parent's terminal hanging
@@ -1302,7 +1396,7 @@ event was written.
 | `team.state_changed`      | `team`, `from`, `to`                                      | yes                            | start-team, stop-team, runner  |
 | `runner.state_changed`    | `team`, `from`, `to`                                      | yes                            | runner; the first process to see a stale heartbeat |
 | `member.added`            | `member`                                                  | yes                            | apply-team, spawn              |
-| `member.state_changed`    | `member`, `from`, `to`, `reason`                          | yes                            | runner, stop-team              |
+| `member.state_changed`    | `member`, `from`, `to`, `reason`, `error`                 | yes                            | runner, stop-team              |
 | `member.activity_changed` | `member` (ref), `from`, `to`                              | no                             | runner                         |
 | `member.session_added`    | `member`, `session`                                       | yes                            | runner                         |
 | `member.removed`          | `member`                                                  | no                             | apply-team, start-team         |
@@ -1335,8 +1429,13 @@ The broker doesn't keep an attention list; the app derives its Inbox items from 
 | A held delivery (not budget or rounds) | `delivery.changed` to `held`                               | `delivery.changed` out of `held`                     |
 | An uncertain delivery             | `delivery.changed` to `uncertain`                               | `resolve-delivery`                                   |
 | Runner stopped                    | `runner.state_changed` to `down` while the team runs            | `runner.state_changed` to `up`, or the team stopping |
-| A spawn or launch failed          | `member.state_changed` to `stopped`, `launch_failed`            | the person dismissing it                             |
+| A spawn or launch failed          | `member.state_changed` to `stopped`, `launch_failed`, with its `error` | the person dismissing it                      |
 | A trust question or other dialog  | `member.activity_changed` to `blocked`                          | activity leaving `blocked`                           |
+
+`member.state_changed`'s `error` is the failure when `reason` is `launch_failed`: an `Error`
+(`code`, `message`, `details`, with `details.cause` naming what failed, such as
+`workdir_missing`, `resume_picker` or `unresolvable`), else null. That's how the person
+learns why a launch failed. The runner's own log is in a pane they may never see.
 
 Agent-written text in any of these is rendered as plain text.
 
@@ -1742,3 +1841,10 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     received; policy refusals are codes 20–26; worktree paths start from the main working
     tree, reuse matches team id and member name, and an existing branch counts as taken;
     a harness that can't run headless can't be given headless mode.
+68. **The person's `PATH`.** The broker captures it from a login, interactive run of the
+    person's shell, merges it with its own and the system directories, caches it for an hour,
+    and passes it explicitly to Herdr, the runner and every launch. An SSH exec, a
+    `systemd-run` server and the clean pane shell read none of the startup files that add
+    `~/.local/bin`, nvm and the like, and Linux Herdr panes skip the login ones. `hello`
+    reports the capture (Flare). A Codex pane's workdir is checked against Codex's own record of the
+    thread before launch, and its resume picker before the first delivery.

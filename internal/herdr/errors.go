@@ -77,12 +77,11 @@ func IsGone(err error) bool { return kindOf(err) == kindGone }
 // approval or question dialog (agent_blocked). Herdr sent nothing.
 func IsBlocked(err error) bool { return kindOf(err) == kindBlocked }
 
-// IsTimeout reports whether Herdr's own bounded wait ran out (agent wait, or
-// agent start's readiness wait).
+// IsTimeout reports a CLI response timeout or a bounded Herdr wait.
 func IsTimeout(err error) bool { return kindOf(err) == kindTimeout }
 
 // IsUnavailable reports herdr_unavailable: Herdr isn't installed, or its server
-// isn't running or didn't answer within the call's timeout.
+// isn't running. A slow response alone is never unavailability.
 func IsUnavailable(err error) bool {
 	k := kindOf(err)
 	return k == kindNotInstalled || k == kindNotRunning

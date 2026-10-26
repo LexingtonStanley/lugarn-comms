@@ -1,0 +1,26 @@
+Condensed transcript of the opt-in shell probe (2026-10-26):
+
+$ LUGARN_INTEGRATION_SHELL_LIVE=1 LUGARN_HERDR_LIVE=0 LUGARN_HARNESS_LIVE=0 go test -v ./internal/broker -run '^TestIntegrationLiveShellPinning$' -count=1
+private server lugarn-test-140388ceb5ef84a2 pid=3596524 shell=zsh
+claude: pinned native executable; exact generated argv, including --mcp-config and --settings paths containing spaces; HERDR_PANE_ID=w1:p2; ready=<nil>
+codex: pinned native executable; exact generated argv, including JSON -c values and token path containing spaces; HERDR_PANE_ID=w1:p3; ready=<nil>
+herdr --session lugarn-test-140388ceb5ef84a2 server stop: (<nil>)
+private server lugarn-test-46f8677b9da19096 pid=3596999 shell=bash
+claude: pinned native executable; exact generated argv, including paths containing spaces; HERDR_PANE_ID=w1:p2; ready=<nil>
+codex: pinned native executable; exact generated argv, including paths containing spaces; HERDR_PANE_ID=w1:p3; ready=<nil>
+herdr --session lugarn-test-46f8677b9da19096 server stop: (<nil>)
+--- PASS: TestIntegrationLiveShellPinning (17.51s)
+    --- PASS: TestIntegrationLiveShellPinning/zsh (8.57s)
+    --- PASS: TestIntegrationLiveShellPinning/bash (8.44s)
+    --- SKIP: TestIntegrationLiveShellPinning/fish (0.00s)
+PASS
+ok github.com/LexingtonStanley/lugarn-comms/internal/broker 17.520s
+
+The argv equality and resolved-executable assertions are in integration_shell_live_linux_test.go.
+These were native fake harnesses, not paid model runs. The hostile shell rc homes were
+created from scratch and contained aliases, a function, and native PATH impostors;
+no credentials or provider config homes were copied.
+
+An initial probe did not start any server: its long test-temp config path exceeded
+sockaddr_un. The successful probe uses a short os.MkdirTemp home for fake shell rc
+only, with cleanup registered on t.Cleanup.

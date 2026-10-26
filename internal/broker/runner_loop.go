@@ -55,6 +55,7 @@ func (r *Runner) worker(ctx context.Context, key string, fn func(context.Context
 	}()
 }
 func (r *Runner) pass(ctx context.Context) (bool, error) {
+	reapRunnerOrphans()
 	var team *store.Team
 	var members []model.Member
 	var requests []model.Request
@@ -163,7 +164,7 @@ func (r *Runner) workMember(ctx context.Context, m model.Member) error {
 		} else {
 			e = r.openPane(ctx, m, model.LeaseCauseStart)
 		}
-		if e != nil && model.AsError(e).Code == model.ErrorLaunchFailed {
+		if e != nil && (model.AsError(e).Code == model.ErrorLaunchFailed || model.AsError(e).Code == model.ErrorHarnessUnavailable) {
 			return nil
 		}
 		return e
@@ -257,6 +258,11 @@ func (r *Runner) stop(ctx context.Context) error {
 	case <-done:
 	case <-ctx.Done():
 		return model.NewError(model.ErrorTimeout, "runner workers did not stop")
+	}
+	if r.onStop != nil {
+		if e := r.onStop(ctx); e != nil {
+			return e
+		}
 	}
 	if e := r.checkOrphans(ctx, true); e != nil {
 		return e

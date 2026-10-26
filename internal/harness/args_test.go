@@ -157,3 +157,32 @@ func TestModelSelectors(t *testing.T) {
 		}
 	}
 }
+
+func TestOpenCodeModelFlagByVersionAndMode(t *testing.T) {
+	for _, version := range []string{"1.19.4", "2.1.4"} {
+		for _, mode := range []model.Mode{model.ModePane, model.ModeHeadless} {
+			l := testLaunch(t, model.HarnessOpenCode)
+			l.Version = version
+			l.Model = "opencode-go/kimi-k3.1-pro"
+			l.Resume = true
+			l.SessionID = "ses_fixture"
+			args, e := Args(l, mode)
+			if e != nil {
+				t.Fatal(e)
+			}
+			found := false
+			session := false
+			for n, arg := range args {
+				if arg == "--model" {
+					found = n+1 < len(args) && args[n+1] == l.Model
+				}
+				if arg == "--session" {
+					session = n+1 < len(args) && args[n+1] == l.SessionID
+				}
+			}
+			if found != (mode == model.ModeHeadless || version[0] == '1') || !session {
+				t.Fatal(version, mode, args)
+			}
+		}
+	}
+}

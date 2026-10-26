@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -51,22 +50,7 @@ func (p nativeProcesses) Cancel(ctx context.Context, pid int64, birth string) er
 		return e
 	}
 	if birth == "" || s.Birth != birth {
-		return fmt.Errorf("refusing to kill unverified process %s", strconv.FormatInt(pid, 10))
+		return fmt.Errorf("refusing to kill unverified process %d", pid)
 	}
-	group, e := unix.Getpgid(int(pid))
-	if e == unix.ESRCH {
-		return nil
-	}
-	if e != nil {
-		return e
-	}
-	target := int(pid)
-	if group == int(pid) {
-		target = -int(pid)
-	}
-	e = unix.Kill(target, unix.SIGKILL)
-	if e == unix.ESRCH {
-		return nil
-	}
-	return e
+	return cancelOwnedTree(ctx, pid, birth)
 }

@@ -17,6 +17,7 @@ type TurnLaunch struct {
 	Workdir, StateDir, LaunchID, MemberID, Binary string
 	Session                                       *string
 	NewSession                                    bool
+	Mode                                          model.Mode
 }
 
 // TurnAcknowledgement reports the harness's acknowledgement and optional session

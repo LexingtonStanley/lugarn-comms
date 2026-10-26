@@ -27,8 +27,8 @@ type Client struct {
 	bin     string
 	session string
 	// Timeout bounds each call except StartAgent and Wait, which take their
-	// own. Zero means DefaultTimeout. A call that runs out is herdr_unavailable
-	// (not_running): the server didn't answer.
+	// own. Zero means DefaultTimeout. A call that runs out is a timeout,
+	// which does not establish that the server or its panes are gone.
 	Timeout time.Duration
 }
 
@@ -97,7 +97,7 @@ func (c *Client) call(ctx context.Context, timeout time.Duration, op string, arg
 		return nil, ctx.Err()
 	}
 	if callCtx.Err() != nil {
-		return nil, clientError(op, kindNotRunning, fmt.Sprintf("no answer within %s", timeout))
+		return nil, clientError(op, kindTimeout, fmt.Sprintf("no answer within %s", timeout))
 	}
 	var exitErr *exec.ExitError
 	if !errors.As(runErr, &exitErr) {

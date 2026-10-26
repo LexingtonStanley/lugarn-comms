@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -124,14 +125,16 @@ func TestUnavailable(t *testing.T) {
 	}
 }
 
-func TestNoAnswerIsNotRunning(t *testing.T) {
+func TestNoAnswerIsTimeout(t *testing.T) {
 	f := newFake(t)
 	f.on("agent list", response{SleepMS: 5000, Stdout: `{"result":{"agents":[]}}`})
 	c := f.client()
 	c.Timeout = 300 * time.Millisecond
 	start := time.Now()
 	_, err := c.Agents(testContext(t))
-	wantProtocol(t, err, model.ErrorHerdrUnavailable, "not_running")
+	if !IsTimeout(err) || IsUnavailable(err) || IsGone(err) {
+		t.Fatalf("misclassified timeout: %v", err)
+	}
 	if d := time.Since(start); d > 3*time.Second {
 		t.Fatalf("took %s", d)
 	}
@@ -488,5 +491,16 @@ func TestRunCommand(t *testing.T) {
 	}
 	if n := len(f.calls()); n != 1 {
 		t.Fatalf("refused commands ran: %d calls", n)
+	}
+	short := `C:\Users\RUNNER~1\AppData\Local\Temp\lugarn-comms.exe`
+	err := c.RunCommand(ctx, "w1:p1", short, "run")
+	if runtime.GOOS == "windows" {
+		if err != nil {
+			t.Fatalf("8.3 short path refused: %v", err)
+		}
+		wantProtocol(t, c.RunCommand(ctx, "w1:p1", `~\x.exe`), model.ErrorInvalidRequest, "")
+		wantProtocol(t, c.RunCommand(ctx, "w1:p1", `C:\a\~1\x.exe`), model.ErrorInvalidRequest, "")
+	} else {
+		wantProtocol(t, err, model.ErrorInvalidRequest, "")
 	}
 }

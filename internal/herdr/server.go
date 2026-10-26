@@ -50,6 +50,7 @@ type ServerOption func(*serverOptions)
 
 type serverOptions struct {
 	killUserProcesses bool
+	environment       []string
 }
 
 // KillUserProcesses passes on logind's KillUserProcesses, as hello reports it
@@ -59,6 +60,12 @@ type serverOptions struct {
 // setsid or not. Anywhere else it changes nothing.
 func KillUserProcesses(on bool) ServerOption {
 	return func(o *serverOptions) { o.killUserProcesses = on }
+}
+
+// ServerEnvironment supplies trusted KEY=VALUE overrides to a detached or systemd server.
+// Windows WMI continues using the user's registry environment.
+func ServerEnvironment(env []string) ServerOption {
+	return func(o *serverOptions) { o.environment = append([]string(nil), env...) }
 }
 
 // The start-herdr op polls for up to 15 seconds.
@@ -101,9 +108,9 @@ func StartServer(ctx context.Context, bin, session string, opts ...ServerOption)
 		return StartResult{Status: st}, err
 	}
 	if o.killUserProcesses && runtime.GOOS == "linux" {
-		return startSystemd(ctx, c, path, st)
+		return startSystemd(ctx, c, path, st, o.environment)
 	}
-	pid, exited, method, err := startServerProcess(ctx, path, session, serverDir())
+	pid, exited, method, err := startServerProcess(ctx, path, session, serverDir(), o.environment)
 	if err != nil {
 		return StartResult{Status: st}, err
 	}

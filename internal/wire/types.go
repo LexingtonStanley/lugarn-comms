@@ -778,6 +778,7 @@ type MemberStateChangedEventData struct {
 	From   model.MemberState `json:"from"`
 	To     model.MemberState `json:"to"`
 	Reason *model.StopReason `json:"reason"`
+	Error  *model.Error      `json:"error"`
 }
 
 func (MemberStateChangedEventData) eventData() {}
@@ -945,12 +946,13 @@ func (v HelloResultSchemas) MarshalJSON() ([]byte, error) {
 
 // HelloResultHost mirrors its v1 wire object.
 type HelloResultHost struct {
-	ID       string         `json:"id"`
-	OS       model.HostOS   `json:"os"`
-	Arch     model.HostArch `json:"arch"`
-	Hostname string         `json:"hostname"`
-	StateDir string         `json:"state_dir"`
-	Logind   *LogindInfo    `json:"logind"`
+	ID       string              `json:"id"`
+	OS       model.HostOS        `json:"os"`
+	Arch     model.HostArch      `json:"arch"`
+	Hostname string              `json:"hostname"`
+	StateDir string              `json:"state_dir"`
+	Logind   *LogindInfo         `json:"logind"`
+	Path     HelloResultHostPath `json:"path"`
 }
 
 // WorktreeItemGit mirrors its v1 wire object.
@@ -1020,4 +1022,13 @@ type StopOutputMember struct {
 	Name       string            `json:"name"`
 	State      model.MemberState `json:"state"`
 	StopReason *model.StopReason `json:"stop_reason"`
+}
+
+// HelloResultHostPath describes the login PATH capture and SSH inheritance.
+type HelloResultHostPath struct {
+	Shell      *string     `json:"shell"`
+	Login      *string     `json:"login"`
+	Issue      *string     `json:"issue"`
+	CapturedAt *model.Time `json:"captured_at"`
+	Inherited  string      `json:"inherited"`
 }

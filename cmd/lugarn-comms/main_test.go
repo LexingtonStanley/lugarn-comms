@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/version"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
 
 func TestRun(t *testing.T) {
@@ -40,11 +41,6 @@ func TestRun(t *testing.T) {
 	}
 	for _, command := range []string{"help", "-h", "--help"} {
 		tests = append(tests, testCase{name: command + " extra argument", args: []string{command, "extra"}, code: 64, stderr: fmt.Sprintf("lugarn-comms: unexpected arguments for %s\nTry 'lugarn-comms help' for usage.\n", command)})
-	}
-	for _, command := range []string{"run"} {
-		for _, args := range [][]string{{command}, {command, "--help"}} {
-			tests = append(tests, testCase{name: strings.Join(args, " "), args: args, code: 2, stderr: fmt.Sprintf("lugarn-comms: %s is not implemented yet (C2)\n", command)})
-		}
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -160,5 +156,99 @@ func TestStartupErrorsUseFaceFormats(t *testing.T) {
 		if tt.op != "" && (v["op"] != tt.op || v["request_id"] != "startup") {
 			t.Fatal(v)
 		}
+	}
+}
+
+func TestRunnerCommand(t *testing.T) {
+	t.Setenv("LUGARN_COMMS_HOME", t.TempDir())
+	for _, tt := range []struct {
+		args []string
+		want int
+	}{{[]string{"run"}, 2}, {[]string{"run", "--help"}, 0}, {[]string{"run", "--team", "unknown"}, 10}, {[]string{"run", "--team", "x", "extra"}, 2}} {
+		var out, diag bytes.Buffer
+		if got := runWithInput(context.Background(), tt.args, strings.NewReader(""), &out, &diag); got != tt.want {
+			t.Fatalf("%v: exit %d want %d: %s", tt.args, got, tt.want, &diag)
+		}
+	}
+}
+
+func TestMCPStateRootSurvivesStrippedEnvironment(t *testing.T) {
+	state := t.TempDir()
+	t.Setenv("LUGARN_COMMS_HOME", "")
+	if e := os.MkdirAll(filepath.Join(state, "launch"), 0700); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.WriteFile(filepath.Join(state, "comms.db"), nil, 0600); e != nil {
+		t.Fatal(e)
+	}
+	token := filepath.Join(state, "launch", "00000000000000000000000001.token")
+	if e := os.WriteFile(token, []byte("test"), 0600); e != nil {
+		t.Fatal(e)
+	}
+	svc, closeStore := openServiceForToken(context.Background(), token)
+	defer closeStore()
+	result, err := svc.Status(context.Background(), wire.StatusRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Teams) != 0 {
+		t.Fatal(result)
+	}
+	if _, err := os.Stat(filepath.Join(state, "comms.db")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTokenPathCannotCreateOrChmodAStore(t *testing.T) {
+	for _, kind := range []string{"missing-token", "missing-db", "symlink-token"} {
+		t.Run(kind, func(t *testing.T) {
+			dir := t.TempDir()
+			token := filepath.Join(dir, "launch", "00000000000000000000000001.token")
+			if e := os.MkdirAll(filepath.Dir(token), 0755); e != nil {
+				t.Fatal(e)
+			}
+			if kind != "missing-token" {
+				if e := os.WriteFile(token, []byte("test"), 0600); e != nil {
+					t.Fatal(e)
+				}
+			}
+			if kind != "missing-db" {
+				if e := os.WriteFile(filepath.Join(dir, "comms.db"), nil, 0600); e != nil {
+					t.Fatal(e)
+				}
+			}
+			if kind == "symlink-token" {
+				if e := os.Remove(token); e != nil {
+					t.Fatal(e)
+				}
+				if e := os.Symlink(filepath.Join(dir, "comms.db"), token); e != nil {
+					t.Skip(e)
+				}
+			}
+			if e := os.Chmod(dir, 0755); e != nil {
+				t.Fatal(e)
+			}
+			before, e := os.Stat(dir)
+			if e != nil {
+				t.Fatal(e)
+			}
+			svc, closeStore := openServiceForToken(context.Background(), token)
+			defer closeStore()
+			if _, e = svc.Status(context.Background(), wire.StatusRequest{}); e == nil {
+				t.Fatal("untrusted token path opened a store")
+			}
+			after, e := os.Stat(dir)
+			if e != nil {
+				t.Fatal(e)
+			}
+			if before.Mode() != after.Mode() {
+				t.Fatal("changed unrelated directory permissions", before.Mode(), after.Mode())
+			}
+			if kind == "missing-db" {
+				if _, e = os.Lstat(filepath.Join(dir, "comms.db")); !os.IsNotExist(e) {
+					t.Fatal("created a database", e)
+				}
+			}
+		})
 	}
 }

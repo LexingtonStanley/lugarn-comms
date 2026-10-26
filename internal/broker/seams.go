@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/policy"
 	"github.com/LexingtonStanley/lugarn-comms/internal/service"
@@ -41,16 +42,52 @@ type NoopTeardown struct{}
 
 func (NoopTeardown) Close(context.Context, store.Team, []model.Member) error { return nil }
 
-func (b *Broker) StartHerdr(ctx context.Context, _ wire.StartHerdrRequest) (wire.StartHerdrResult, error) {
+func (b *Broker) StartHerdr(ctx context.Context, request wire.StartHerdrRequest) (wire.StartHerdrResult, error) {
 	if e := b.contact(ctx, nil); e != nil {
 		return wire.StartHerdrResult{}, e
 	}
-	return wire.StartHerdrResult{}, model.NewError(model.ErrorHerdrUnavailable, "the broker cannot start Herdr until C2").WithDetail("reason", "not_running")
+	if b.integration == nil {
+		return wire.StartHerdrResult{}, model.NewError(model.ErrorHerdrUnavailable, "the broker cannot start Herdr until C2").WithDetail("reason", "not_running")
+	}
+	server := model.DefaultHerdrServer
+	if request.Server != nil {
+		server = *request.Server
+	}
+	kill := false
+	if logind := b.opts.Probe.Logind(ctx); logind != nil {
+		kill = logind.KillUserProcesses
+	}
+	if e := b.integration.refreshPath(ctx); e != nil {
+		return wire.StartHerdrResult{}, e
+	}
+	result, e := b.integration.opts.StartServer(ctx, b.integration.opts.HerdrBinary, server, herdr.KillUserProcesses(kill), herdr.ServerEnvironment([]string{"PATH=" + completeSystemPath()}))
+	if e != nil {
+		return wire.StartHerdrResult{}, e
+	}
+	var method *wire.HerdrStartMethod
+	if result.Started {
+		method = ptr(wire.HerdrStartMethod(result.Method))
+	}
+	return wire.StartHerdrResult{Herdr: result.Status.Info(), Started: result.Started, Method: method}, nil
 }
 func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.StartTeamResult, error) {
 	var out wire.StartTeamResult
 	if e := b.contact(ctx, &r.Team); e != nil {
 		return out, e
+	}
+	var preflight *store.Team
+	if e := b.db.Read(ctx, func(tx *store.Tx) error { var e error; preflight, e = tx.GetTeam(r.Team); return e }); e != nil {
+		return out, e
+	}
+	var host model.HerdrInfo
+	var hostErr error
+	if preflight.State == model.TeamStateStopped {
+		if b.integration != nil {
+			status, e := b.integration.opts.Herdr(preflight.HerdrServer).Status(ctx)
+			host, hostErr = status.Info(), e
+		} else {
+			host, hostErr = b.opts.Probe.Herdr(ctx, preflight.HerdrServer)
+		}
 	}
 	var started store.Team
 	e := b.db.Write(ctx, func(tx *store.Tx) error {
@@ -66,10 +103,12 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 		if t.State != model.TeamStateStopped {
 			return model.NewError(model.ErrorLeaseConflict, "team is already starting or stopping")
 		}
-		herdr, e := b.opts.Probe.Herdr(ctx, t.HerdrServer)
-		if e != nil || !herdr.Running {
+		if preflight.State != model.TeamStateStopped || preflight.HerdrServer != t.HerdrServer {
+			return model.NewError(model.ErrorLeaseConflict, "team changed during Herdr preflight")
+		}
+		if hostErr != nil || !host.Running {
 			reason := "not_running"
-			if !herdr.Installed {
+			if !host.Installed {
 				reason = "not_installed"
 			}
 			return model.NewError(model.ErrorHerdrUnavailable, "the team's Herdr server is unavailable").WithDetail("reason", reason)
@@ -92,7 +131,7 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 		if t.Run, e = tx.BumpTeamRun(t.ID, now); e != nil {
 			return e
 		}
-		if e = tx.UpdateTeam(t.ID, store.TeamPatch{State: ptr(model.TeamStateStarting), StartedAt: ptr(&now), StoppedAt: ptr((*model.Time)(nil)), HerdrWorkspace: ptr(ptr("lugarn-" + t.Name))}, now); e != nil {
+		if e = tx.UpdateTeam(t.ID, store.TeamPatch{State: ptr(model.TeamStateStarting), StartedAt: ptr(&now), StoppedAt: ptr((*model.Time)(nil))}, now); e != nil {
 			return e
 		}
 		if r.Resume == nil || !*r.Resume {

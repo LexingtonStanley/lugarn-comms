@@ -3,7 +3,6 @@ package broker
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -16,6 +15,9 @@ import (
 )
 
 func (r *Runner) memberState(tx *store.Tx, m model.Member, state model.MemberState, reason *model.StopReason) error {
+	return r.memberStateError(tx, m, state, reason, nil)
+}
+func (r *Runner) memberStateError(tx *store.Tx, m model.Member, state model.MemberState, reason *model.StopReason, failure *model.Error) error {
 	now := r.b.now()
 	if state != model.MemberStateRunning {
 		if e := tx.SetMemberActivity(m.ID, nil, now); e != nil {
@@ -42,9 +44,16 @@ func (r *Runner) memberState(tx *store.Tx, m model.Member, state model.MemberSta
 	if e != nil {
 		return e
 	}
-	return r.b.event(tx, &m.Team, model.EventMemberStateChanged, true, &m.ID, nil, wire.MemberStateChangedEventData{Member: *updated, From: m.State, To: state, Reason: reason})
+	return r.b.event(tx, &m.Team, model.EventMemberStateChanged, true, &m.ID, nil, wire.MemberStateChangedEventData{Member: *updated, From: m.State, To: state, Reason: reason, Error: failure})
 }
 func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model.LeaseCause) (*model.Member, error) {
+	if r.prepareMember != nil {
+		ready, e := r.prepareMember(ctx, m)
+		if e != nil {
+			return nil, r.launchFailed(ctx, m, e)
+		}
+		m = *ready
+	}
 	host := r.b.host(ctx)
 	if !host.CanRunHeadless(*m.Harness) {
 		return nil, r.launchFailed(ctx, m, invalid("harness cannot run headless"))
@@ -57,13 +66,10 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 		return nil, r.launchFailed(ctx, m, e)
 	}
 	if m.Workdir == nil {
-		return nil, r.launchFailed(ctx, m, fmt.Errorf("member has no workdir"))
+		return nil, r.launchFailed(ctx, m, model.NewError(model.ErrorLaunchFailed, "member has no workdir").WithDetail("cause", "workdir_missing"))
 	}
 	if stat, e := os.Stat(*m.Workdir); e != nil || !stat.IsDir() {
-		if e == nil {
-			e = fmt.Errorf("workdir is not a directory")
-		}
-		return nil, r.launchFailed(ctx, m, e)
+		return nil, r.launchFailed(ctx, m, model.NewError(model.ErrorLaunchFailed, "member workdir is missing").WithDetail("cause", "workdir_missing"))
 	}
 	id, e := r.b.opts.ID()
 	if e != nil {
@@ -76,7 +82,7 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 	var starting *model.Member
 	newSession := false
 	e = r.write(ctx, &m, func(tx *store.Tx, t *store.Team) error {
-		if t.State != model.TeamStateRunning || m.Lease.Driver != model.DriverNone {
+		if t.State != model.TeamStateRunning || m.Lease.Driver != model.DriverNone && !(m.Lease.Driver == model.DriverPane && (cause == model.LeaseCauseReturnHeadless || cause == model.LeaseCausePaneExit)) {
 			return errRunnerGeneration
 		}
 		current, e := tx.GetMember(m.ID)
@@ -94,6 +100,14 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 		}
 		now := r.b.now()
 		next := model.Lease{Driver: model.DriverHeadless, Generation: m.Lease.Generation + 1, Launch: &id}
+		if m.Lease.Launch != nil {
+			if e = tx.EndLaunch(*m.Lease.Launch, model.LaunchEndReasonConverted, now); e != nil {
+				return e
+			}
+			if _, e = tx.RevokeMemberTokens(m.ID, now); e != nil {
+				return e
+			}
+		}
 		if e = tx.InsertLaunch(store.Launch{ID: id, MemberID: m.ID, Generation: next.Generation, Driver: model.ModeHeadless, SessionIDStart: current.Session, StartedAt: now}); e != nil {
 			return e
 		}
@@ -117,8 +131,10 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 			}
 			newSession = true
 		}
-		if e = r.memberState(tx, m, model.MemberStateStarting, nil); e != nil {
-			return e
+		if m.State != model.MemberStateRunning {
+			if e = r.memberState(tx, m, model.MemberStateStarting, nil); e != nil {
+				return e
+			}
 		}
 		starting, e = tx.GetMember(m.ID)
 		return e
@@ -149,8 +165,10 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 		if e := tx.UpdateMember(m.ID, store.MemberPatch{LastDriver: ptr(ptr(model.ModeHeadless))}, r.b.now()); e != nil {
 			return e
 		}
-		if e := r.memberState(tx, *starting, model.MemberStateRunning, nil); e != nil {
-			return e
+		if starting.State != model.MemberStateRunning {
+			if e := r.memberState(tx, *starting, model.MemberStateRunning, nil); e != nil {
+				return e
+			}
 		}
 		ready, e = tx.GetMember(m.ID)
 		if e != nil {
@@ -167,7 +185,32 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 	})
 	return ready, e
 }
+
+// launchFailure retains machine-readable causes and driver diagnostics in both
+// the durable attention event and the request/runner's returned error.
+func launchFailure(cause error) *model.Error {
+	original := model.AsError(cause)
+	details := map[string]any{}
+	for k, v := range original.Details {
+		details[k] = v
+	}
+	if details["reason"] == "unresolvable" {
+		if underlying, ok := details["cause"]; ok && underlying != "unresolvable" {
+			details["underlying_cause"] = underlying
+		}
+		details["cause"] = "unresolvable"
+	}
+	if _, ok := details["cause"]; !ok {
+		if reason, ok := details["reason"]; ok {
+			details["cause"] = reason
+		} else {
+			details["cause"] = cause.Error()
+		}
+	}
+	return model.NewError(model.ErrorLaunchFailed, original.Message).WithDetails(details)
+}
 func (r *Runner) launchFailed(ctx context.Context, m model.Member, cause error) error {
+	failure := launchFailure(cause)
 	e := r.write(ctx, &m, func(tx *store.Tx, _ *store.Team) error {
 		if m.Lease != nil && m.Lease.Driver != model.DriverNone {
 			now := r.b.now()
@@ -206,7 +249,7 @@ func (r *Runner) launchFailed(ctx context.Context, m model.Member, cause error) 
 				return e
 			}
 		}
-		return r.memberState(tx, m, model.MemberStateStopped, ptr(model.StopReasonLaunchFailed))
+		return r.memberStateError(tx, m, model.MemberStateStopped, ptr(model.StopReasonLaunchFailed), failure)
 	})
 	if e != nil {
 		return e
@@ -216,7 +259,8 @@ func (r *Runner) launchFailed(ctx context.Context, m model.Member, cause error) 
 			return e
 		}
 	}
-	return model.NewError(model.ErrorLaunchFailed, "member launch failed").WithDetail("cause", cause.Error())
+
+	return failure
 }
 func (r *Runner) removeLaunchFiles(ctx context.Context, id string) error {
 	if e := r.opts.Files.Delete(ctx, id); e != nil {

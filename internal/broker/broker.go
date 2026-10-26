@@ -28,14 +28,15 @@ type Git interface {
 // Nil dependencies use production defaults. Host, when supplied, overrides the
 // policy adapter; Probe still supplies hello's host information.
 type Options struct {
-	Launcher RunnerLauncher
-	Teardown TeamTeardown
-	StateDir string
-	Host     policy.Host
-	Probe    hostprobe.Probe
-	Git      Git
-	Clock    func() time.Time
-	ID       func() (string, error)
+	Launcher  RunnerLauncher
+	Teardown  TeamTeardown
+	StateDir  string
+	Host      policy.Host
+	Probe     hostprobe.Probe
+	LoginPath *hostprobe.PathInfo
+	Git       Git
+	Clock     func() time.Time
+	ID        func() (string, error)
 	// Wait pauses request polling. Cancellation must interrupt it.
 	Wait           func(context.Context, time.Duration) error
 	RequestTimeout time.Duration
@@ -43,8 +44,9 @@ type Options struct {
 
 // Broker implements the app, tools and authenticator service contracts.
 type Broker struct {
-	db   *store.Store
-	opts Options
+	integration *Integration
+	db          *store.Store
+	opts        Options
 }
 
 // New constructs a broker over an already opened store. The caller owns Close.

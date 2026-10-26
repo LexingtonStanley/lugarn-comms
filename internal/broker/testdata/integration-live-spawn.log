@@ -1,0 +1,19 @@
+=== RUN   TestIntegrationLiveFlows
+    integration_live_linux_test.go:207: app start-herdr server=lugarn-test-90eedddbbb0cce07 started=true method=0x39ba08858200
+=== RUN   TestIntegrationLiveFlows/d-spawn-worktree-stop
+    integration_live_linux_test.go:329: app start-team live-d: state=running runner=0x39ba08bce1c0 pane=0x39ba08858fb0
+    integration_live_linux_test.go:332: lugarn-comms --member live-parent --token-file <launch/01M5WW2TVX2PBV4BDMRP2ZM4Z7.token> ["spawn" "worker" "claude" "Reply with the word ok. Do not change files." "--profile" "workspace"] -> {"member":{"id":"01M5WW2V6XYBQBAKY6JPFQSWQ6","name":"worker","harness":"claude","profile":"workspace","mode":"headless","state":"running","workdir":"/tmp/TestIntegrationLiveFlows4176313742/004/repo-lugarn/live-d-worker","worktree":{"path":"/tmp/TestIntegrationLiveFlows4176313742/004/repo-lugarn/live-d-worker","branch":"lugarn/live-d/worker"}},"task_message":"01M5WW2V70SCTXNVS216TJECN8"}
+         (stderr=spawn: worker (running)
+        )
+    integration_live_linux_test.go:112: turn {"id":"01M5WW2VM98870JV79QTNMV7K2","team":"live-d","member":{"id":"01M5WW2V6XYBQBAKY6JPFQSWQ6","name":"worker"},"launch":"01M5WW2VEYBV8HTQKYNKP0CV1X","lease_generation":1,"harness":"claude","session_id_start":"e25cd4ae-befc-4fc9-bb3e-03b45f0b8221","session_id_end":"e25cd4ae-befc-4fc9-bb3e-03b45f0b8221","pid":3637343,"status":"succeeded","exit_code":0,"error":null,"usage":{"input_tokens":2,"output_tokens":278,"cached_input_tokens":11333,"reasoning_tokens":274,"cost_usd":0.0035531300000000003},"started_at":"2026-10-26T19:48:02.313Z","ended_at":"2026-10-26T19:48:07.820Z","consumed":["01M5WW2V70SCTXNVS216TJECN8"],"auto_replies":["01M5WW310CDSRDBZ4GR9A62SBJ"]}
+    integration_live_linux_test.go:348: lugarn-comms --member live-parent --token-file <launch/01M5WW2TVX2PBV4BDMRP2ZM4Z7.token> ["stop" "worker"] -> {"member":{"id":"01M5WW2V6XYBQBAKY6JPFQSWQ6","name":"worker","state":"stopped","stop_reason":"spawner"}}
+         (stderr=stop: worker (stopped)
+        )
+    integration_live_linux_test.go:349: app stop-team live-d: stopped; 2 launch ids and 1 owned panes clean
+    integration_live_linux_test.go:352: app remove-worktrees: {Removed:[] Refused:[{Path:/tmp/TestIntegrationLiveFlows4176313742/004/repo-lugarn/live-d-worker Reason:dirty Message:dirty: worktree has uncommitted or untracked files}]}
+=== NAME  TestIntegrationLiveFlows
+    integration_live_linux_test.go:354: herdr --session lugarn-test-90eedddbbb0cce07 server stop:  (<nil>)
+--- PASS: TestIntegrationLiveFlows (8.42s)
+    --- PASS: TestIntegrationLiveFlows/d-spawn-worktree-stop (7.39s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/broker	8.434s

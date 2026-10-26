@@ -65,7 +65,7 @@ func (b *Broker) Worktrees(ctx context.Context, r wire.WorktreesRequest) (wire.W
 			return e
 		}
 		for _, w := range ws {
-			m, e := tx.GetMember(w.MemberID)
+			m, e := b.worktreeOwner(tx, w)
 			if e != nil {
 				return e
 			}
@@ -105,7 +105,7 @@ func (b *Broker) RemoveWorktrees(ctx context.Context, r wire.RemoveWorktreesRequ
 				refuse(wire.WorktreeRefusalUnknownPath, "no live broker worktree at this path for this team")
 				return nil
 			}
-			m, e := tx.GetMember(w.MemberID)
+			m, e := b.worktreeOwner(tx, *w)
 			if e != nil {
 				return e
 			}
@@ -161,4 +161,28 @@ func (b *Broker) RemoveWorktrees(ctx context.Context, r wire.RemoveWorktreesRequ
 		out.Removed = append(out.Removed, item)
 	}
 	return out, nil
+}
+
+// A reused worktree may be linked by a later member identity with the same name.
+// Resolve its current user from live links, so an older stopped row cannot make
+// removal appear safe while a respawned worker is running there.
+func (b *Broker) worktreeOwner(tx *store.Tx, w store.WorktreeRecord) (*model.Member, error) {
+	members, e := tx.ListMembers(w.TeamID, false)
+	if e != nil {
+		return nil, e
+	}
+	var current *model.Member
+	for _, m := range members {
+		if m.Worktree == nil || !sameNativePath(m.Worktree.Path, w.Path) {
+			continue
+		}
+		if current == nil || current.State == model.MemberStateStopped && m.State != model.MemberStateStopped || (current.State == model.MemberStateStopped) == (m.State == model.MemberStateStopped) && m.CreatedAt.After(current.CreatedAt.Time) {
+			copy := m
+			current = &copy
+		}
+	}
+	if current != nil {
+		return current, nil
+	}
+	return tx.GetMember(w.MemberID)
 }

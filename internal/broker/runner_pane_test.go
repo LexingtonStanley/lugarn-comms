@@ -44,6 +44,9 @@ func paneFixture(t *testing.T, p Panes) (*Broker, *Runner, model.Member) {
 	id, e := model.NewULID()
 	must(t, e)
 	must(t, b.db.Write(context.Background(), func(tx *store.Tx) error {
+		if e := tx.UpdateTeam("t", store.TeamPatch{HerdrWorkspace: ptr(ptr("workspace-owned"))}, b.now()); e != nil {
+			return e
+		}
 		if e := tx.EndLaunch(*m.Lease.Launch, model.LaunchEndReasonConverted, b.now()); e != nil {
 			return e
 		}

@@ -18,12 +18,21 @@ func TestStartServerDetaches(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	f := newFake(t)
-	res, err := StartServer(testContext(t), f.bin, "lugarn-fake")
+	res, err := StartServer(testContext(t), f.bin, "lugarn-fake", ServerEnvironment([]string{"PATH=/explicit/login/bin"}))
 	if res.PID > 0 {
 		t.Cleanup(func() { stopFakeServer(t, f, res.PID) })
 	}
 	if err != nil {
 		t.Fatal(err)
+	}
+	found := false
+	for _, c := range f.calls() {
+		if len(c.Args) == 3 && c.Args[2] == "server" && c.Path == "/explicit/login/bin" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("detached child did not inherit explicit PATH")
 	}
 	sid, err := unix.Getsid(res.PID)
 	if err != nil || sid != res.PID {
