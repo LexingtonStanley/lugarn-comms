@@ -17,6 +17,9 @@ func testLaunch(t *testing.T, h model.Harness) Launch {
 	if h == model.HarnessClaude {
 		l.SessionID = testSessionID
 	}
+	if h == model.HarnessOpenCode {
+		l.Version = "2.1.4"
+	}
 	t.Setenv("LUGARN_COMMS_HOME", l.StateDir)
 	return l
 }

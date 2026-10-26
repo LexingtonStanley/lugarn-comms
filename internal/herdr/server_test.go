@@ -10,7 +10,22 @@ import (
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
+
+// herdr.StartMethod and wire.HerdrStartMethod have the same values, in order.
+func TestStartMethodsMatchWire(t *testing.T) {
+	var ours, theirs []string
+	for _, m := range StartMethod("").Values() {
+		ours = append(ours, string(m))
+	}
+	for _, m := range wire.HerdrStartMethod("").Values() {
+		theirs = append(theirs, string(m))
+	}
+	if strings.Join(ours, ",") != strings.Join(theirs, ",") {
+		t.Fatalf("herdr %q, wire %q", ours, theirs)
+	}
+}
 
 func wantMethod() StartMethod {
 	if runtime.GOOS == "windows" {
@@ -45,7 +60,12 @@ func serverCalls(f *fake) int {
 func TestStartServer(t *testing.T) {
 	f := newFake(t)
 	ctx := testContext(t)
-	res, err := StartServer(ctx, f.bin, "lugarn-fake")
+	// KillUserProcesses only matters on Linux; elsewhere it changes nothing.
+	var opts []ServerOption
+	if runtime.GOOS != "linux" {
+		opts = append(opts, KillUserProcesses(true))
+	}
+	res, err := StartServer(ctx, f.bin, "lugarn-fake", opts...)
 	if res.PID > 0 {
 		t.Cleanup(func() { stopFakeServer(t, f, res.PID) })
 	}
@@ -120,5 +140,23 @@ func TestStartServerFailures(t *testing.T) {
 				t.Fatalf("exit noticed after %s", time.Since(start))
 			}
 		})
+	}
+}
+
+func TestUnitName(t *testing.T) {
+	for session, want := range map[string]string{
+		"default":               "lugarn-herdr-default.service",
+		"UPPER.Dots_ok-1":       "lugarn-herdr-UPPER.Dots_ok-1.service",
+		"x.timer":               "lugarn-herdr-x.timer.service",
+		strings.Repeat("s", 64): "lugarn-herdr-" + strings.Repeat("s", 64) + ".service",
+	} {
+		got := unitName(session)
+		if got != want || len(got) > 255 {
+			t.Fatalf("unitName(%q) = %q", session, got)
+		}
+		// Valid unit-name characters: letters, digits and ":-_.\".
+		if strings.Trim(got, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-_.\\") != "" {
+			t.Fatalf("unitName(%q) = %q has invalid characters", session, got)
+		}
 	}
 }

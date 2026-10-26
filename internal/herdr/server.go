@@ -3,24 +3,35 @@ package herdr
 import (
 	"context"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 )
 
 // StartMethod is how StartServer started a server: the protocol's
-// HerdrStartMethod, which internal/model doesn't define (internal/wire does).
+// HerdrStartMethod, which internal/model doesn't define. internal/wire's
+// HerdrStartMethod has the same values in the same order (a test checks).
 type StartMethod string
 
 const (
 	// MethodDetached is POSIX: herdr server in its own session (setsid), stdio
 	// on the null device, not waited on.
 	MethodDetached StartMethod = "detached"
+	// MethodSystemd is Linux under logind's KillUserProcesses=yes: herdr
+	// server as a transient systemd user service, lugarn-herdr-<server>, so it
+	// belongs to user@.service rather than the SSH session's scope.
+	MethodSystemd StartMethod = "systemd"
 	// MethodWMI is Windows: herdr server created through WMI's
 	// Win32_Process.Create, so it belongs to the WMI service rather than the
 	// SSH session's job object.
 	MethodWMI StartMethod = "wmi"
 )
+
+// Values returns every StartMethod in the protocol's order.
+func (StartMethod) Values() []StartMethod {
+	return []StartMethod{MethodDetached, MethodSystemd, MethodWMI}
+}
 
 // StartResult is what StartServer did.
 type StartResult struct {
@@ -28,10 +39,26 @@ type StartResult struct {
 	Started bool
 	// Method is empty when nothing was started.
 	Method StartMethod
-	// PID is the started process, or 0.
+	// PID is the started process (for systemd, the unit's main process), or 0.
 	PID int
 	// Status is the last status seen.
 	Status Status
+}
+
+// ServerOption adjusts StartServer.
+type ServerOption func(*serverOptions)
+
+type serverOptions struct {
+	killUserProcesses bool
+}
+
+// KillUserProcesses passes on logind's KillUserProcesses, as hello reports it
+// (host.logind.kill_user_processes; false when logind is null). When it's true
+// on Linux, StartServer runs the server as a systemd user service
+// (MethodSystemd), because logind kills everything in the SSH session's scope,
+// setsid or not. Anywhere else it changes nothing.
+func KillUserProcesses(on bool) ServerOption {
+	return func(o *serverOptions) { o.killUserProcesses = on }
 }
 
 // The start-herdr op polls for up to 15 seconds.
@@ -46,11 +73,15 @@ var (
 // or whose process exits first, is herdr_unavailable (start_timeout). A server
 // that is slow rather than dead is left running: a later status sees it.
 //
-// The server's working directory is the home directory, so it holds no
-// worktree open, and its environment is this process's without HERDR_* (on
-// Windows, WMI gives it the user's own environment instead). Every pane the
-// server opens inherits that environment.
-func StartServer(ctx context.Context, bin, session string) (StartResult, error) {
+// Detached, the server's working directory is the home directory, so it holds
+// no worktree open, and its environment is this process's without HERDR_*.
+// Under systemd and WMI it gets the service manager's or the user's own
+// environment instead. Every pane the server opens inherits it.
+func StartServer(ctx context.Context, bin, session string, opts ...ServerOption) (StartResult, error) {
+	var o serverOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
 	if err := ValidateSession(session); err != nil {
 		return StartResult{}, err
 	}
@@ -69,14 +100,29 @@ func StartServer(ctx context.Context, bin, session string) (StartResult, error) 
 	if err != nil {
 		return StartResult{Status: st}, err
 	}
+	if o.killUserProcesses && runtime.GOOS == "linux" {
+		return startSystemd(ctx, c, path, st)
+	}
 	pid, exited, method, err := startServerProcess(ctx, path, session, serverDir())
 	if err != nil {
 		return StartResult{Status: st}, err
 	}
-	res := StartResult{Started: true, Method: method, PID: pid, Status: st}
+	return waitForServer(ctx, c, StartResult{Started: true, Method: method, PID: pid, Status: st}, func() bool {
+		select {
+		case <-exited:
+			return true
+		default:
+			return false
+		}
+	})
+}
+
+// waitForServer polls until the server answers, up to startTimeout. exited
+// reports that what we started is gone, so there's no point waiting longer.
+func waitForServer(ctx context.Context, c *Client, res StartResult, exited func() bool) (StartResult, error) {
 	deadline := time.Now().Add(startTimeout)
 	for {
-		st, err = c.Status(ctx)
+		st, err := c.Status(ctx)
 		if err == nil && st.Running {
 			res.Status = st
 			return res, nil
@@ -84,18 +130,15 @@ func StartServer(ctx context.Context, bin, session string) (StartResult, error) 
 		if ctx.Err() != nil {
 			return res, ctx.Err()
 		}
-		select {
-		case <-exited:
-			// Our process is gone. Look once more: a concurrent start may have won.
+		if exited != nil && exited() {
+			// Ours is gone. Look once more: a concurrent start may have won.
 			if st, err = c.Status(ctx); err == nil && st.Running {
-				res.Started, res.Method, res.PID, res.Status = false, "", 0, st
-				return res, nil
+				return StartResult{Status: st}, nil
 			}
-			return res, startFailed(pid, "herdr server exited before it answered")
-		default:
+			return res, startFailed(res.PID, "herdr server exited before it answered")
 		}
 		if time.Now().After(deadline) {
-			return res, startFailed(pid, "herdr server didn't answer within "+startTimeout.String())
+			return res, startFailed(res.PID, "herdr server didn't answer within "+startTimeout.String())
 		}
 		select {
 		case <-ctx.Done():

@@ -1,6 +1,8 @@
 package herdr
 
 import (
+	"crypto/sha256"
+	"encoding/base32"
 	"regexp"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
@@ -8,7 +10,8 @@ import (
 
 // Herdr's own name rules, checked live on Herdr 0.9.5 (decision 49). Workspace
 // labels are free text: Herdr took 5,000 characters, spaces, Unicode, a newline
-// and the empty string, and it doesn't make them unique.
+// and the empty string, and it doesn't make them unique, so the broker finds a
+// workspace by the id it recorded, never by its label.
 var (
 	agentNamePattern   = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 	sessionNamePattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
@@ -17,19 +20,32 @@ var (
 // MaxAgentName is the longest agent name Herdr accepts, in bytes.
 const MaxAgentName = 32
 
-// WorkspaceName is a team's Herdr workspace label: lugarn-<team name>.
+const (
+	agentNameCut = 25
+	agentTagLen  = 6
+)
+
+// tagEncoding is Crockford's base32 alphabet in lower case.
+var tagEncoding = base32.NewEncoding("0123456789abcdefghjkmnpqrstvwxyz").WithPadding(base32.NoPadding)
+
+// WorkspaceName is a team's Herdr workspace label: lugarn-<team name>. It's a
+// label for people; the broker records the workspace's id.
 func WorkspaceName(team string) string { return "lugarn-" + team }
 
-// AgentName is a member's Herdr agent name, <team name>-<member name>, when
-// Herdr accepts it. Herdr allows [a-z][a-z0-9_-]{0,31}, so a team name that
-// starts with a digit, or a team and member name longer than 31 bytes together,
-// doesn't fit: that's invalid_request, details.reason "herdr_agent_name".
-func AgentName(team, member string) (string, error) {
-	name := team + "-" + member
-	if err := ValidateAgentName(name); err != nil {
-		return "", err
+// AgentName is a member's Herdr agent name (Herdr names, decision 5): the
+// member name cut to 25 characters, '-', and a tag, the first 6 characters of
+// the lower-case Crockford base32 of SHA-256("<team id>/<member name>"), such as
+// "writer-k2m9xa". The name is stable across launches, and the tag keeps two
+// teams' members apart on one server. For any valid member name
+// ([a-z][a-z0-9-]{0,31}) it's at most 32 characters and starts with a letter,
+// so it always passes ValidateAgentName.
+func AgentName(teamID, member string) string {
+	sum := sha256.Sum256([]byte(teamID + "/" + member))
+	tag := tagEncoding.EncodeToString(sum[:])[:agentTagLen]
+	if len(member) > agentNameCut {
+		member = member[:agentNameCut]
 	}
-	return name, nil
+	return member + "-" + tag
 }
 
 // ValidateAgentName checks a name against Herdr's agent name rule.
@@ -43,7 +59,9 @@ func ValidateAgentName(name string) error {
 }
 
 // ValidateSession checks a Herdr session (server) name: 1 to 64 ASCII letters,
-// digits, '.', '_' or '-', and not "." or "..".
+// digits, '.', '_' or '-', and not "." or "..". Every one of those characters
+// is also valid in a systemd unit name, so the systemd method's unit name
+// carries it unescaped.
 func ValidateSession(name string) error {
 	if sessionNamePattern.MatchString(name) && name != "." && name != ".." {
 		return nil

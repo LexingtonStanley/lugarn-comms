@@ -275,3 +275,20 @@ func TestVersionRejection(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// A missing or unsupported OpenCode version stops Start before any file or
+// process, with its own code.
+func TestStartChecksOpenCodeVersion(t *testing.T) {
+	for version, code := range map[string]model.ErrorCode{"": model.ErrorInvalidRequest, "3.0.0": model.ErrorHarnessUnavailable} {
+		l := testLaunch(t, model.HarnessOpenCode)
+		l.Version = version
+		d := Driver{Resolver: fakeResolver{path: filepath.Join(t.TempDir(), "never-run")}}
+		_, err := d.Start(context.Background(), l, "hi")
+		if p := model.AsError(err); p == nil || p.Code != code {
+			t.Fatalf("version %q: %v, want %s", version, err, code)
+		}
+		if _, statErr := os.Stat(l.path(".opencode.json")); !os.IsNotExist(statErr) {
+			t.Fatalf("version %q wrote a config", version)
+		}
+	}
+}

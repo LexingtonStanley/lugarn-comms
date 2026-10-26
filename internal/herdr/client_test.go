@@ -170,68 +170,94 @@ func TestBadArgumentsNeverRun(t *testing.T) {
 	wantProtocol(t, err, model.ErrorInvalidRequest, "herdr_session_name")
 	_, err = New(f.bin, "").Agents(ctx)
 	wantProtocol(t, err, model.ErrorInvalidRequest, "herdr_session_name")
-	_, _, err = c.EnsureWorkspace(ctx, "lugarn-a", "", map[string]string{"HERDR_SESSION": "default"})
+	_, err = c.CreateWorkspace(ctx, "lugarn-a", "", map[string]string{"HERDR_SESSION": "default"})
 	wantProtocol(t, err, model.ErrorInvalidRequest, "env_name")
-	_, err = c.OpenPane(ctx, "w1", "", map[string]string{"A=B": "c"})
+	_, err = c.OpenTab(ctx, "w1", "writer", "", map[string]string{"A=B": "c"})
+	wantProtocol(t, err, model.ErrorInvalidRequest, "env_name")
+	_, err = c.OpenTab(ctx, "w1", "writer", "", map[string]string{"": "c"})
 	wantProtocol(t, err, model.ErrorInvalidRequest, "env_name")
 	if calls := f.calls(); len(calls) != 0 {
 		t.Fatalf("invalid calls ran: %+v", calls)
 	}
 }
 
-func TestEnsureWorkspace(t *testing.T) {
+// Real tab create output, Herdr 0.9.5.
+const tabCreated = `{"root_pane":{"agent_status":"unknown","cwd":"/t","focused":false,"pane_id":"w1:p2","revision":0,` +
+	`"tab_id":"w1:t2","terminal_id":"term_4","workspace_id":"w1"},"tab":{"agent_status":"unknown","focused":false,` +
+	`"label":"writer","number":2,"pane_count":1,"tab_id":"w1:t2","workspace_id":"w1"},"type":"tab_created"}`
+
+func TestCreateWorkspaceAndFindItByID(t *testing.T) {
 	ctx := testContext(t)
 	f := newFake(t)
-	f.on("workspace list", ok(`{"type":"workspace_list","workspaces":[`+
-		`{"workspace_id":"w1","label":"other","number":1},`+
-		`{"workspace_id":"w2","label":"lugarn-alpha","number":2},`+
-		`{"workspace_id":"w3","label":"lugarn-alpha","number":3}]}`))
-	w, created, err := f.client().EnsureWorkspace(ctx, "lugarn-alpha", "/x", map[string]string{"A": "1"})
-	if err != nil || created || w.ID != "w2" || w.Label != "lugarn-alpha" || w.RootPane != "" {
-		t.Fatalf("found: %+v %v %v", w, created, err)
-	}
-	wantArgs(t, onlyCall(t, f), "workspace", "list")
-
-	f = newFake(t)
-	f.on("workspace list", ok(`{"type":"workspace_list","workspaces":[]}`))
-	f.on("workspace create", ok(`{"root_pane":`+paneShell+`,"tab":{"tab_id":"w1:t1"},"type":"workspace_created",`+
-		`"workspace":{"active_tab_id":"w1:t1","agent_status":"unknown","focused":false,"label":"lugarn-alpha",`+
-		`"number":1,"pane_count":1,"tab_count":1,"workspace_id":"w1"}}`))
+	f.on("workspace create", ok(`{"root_pane":`+paneShell+`,"tab":{"tab_id":"w1:t1","workspace_id":"w1","label":"1"},`+
+		`"type":"workspace_created","workspace":{"active_tab_id":"w1:t1","agent_status":"unknown","focused":false,`+
+		`"label":"lugarn-alpha","number":1,"pane_count":1,"tab_count":1,"workspace_id":"w1"}}`))
+	c := f.client()
 	cwd := filepath.Join(t.TempDir(), "with space")
-	w, created, err = f.client().EnsureWorkspace(ctx, "lugarn-alpha", cwd,
-		map[string]string{"LUGARN_COMMS_MEMBER": "m1", "B": `x "$(y)" \n`})
-	if err != nil || !created || w.ID != "w1" || w.RootPane != "w1:p2" {
-		t.Fatalf("created: %+v %v %v", w, created, err)
+	w, err := c.CreateWorkspace(ctx, "lugarn-alpha", cwd, map[string]string{"LUGARN_COMMS_MEMBER": "runner", "B": `x "$(y)" \n`})
+	if err != nil || w.ID != "w1" || w.Label != "lugarn-alpha" || w.RootTab != "w1:t1" || w.RootPane != "w1:p2" {
+		t.Fatalf("created: %+v %v", w, err)
+	}
+	// It always creates: there's no lookup by label.
+	wantArgs(t, onlyCall(t, f), "workspace", "create", "--label", "lugarn-alpha", "--cwd", cwd,
+		"--env", `B=x "$(y)" \n`, "--env", "LUGARN_COMMS_MEMBER=runner", "--no-focus")
+
+	f.on("workspace get", ok(`{"type":"workspace_info","workspace":{"active_tab_id":"w1:t1","agent_status":"unknown",`+
+		`"focused":true,"label":"lugarn-alpha","number":1,"pane_count":2,"tab_count":2,"workspace_id":"w1"}}`))
+	got, err := c.Workspace(ctx, "w1")
+	if err != nil || got.ID != "w1" || got.Label != "lugarn-alpha" {
+		t.Fatalf("Workspace = %+v, %v", got, err)
 	}
 	calls := f.calls()
-	if len(calls) != 2 {
-		t.Fatalf("calls = %+v", calls)
+	wantArgs(t, calls[len(calls)-1], "workspace", "get", "w1")
+
+	f.on("workspace get", fails("workspace_not_found", "workspace w9 not found"))
+	_, err = c.Workspace(ctx, "w9")
+	wantProtocol(t, err, model.ErrorNotFound, "gone")
+	if !IsGone(err) {
+		t.Fatal("a gone workspace isn't IsGone")
 	}
-	wantArgs(t, calls[1], "workspace", "create", "--label", "lugarn-alpha", "--cwd", cwd,
-		"--env", `B=x "$(y)" \n`, "--env", "LUGARN_COMMS_MEMBER=m1", "--no-focus")
 }
 
-func TestOpenPaneSplitsTheLargestPane(t *testing.T) {
+func TestOpenTabAndClose(t *testing.T) {
+	ctx := testContext(t)
 	f := newFake(t)
-	f.on("pane list", ok(`{"panes":[`+paneShell+`],"type":"pane_list"}`))
-	f.on("pane layout", ok(`{"layout":{"area":{"height":40,"width":120,"x":0,"y":0},"panes":[`+
-		`{"pane_id":"w1:p1","rect":{"height":10,"width":60,"x":0,"y":0}},`+
-		`{"pane_id":"w1:p7","rect":{"height":30,"width":60,"x":0,"y":10}},`+
-		`{"pane_id":"w1:p6","rect":{"height":40,"width":60,"x":60,"y":0}}]},"type":"pane_layout"}`))
-	f.on("pane split", ok(`{"pane":`+paneShell+`,"type":"pane_info"}`))
-	p, err := f.client().OpenPane(testContext(t), "w1", "/w2", map[string]string{"LUGARN_COMMS_TOKEN_FILE": "/s/t.token"})
-	if err != nil || p.ID != "w1:p2" || p.Workspace != "w1" || p.Cwd != "/w2" || p.Activity != model.ActivityUnknown {
-		t.Fatalf("pane = %+v, %v", p, err)
+	f.on("tab create", ok(tabCreated))
+	c := f.client()
+	tab, err := c.OpenTab(ctx, "w1", "writer", "/t", map[string]string{
+		"LUGARN_COMMS_MEMBER": "m1", "LUGARN_COMMS_TOKEN_FILE": "/s/launch dir/01J.token"})
+	if err != nil || tab != (Tab{ID: "w1:t2", Workspace: "w1", Label: "writer", RootPane: "w1:p2"}) {
+		t.Fatalf("tab = %+v, %v", tab, err)
+	}
+	wantArgs(t, onlyCall(t, f), "tab", "create", "--workspace", "w1", "--cwd", "/t", "--label", "writer",
+		"--env", "LUGARN_COMMS_MEMBER=m1", "--env", "LUGARN_COMMS_TOKEN_FILE=/s/launch dir/01J.token", "--no-focus")
+
+	// No label or cwd: Herdr's defaults.
+	if _, err := c.OpenTab(ctx, "w1", "", "", nil); err != nil {
+		t.Fatal(err)
 	}
 	calls := f.calls()
-	if len(calls) != 3 {
-		t.Fatalf("calls = %+v", calls)
+	wantArgs(t, calls[len(calls)-1], "tab", "create", "--workspace", "w1", "--no-focus")
+
+	f.on("tab create", fails("workspace_not_found", "workspace w9 not found"))
+	_, err = c.OpenTab(ctx, "w9", "writer", "", nil)
+	if !IsGone(err) {
+		t.Fatalf("tab in a gone workspace: %v", err)
 	}
-	wantArgs(t, calls[0], "pane", "list", "--workspace", "w1")
-	wantArgs(t, calls[1], "pane", "layout", "--pane", "w1:p2")
-	// w1:p6 is largest; 60 wide by 40 tall is taller than wide on screen.
-	wantArgs(t, calls[2], "pane", "split", "w1:p6", "--direction", "down", "--cwd", "/w2",
-		"--env", "LUGARN_COMMS_TOKEN_FILE=/s/t.token", "--no-focus")
+	f.on("tab create", fails("internal_error", "boom"))
+	_, err = c.OpenTab(ctx, "w1", "writer", "", nil)
+	wantProtocol(t, err, model.ErrorLaunchFailed, "")
+
+	f.on("tab close", ok(`{"type":"ok"}`))
+	if err := c.CloseTab(ctx, "w1:t2"); err != nil {
+		t.Fatal(err)
+	}
+	calls = f.calls()
+	wantArgs(t, calls[len(calls)-1], "tab", "close", "w1:t2")
+	f.on("tab close", fails("tab_not_found", "tab w1:t2 not found"))
+	if err := c.CloseTab(ctx, "w1:t2"); err != nil {
+		t.Fatalf("closing a gone tab: %v", err)
+	}
 }
 
 func TestPaneGoneAndClose(t *testing.T) {

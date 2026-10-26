@@ -38,9 +38,18 @@ func (s Status) Info() model.HerdrInfo {
 type Workspace struct {
 	ID    string
 	Label string
-	// RootPane is the pane `workspace create` made, set only when
-	// EnsureWorkspace created the workspace. The create's --env reached that
-	// pane only: panes split from it later don't inherit it.
+	// RootTab and RootPane are the tab and pane `workspace create` made, set
+	// only by CreateWorkspace. The create's --env reached that pane only.
+	RootTab  string
+	RootPane string
+}
+
+// Tab is one Herdr tab.
+type Tab struct {
+	ID        string
+	Workspace string
+	Label     string
+	// RootPane is the pane `tab create` made, which got the create's --env.
 	RootPane string
 }
 
@@ -174,18 +183,10 @@ type wireWorkspace struct {
 	Label       string `json:"label"`
 }
 
-type wireRect struct {
-	Width  int `json:"width"`
-	Height int `json:"height"`
-}
-
-type wireLayout struct {
-	Layout struct {
-		Panes []struct {
-			PaneID string   `json:"pane_id"`
-			Rect   wireRect `json:"rect"`
-		} `json:"panes"`
-	} `json:"layout"`
+type wireTab struct {
+	TabID       string `json:"tab_id"`
+	WorkspaceID string `json:"workspace_id"`
+	Label       string `json:"label"`
 }
 
 type wireStatus struct {

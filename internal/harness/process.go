@@ -58,6 +58,12 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 	if err != nil {
 		return nil, err
 	}
+	if l.Harness == model.HarnessOpenCode {
+		// Before WriteFiles, so a missing or unsupported version keeps its code.
+		if _, err = openCodeMajor(l.Version); err != nil {
+			return nil, err
+		}
+	}
 	if err = ctx.Err(); err != nil {
 		return nil, err
 	}

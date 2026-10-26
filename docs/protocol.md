@@ -778,7 +778,7 @@ What the C2c drivers pass. **Verified headless only**, on lexbox on 2026-10-26, 
 | `bypass`            | `--permission-mode bypassPermissions`                                                           | `--dangerously-bypass-approvals-and-sandbox`                                                   | config `{"edit": "allow", "bash": "allow", "external_directory": "allow"}`, plus `--auto`         |
 | First headless turn | `claude -p --session-id <uuid>`                                                                 | `codex exec --json`                                                                            | `opencode run --format json`                                                                      |
 | Later turns         | `claude -p --resume <uuid>`                                                                     | `codex exec --json resume <id>`                                                                | `opencode run --format json --session <id>`                                                       |
-| Pane                | `claude --resume <uuid>`, or `--session-id <uuid>` for a new session                            | `codex resume <id>`                                                                            | `opencode --session <id>`                                                                         |
+| Pane                | `claude --resume <uuid>`, or `--session-id <uuid>` for a new session                            | `codex --no-daemon resume <id>`                                                                | `opencode --session <id>`                                                                         |
 | Prompt              | stdin                                                                                           | stdin                                                                                          | stdin                                                                                             |
 | Acknowledgement     | the init event                                                                                  | `thread.started`                                                                               | the first event, `step_start`, carrying `"sessionID"`                                             |
 
@@ -802,10 +802,14 @@ Notes:
   config turns it off for `lugarn` (`codemode: false`), so they're ordinary tools
   (`lugarn_send`, …). 2.1.4 drops `codemode` from a flat `mcp.lugarn` entry, so 2.x also gets
   the same server under its native `mcp.servers.lugarn`, which wins. 1.x gets only the flat
-  entry, since it would read `servers` as a server's name.
+  entry, since it would read `servers` as a server's name, and without `codemode`: 1.x
+  validates `McpLocal` strictly and would reject the whole config (C2e). So the launch
+  carries OpenCode's major version, from `hello`'s probe.
 - **Codex panes:** the Codex TUI left a `codex app-server --managed-daemon` running after its
-  pane closed (C2b). The pane launch stops it doing that, as `--no-daemon` does for `exec`; C2d
-  pins the flag.
+  pane closed (C2b), so pane launches carry the global `--no-daemon` too (verified in C2e: no
+  app-server before, during or after the pane). A Codex pane must open in the same workdir
+  its thread was recorded in. Otherwise Codex shows a "Working directory · resume" picker
+  that Herdr reports as `idle`, and a delivery would type into it.
 - **pi** gets no MCP registration; the brief points it at the CLI, and its identity travels in
   the environment.
 
@@ -1240,13 +1244,15 @@ Request: `server` (default `default`). Result: `herdr`, `started`, `method` (`de
 - If the server already answers, nothing happens: `started: false`.
 - On Linux with logind's `KillUserProcesses=yes` (`hello.host.logind`), the broker starts it
   under the user's service manager:
-  `systemd-run --user --unit=lugarn-herdr-<server> --collect -- <herdr> --session <server> server`
+  `systemd-run --user --unit=lugarn-herdr-<server>.service --collect -- <herdr> --session <server> server`
   (`systemd`). It then belongs to `user@.service`, not the SSH session's scope, and survives
   the session ending, but only with linger on; without it, the user manager stops when the
   person's last session ends. `systemd-run` refuses a unit name that still exists (a failed or
   dead unit `--collect` hasn't cleaned up yet), so the broker checks `systemctl --user
-  is-active lugarn-herdr-<server>` first and runs `systemctl --user reset-failed` on it before
-  starting (Flare). The runner and every pane are the server's children, so they
+  is-active lugarn-herdr-<server>.service` first and runs `systemctl --user reset-failed` on it before
+  starting (Flare). The `.service` suffix is explicit, so a server named `x.timer` can't name
+  a unit of another type. The server then has the user manager's environment, not the login
+  shell's, and every pane inherits it. The runner and every pane are the server's children, so they
   live and die with it.
 - Otherwise, on Linux and macOS, the broker starts `herdr server` itself, detached: in its
   own session (`setsid`), with stdin, stdout and stderr on the null device (`detached`). C2b

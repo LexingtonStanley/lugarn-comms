@@ -16,6 +16,7 @@ const (
 	CodeAgentPaneNotFound  = "agent_pane_not_found"
 	CodePaneNotFound       = "pane_not_found"
 	CodeWorkspaceNotFound  = "workspace_not_found"
+	CodeTabNotFound        = "tab_not_found"
 	CodeAgentBlocked       = "agent_blocked"
 	CodeAgentNotReady      = "agent_not_ready"
 	CodeAgentPaneBusy      = "agent_pane_busy"
@@ -65,10 +66,11 @@ func (e *Error) Unwrap() error { return e.protocol }
 // Protocol returns the mapped protocol error.
 func (e *Error) Protocol() *model.Error { return e.protocol }
 
-// IsGone reports whether the agent, pane or workspace the call named no longer
-// exists: Herdr's agent_not_found, agent_not_running, agent_pane_not_found,
-// pane_not_found or workspace_not_found. The runner treats it as a pane exit.
-// An agent that exited leaves its pane behind (Client.PaneExists tells which).
+// IsGone reports whether the agent, pane, tab or workspace the call named no
+// longer exists: Herdr's agent_not_found, agent_not_running,
+// agent_pane_not_found, pane_not_found, tab_not_found or workspace_not_found.
+// The runner treats a gone pane as a pane exit. An agent that exited leaves
+// its pane behind (Client.PaneExists tells which).
 func IsGone(err error) bool { return kindOf(err) == kindGone }
 
 // IsBlocked reports whether Herdr refused a prompt because the agent sits at an
@@ -96,7 +98,7 @@ func kindOf(err error) kind {
 
 // launchOps are the commands whose failure is a launch failure (launch_failed):
 // the workspace, the pane or the harness didn't come up.
-var launchOps = map[string]bool{"workspace create": true, "pane split": true, "agent start": true}
+var launchOps = map[string]bool{"workspace create": true, "tab create": true, "agent start": true}
 
 // fromHerdr classifies an error Herdr reported.
 func fromHerdr(op, code, message string) *Error {
@@ -104,7 +106,7 @@ func fromHerdr(op, code, message string) *Error {
 	switch code {
 	case CodeServerNotRunning, "server_unavailable":
 		e.kind = kindNotRunning
-	case CodeAgentNotFound, CodeAgentNotRunning, CodeAgentPaneNotFound, CodePaneNotFound, CodeWorkspaceNotFound:
+	case CodeAgentNotFound, CodeAgentNotRunning, CodeAgentPaneNotFound, CodePaneNotFound, CodeWorkspaceNotFound, CodeTabNotFound:
 		e.kind = kindGone
 	case CodeAgentBlocked:
 		e.kind = kindBlocked
