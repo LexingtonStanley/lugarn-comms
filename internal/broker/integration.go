@@ -232,6 +232,9 @@ func paneKey(m model.Member) string { server, agent := paneIdentity(m); return s
 func (p *paneAdapter) State(ctx context.Context, m model.Member) (PaneObservation, error) {
 	server, name := paneIdentity(m)
 	a, e := p.clients(server).Agent(ctx, name)
+	if herdr.IsTimeout(e) {
+		return PaneObservation{Activity: model.ActivityUnknown}, nil
+	}
 	if herdr.IsGone(e) || herdr.IsUnavailable(e) {
 		return PaneObservation{Gone: true}, nil
 	}

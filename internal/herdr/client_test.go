@@ -124,14 +124,16 @@ func TestUnavailable(t *testing.T) {
 	}
 }
 
-func TestNoAnswerIsNotRunning(t *testing.T) {
+func TestNoAnswerIsTimeout(t *testing.T) {
 	f := newFake(t)
 	f.on("agent list", response{SleepMS: 5000, Stdout: `{"result":{"agents":[]}}`})
 	c := f.client()
 	c.Timeout = 300 * time.Millisecond
 	start := time.Now()
 	_, err := c.Agents(testContext(t))
-	wantProtocol(t, err, model.ErrorHerdrUnavailable, "not_running")
+	if !IsTimeout(err) || IsUnavailable(err) || IsGone(err) {
+		t.Fatalf("misclassified timeout: %v", err)
+	}
 	if d := time.Since(start); d > 3*time.Second {
 		t.Fatalf("took %s", d)
 	}

@@ -295,7 +295,7 @@ func (l *integrationLifecycle) Exited(ctx context.Context, m model.Member) error
 		reason = model.StopReasonDied
 		cause = model.LeaseCauseDied
 	} else if e != nil {
-		return e
+		return l.r.paneRetry(ctx, m, e)
 	}
 	if m.Mode != nil && *m.Mode == model.ModeHeadless {
 		return l.toHeadless(ctx, m, model.LeaseCausePaneExit, false)

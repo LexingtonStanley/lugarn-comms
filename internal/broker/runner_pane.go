@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -116,7 +117,7 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 	}
 	observation, e := r.opts.Panes.State(ctx, m)
 	if e != nil {
-		return e
+		return r.paneRetry(ctx, m, e)
 	}
 	if observation.Gone {
 		return r.opts.PaneLifecycle.Exited(ctx, m)
@@ -127,7 +128,7 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 			if ctx.Err() != nil {
 				return nil
 			}
-			return e
+			return r.paneRetry(ctx, m, e)
 		}
 		if observation.Gone {
 			return r.opts.PaneLifecycle.Exited(ctx, m)
@@ -298,4 +299,11 @@ func (r *Runner) cancelledPane(ctx context.Context, m model.Member, items []stor
 		return r.finishPane(cleanup, m, items, model.DeliveryStateDelivered, nil)
 	}
 	return r.finishPane(cleanup, m, items, model.DeliveryStateUncertain, ptr(model.DeliveryReasonNoActivity))
+}
+
+// Observation failures are recipient-local; they never surrender the team lease.
+func (r *Runner) paneRetry(ctx context.Context, m model.Member, err error) error {
+	log.Printf("pane observation for %s: %v; retrying", m.ID, err)
+	_ = r.b.opts.Wait(ctx, time.Second)
+	return nil
 }
