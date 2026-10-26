@@ -290,8 +290,18 @@ is fresh.
 3. Fails requests left `running` with `internal`, and executes `pending` ones.
 4. Checks each `pane` lease against Herdr. A pane that's gone is handled as a pane exit
    ([Leases](#leases-and-launches)).
-5. Deletes this team's files under `launch/` whose launch has ended, and any whose launch id
-   the store doesn't know, so a crash leaves no token behind.
+5. Deletes leftover launch files, so a crash leaves no token behind. One store serves every
+   team, and another team's runner may be creating a launch at that moment, so:
+   - The broker commits a launch's row before it writes any of the launch's files.
+   - The step lists `launch/` first, then reads the store. It considers only the names
+     `<ULID>.token`, `<ULID>.json`, `<ULID>.settings.json`, `<ULID>.opencode.json` and the
+     directory `<ULID>/`, checks each with `lstat`, and never follows a symbolic link (a link
+     is removed as a link).
+   - It deletes the files of this team's launches that have ended. A ULID the store doesn't
+     know is deleted only if its file is more than 60 seconds old.
+   - Pointer files under `~/.lugarn/conversations/` follow the same name and `lstat` rules,
+     with one difference: only launches this store knows have ended are deleted, never
+     unknown ids, since another state directory (`LUGARN_COMMS_HOME`) may own them.
 
 ### start-team
 
@@ -727,7 +737,11 @@ A turn is one run of the harness's headless mode with one prompt, written to its
 
 Cancelling kills the process group on POSIX (`Setpgid`) and the job object on Windows. On
 POSIX that isn't enough on its own: Codex starts its MCP servers in a process group of their
-own (C2c), so the driver also kills every descendant of the harness it finds by ancestry.
+own (C2c), so the driver also kills every descendant of the harness it finds by ancestry,
+repeating until none is left. On Linux the runner sets `PR_SET_CHILD_SUBREAPER`, so a
+descendant that double-forks away is reparented to the runner, where the walk still finds it;
+the runner reaps the orphans it adopts. macOS has no equivalent, so there the process group
+plus ancestry is the best available.
 At most one live turn per member; at most `headless_turns` per team.
 
 A session's first turn draws its seal before the harness has reported an id; the runner keeps
@@ -831,9 +845,10 @@ likewise).
 ## Review rounds
 
 - **What counts:** each accepted message from a `reviewer`-role member to a `writer`-role
-  member, auto-replies included: one review, one round. The writer's messages to its
-  reviewer, clarifying questions included, don't count. Counts are per (writer, reviewer)
-  pair.
+  member, auto-replies included: one answer, one round, an answer to the writer's question
+  included. The writer's own messages don't count. So with a headless reviewer, a writer's
+  question still costs a round, because the reviewer's turn auto-replies to it. That's fine:
+  the cap is there to break loops. Counts are per (writer, reviewer) pair.
 - The message's round is the pair's new count. Over the pair's allowance (default
   `review_rounds`), it's accepted `held` (`rounds`), the pair is exhausted, and
   `rounds.changed` (`exhausted`) raises attention: the person decides.
@@ -892,7 +907,10 @@ as an auto-reply. A pane worker gets the task in its pane and answers with `repl
 
 ### Worktrees
 
-Spec members with `worktree: true` and spawned workers that get a worktree use the same rule:
+Spec members with `worktree: true` and spawned workers that get a worktree use the same rule.
+They need git 2.20 or later, the first to remove a worktree whose folder is already gone
+without `--force` (removal is by path, never `prune`); a CI job runs the worktree tests on
+git 2.20. With an older git, apply warns and the member shares its folder.
 
 - **Base:** the spec member's `folder`, or the spawner's workdir. It must be inside a git
   repository; if it isn't, the member shares the folder and apply warned about it.
@@ -1023,9 +1041,13 @@ Result:
   `start-herdr`, `resolve-delivery`, `hold`, `worktrees`. Clients ignore unknown flags;
 - `host`: `id`, `os`, `arch`, `hostname`, `state_dir`, and `logind`: on Linux with
   systemd-logind, `kill_user_processes` (logind's `KillUserProcesses`) and `linger` (the
-  user's `Linger`); null elsewhere or when `loginctl` can't say. When the first is true and
-  the second false, logind kills Herdr, its runners and every agent when the person's last
-  session ends, `setsid` or not, so the app suggests `loginctl enable-linger`;
+  user's `Linger`); null elsewhere or when `loginctl` can't say. With `kill_user_processes`
+  true, logind kills everything in a session's scope when that session ends, and a process
+  an SSH exec starts stays in that scope even under `setsid`. So `start-herdr` starts Herdr
+  under the user's service manager instead ([start-herdr](#start-herdr)), which outlives the
+  person's sessions only with linger on: the app suggests `loginctl enable-linger` when
+  `kill_user_processes` is true and `linger` is false. With `kill_user_processes` false,
+  `setsid` is enough and linger doesn't matter;
 - `herdr`: `installed`, `version`, `running`, `server` (`default`);
 - `harnesses`: per harness `installed`, `version`, `supported`, `issue`
   (`not_installed`, `unsupported_version`, `shim_only`) and `headless` (whether the broker can
@@ -1167,14 +1189,21 @@ branch stays and is reported) or `missing` (already gone). Each removal sets the
 ### start-herdr
 
 Request: `server` (default `default`). Result: `herdr`, `started`, `method` (`detached`,
-`wmi`, or null if it was already running). Errors: `herdr_unavailable`
+`systemd`, `wmi`, or null if it was already running). Errors: `herdr_unavailable`
 (`details.reason: not_installed` or `start_timeout`).
 
 - If the server already answers, nothing happens: `started: false`.
-- On Linux and macOS the broker starts `herdr server` itself, detached: in its own session
-  (`setsid`), with stdin, stdout and stderr on the null device (`detached`). **Not verified
-  yet**: lexbox had no stopped default server to test against, so C2 verifies that it
-  survives the SSH connection closing.
+- On Linux with logind's `KillUserProcesses=yes` (`hello.host.logind`), the broker starts it
+  under the user's service manager:
+  `systemd-run --user --unit=lugarn-herdr-<server> --collect -- <herdr> --session <server> server`
+  (`systemd`). It then belongs to `user@.service`, not the SSH session's scope, and survives
+  the session ending, but only with linger on; without it, the user manager stops when the
+  person's last session ends. The runner and every pane are the server's children, so they
+  live and die with it.
+- Otherwise, on Linux and macOS, the broker starts `herdr server` itself, detached: in its
+  own session (`setsid`), with stdin, stdout and stderr on the null device (`detached`). C2b
+  verified on lexbox that it survives its parent exiting and the parent's terminal hanging
+  up; a real SSH logout under `KillUserProcesses=yes` is the case above.
 - On Windows the broker creates `herdr server` through WMI (`Win32_Process.Create`), so it
   belongs to the WMI service rather than the SSH session's job object and outlives the
   connection (`wmi`, verified on ufo). A process started any other way inside the session
@@ -1469,7 +1498,7 @@ table against the schemas, and `scripts/check-migrations.py` checks the SQL agai
 | `EventType`        | `team.applied`, `team.state_changed`, `runner.state_changed`, `member.added`, `member.state_changed`, `member.activity_changed`, `member.session_added`, `member.removed`, `lease.changed`, `message.created`, `delivery.changed`, `turn.started`, `turn.finished`, `policy.denied`, `budget.changed`, `rounds.changed`, `request.changed`, `auth.rejected`, `worktree.removed` | events |
 | `ErrorCode`        | `internal`, `invalid_request`, `unauthenticated`, `unsupported_version`, `not_found`, `unknown_member`, `denied`, `spawn_disabled`, `spawn_cap_reached`, `harness_not_allowed`, `profile_too_high`, `nesting_not_allowed`, `name_taken`, `team_not_running`, `team_running`, `runner_unavailable`, `herdr_unavailable`, `harness_unavailable`, `launch_failed`, `lease_conflict`, `revision_conflict`, `cursor_invalid`, `timeout` | errors |
 | `OpName`           | `hello`, `apply-team`, `get-team`, `start-team`, `stop-team`, `status`, `members`, `timeline`, `send`, `continue-budget`, `resolve-delivery`, `hold`, `open-terminal`, `return-headless`, `stop-member`, `worktrees`, `remove-worktrees`, `start-herdr`, `watch` | app ops |
-| `HerdrStartMethod` | `detached`, `wmi` | `start-herdr` |
+| `HerdrStartMethod` | `detached`, `systemd`, `wmi` | `start-herdr` |
 | `GitState`         | `missing`, `clean`, `dirty` | `worktrees` |
 | `WorktreeRefusal`  | `member_not_stopped`, `dirty`, `unknown_path`, `git_failed` | `remove-worktrees` |
 | `BranchOutcome`    | `deleted`, `kept_unmerged`, `missing` | `remove-worktrees`, `worktree.removed` |
@@ -1505,9 +1534,10 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 11. An exhausted budget holds messages (`held`, `budget`) instead of refusing them, so
     Continue releases them and agents don't need to retry. So there's no `budget_exhausted`
     error.
-12. A round is each reviewer-role → writer-role message, counted per pair, so a writer's
-    clarifying questions don't use rounds up. A message from the person to either member
-    resets the pair; `continue-budget` with `kind: rounds` continues it.
+12. A round is each reviewer-role → writer-role message, counted per pair: each answer the
+    reviewer gives its writer, an answer to a question included. The writer's own messages
+    don't count. A message from the person to either member resets the pair;
+    `continue-budget` with `kind: rounds` continues it.
 13. Replies go through the grid like any message.
 14. `stop` from an agent is limited to its own workers; it isn't a grid capability.
 
@@ -1627,22 +1657,28 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 60. **One tool set.** The MCP server lists all six tools to every member, so Claude's
     `--allowedTools` and Codex's per-tool approvals are the same fixed list for every launch.
 61. **Herdr on POSIX.** `start-herdr` runs `herdr server` itself under `setsid`, with stdio on
-    the null device (`detached`, renamed from `daemon`); C2 verifies it survives. `setsid`
-    doesn't survive logind's `KillUserProcesses=yes`, so `hello` reports it and `Linger`.
+    the null device (`detached`, renamed from `daemon`). `setsid` doesn't escape logind's
+    `KillUserProcesses=yes`: the process stays in the SSH session's scope. With that setting
+    it uses `systemd-run --user` instead (`systemd`), which needs linger (decision 66).
 
 **Added after the review of #2**
 
-62. **Rounds count reviews.** A round is a reviewer's message to its writer, not the writer's
-    to its reviewer, so clarifying questions don't use rounds up (decision 12).
+62. **Rounds count reviewer answers.** A round is a reviewer's message to its writer, an answer
+    to a question included, not the writer's to its reviewer (decision 12).
 63. **Open:** a retention op that prunes message bodies and events by age, per team. Until
     then nothing is pruned, and the security notes say so ([Identity](#identity)).
 64. **Launch files after a crash.** Reconciling on runner start deletes `launch/` files with
-    no live launch, so a crashed runner leaves no token on disk.
+    no live launch, so a crashed runner leaves no token on disk. A launch's row is committed
+    before its files exist; only ULID-shaped names are touched, by `lstat`, never through a
+    link; an unknown id's files must be over 60 s old (Flare's review).
 65. **Inline pane text on POSIX** is readable in the `herdr` client's argv by other users on
     the host while it runs. Fine on a single-user host; a shared one would want the file path
     for every delivery.
-66. **logind.** `hello` reports `host.logind` (`kill_user_processes`, `linger`) so the app can
-    ask for `loginctl enable-linger` before a logout kills the team.
+66. **logind.** `hello` reports `host.logind` (`kill_user_processes`, `linger`). Only
+    `kill_user_processes: true` matters: then `start-herdr` uses `systemd-run --user`, and the
+    app asks for `loginctl enable-linger` if `linger` is false. With it false, `setsid` is
+    enough and linger is irrelevant. (Flare corrected the first version of this, which had
+    linger alone saving a `setsid` Herdr.)
 67. **From the policy engine's build (C1b).** Spec member names may not take live spawned
     names; ids are never reused, `human`'s and removed members' included; roles and the
     pattern may change while running; a new `hop_budget` or `review_rounds` waits for the

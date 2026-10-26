@@ -32,6 +32,7 @@
       "type": "string",
       "enum": [
         "detached",
+        "systemd",
         "wmi"
       ]
     },
