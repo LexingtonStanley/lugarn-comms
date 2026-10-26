@@ -223,10 +223,7 @@ func liveFakeAgent(t *testing.T, ctx context.Context, c *Client, ws Workspace, w
 	if err != nil {
 		t.Fatal(err)
 	}
-	name, err := AgentName("livetest", "writer")
-	if err != nil {
-		t.Fatal(err)
-	}
+	name := AgentName("T_live-1", "writer")
 	args := []string{"--plain", "arg with space", `q"uote`, "s'ingle", "$(touch " + filepath.Join(work, "pwned") + ")", `back\slash`, "semi;colon", "%PATH%"}
 	a, err := c.StartAgent(ctx, StartOptions{Name: name, Harness: model.HarnessPi, Pane: pane.ID, Args: args, Timeout: 20 * time.Second})
 	if err != nil {
