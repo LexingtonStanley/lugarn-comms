@@ -97,6 +97,8 @@ func TestRunnerReconcileDeliveriesTurnsRequestsAndFiles(t *testing.T) {
 	for _, id := range []string{ended, unknown} {
 		must(t, statedir.WriteSecret(filepath.Join(b.opts.StateDir, "launch", id+".token"), []byte("secret")))
 	}
+	stale := time.Now().Add(-2 * time.Minute)
+	must(t, os.Chtimes(filepath.Join(b.opts.StateDir, "launch", unknown+".token"), stale, stale))
 	pointer := filepath.Join(home, ".lugarn", "conversations", ended)
 	must(t, os.WriteFile(pointer, []byte("pointer"), 0600))
 	runnerReady(t, b)

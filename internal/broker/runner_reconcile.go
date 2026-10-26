@@ -201,21 +201,42 @@ func (r *Runner) setActivity(tx *store.Tx, m model.Member, a model.Activity) err
 	return r.b.event(tx, &m.Team, model.EventMemberActivityChanged, false, &m.ID, nil, wire.MemberActivityChangedEventData{Member: ref(m), From: current.Activity, To: &a})
 }
 func (r *Runner) cleanLaunchFiles(ctx context.Context) error {
+	root := filepath.Join(r.b.opts.StateDir, "launch")
+	info, e := os.Lstat(root)
+	if e != nil && !os.IsNotExist(e) {
+		return e
+	}
+	var entries []os.DirEntry
+	if e == nil {
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return model.NewError(model.ErrorInternal, "launch path is not a directory")
+		}
+		entries, e = os.ReadDir(root)
+		if e != nil && !os.IsNotExist(e) {
+			return e
+		}
+	}
+	// List before reading the store: any launch whose files were listed must
+	// already have committed its row. Later files are left for a future pass.
+	return r.cleanListedLaunchFiles(ctx, root, entries)
+}
+
+func (r *Runner) cleanListedLaunchFiles(ctx context.Context, root string, entries []os.DirEntry) error {
 	known := map[string]string{}
 	ended := map[string]bool{}
 	e := r.b.db.Read(ctx, func(tx *store.Tx) error {
-		ls, e := tx.ListLaunches("")
+		launches, e := tx.ListLaunches("")
 		if e != nil {
 			return e
 		}
-		for _, l := range ls {
-			m, e := tx.GetMember(l.MemberID)
+		for _, launch := range launches {
+			member, e := tx.GetMember(launch.MemberID)
 			if e != nil {
 				return e
 			}
-			known[l.ID] = m.Team
-			if m.Team == r.team && l.EndedAt != nil {
-				ended[l.ID] = true
+			known[launch.ID] = member.Team
+			if member.Team == r.team && launch.EndedAt != nil {
+				ended[launch.ID] = true
 			}
 		}
 		return nil
@@ -223,41 +244,100 @@ func (r *Runner) cleanLaunchFiles(ctx context.Context) error {
 	if e != nil {
 		return e
 	}
-	root := filepath.Join(r.b.opts.StateDir, "launch")
-	entries, e := os.ReadDir(root)
-	if os.IsNotExist(e) {
-		e = nil
-	}
-	if e != nil {
-		return e
-	}
 	for _, entry := range entries {
-		n := entry.Name()
-		if len(n) < 26 {
+		name := entry.Name()
+		id, directory, ok := cleanupLaunchName(name)
+		if !ok {
 			continue
 		}
-		id := n[:26]
+		path := filepath.Join(root, name)
+		info, e := os.Lstat(path)
+		if os.IsNotExist(e) {
+			continue
+		}
+		if e != nil {
+			return e
+		}
+		link := info.Mode()&os.ModeSymlink != 0
+		if !link && (directory && !info.IsDir() || !directory && !info.Mode().IsRegular()) {
+			continue
+		}
+		if known[id] != "" {
+			if !ended[id] {
+				continue
+			}
+		} else if r.b.opts.Clock().Sub(info.ModTime()) <= 60*time.Second {
+			continue
+		}
+		// Delete only this listed entry. A broad Files.Delete(id) could remove
+		// a fresh sibling file or follow a link through a driver adapter.
+		if link || !directory {
+			e = os.Remove(path)
+		} else {
+			e = os.RemoveAll(path)
+		}
+		if e != nil && !os.IsNotExist(e) {
+			return e
+		}
+	}
+	return r.cleanPointerFiles(ended)
+}
+
+func cleanupLaunchName(name string) (id string, directory, ok bool) {
+	if len(name) < 26 {
+		return "", false, false
+	}
+	id = name[:26]
+	if model.ValidateULID(id) != nil {
+		return "", false, false
+	}
+	switch name[26:] {
+	case "":
+		return id, true, true
+	case ".token", ".json", ".settings.json", ".opencode.json":
+		return id, false, true
+	default:
+		return "", false, false
+	}
+}
+
+func (r *Runner) cleanPointerFiles(ended map[string]bool) error {
+	if r.opts.HomeDir == "" {
+		return nil
+	}
+	// These parents may be user-managed links. Do not traverse one to reach a
+	// pointer outside the explicitly supplied home directory.
+	root := r.opts.HomeDir
+	for _, name := range []string{".lugarn", "conversations"} {
+		root = filepath.Join(root, name)
+		info, e := os.Lstat(root)
+		if os.IsNotExist(e) {
+			return nil
+		}
+		if e != nil {
+			return e
+		}
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return nil
+		}
+	}
+	for id := range ended {
 		if model.ValidateULID(id) != nil {
 			continue
 		}
-		if known[id] != "" && !ended[id] {
+		path := filepath.Join(root, id)
+		info, e := os.Lstat(path)
+		if os.IsNotExist(e) {
 			continue
 		}
-		if e = r.opts.Files.Delete(ctx, id); e != nil {
+		if e != nil {
 			return e
 		}
-		if e = os.RemoveAll(filepath.Join(root, n)); e != nil {
-			return e
+		if !info.Mode().IsRegular() {
+			continue
 		}
-	}
-	if r.opts.HomeDir != "" {
-		for id := range ended {
-			for _, suffix := range []string{"", ".json"} {
-				e = os.Remove(filepath.Join(r.opts.HomeDir, ".lugarn", "conversations", id+suffix))
-				if e != nil && !os.IsNotExist(e) {
-					return e
-				}
-			}
+		if e = os.Remove(path); e != nil && !os.IsNotExist(e) {
+			return e
 		}
 	}
 	return nil
