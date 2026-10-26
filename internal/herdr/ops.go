@@ -38,42 +38,16 @@ func (c *Client) Status(ctx context.Context) (Status, error) {
 	return st, nil
 }
 
-// Workspaces lists the server's workspaces in Herdr's order.
-func (c *Client) Workspaces(ctx context.Context) ([]Workspace, error) {
-	var r struct {
-		Workspaces []wireWorkspace `json:"workspaces"`
-	}
-	if err := c.result(ctx, 0, "workspace list", &r, "workspace", "list"); err != nil {
-		return nil, err
-	}
-	out := make([]Workspace, 0, len(r.Workspaces))
-	for _, w := range r.Workspaces {
-		out = append(out, Workspace{ID: w.WorkspaceID, Label: w.Label})
-	}
-	return out, nil
-}
-
-// EnsureWorkspace finds the workspace labelled label, or creates it with cwd
-// (empty: Herdr's default) and env, unfocused, and reports whether it created
-// it. Herdr doesn't keep labels unique; when several match, the first in
-// Herdr's order wins. env reaches only the new workspace's root pane, and only
-// on creation.
-func (c *Client) EnsureWorkspace(ctx context.Context, label, cwd string, env map[string]string) (Workspace, bool, error) {
-	if label == "" {
-		return Workspace{}, false, model.NewError(model.ErrorInvalidRequest, "a workspace label is required")
-	}
+// CreateWorkspace creates a workspace labelled label, unfocused, with its
+// root pane's shell in cwd (empty: Herdr's default) and env added to that
+// pane's environment: the runner's pane. env reaches the root pane only; a
+// member's environment goes on its own tab (OpenTab). Herdr doesn't keep
+// labels unique, so record the returned id and look the workspace up by it
+// (Workspace); never adopt one by its label.
+func (c *Client) CreateWorkspace(ctx context.Context, label, cwd string, env map[string]string) (Workspace, error) {
 	envs, err := envArgs(env)
 	if err != nil {
-		return Workspace{}, false, err
-	}
-	existing, err := c.Workspaces(ctx)
-	if err != nil {
-		return Workspace{}, false, err
-	}
-	for _, w := range existing {
-		if w.Label == label {
-			return w, false, nil
-		}
+		return Workspace{}, err
 	}
 	args := []string{"workspace", "create", "--label", label}
 	if cwd != "" {
@@ -82,60 +56,63 @@ func (c *Client) EnsureWorkspace(ctx context.Context, label, cwd string, env map
 	args = append(append(args, envs...), "--no-focus")
 	var r struct {
 		Workspace wireWorkspace `json:"workspace"`
+		Tab       wireTab       `json:"tab"`
 		RootPane  wirePane      `json:"root_pane"`
 	}
 	if err := c.result(ctx, 0, "workspace create", &r, args...); err != nil {
-		return Workspace{}, false, err
+		return Workspace{}, err
 	}
-	return Workspace{ID: r.Workspace.WorkspaceID, Label: r.Workspace.Label, RootPane: r.RootPane.PaneID}, true, nil
+	return Workspace{ID: r.Workspace.WorkspaceID, Label: r.Workspace.Label, RootTab: r.Tab.TabID, RootPane: r.RootPane.PaneID}, nil
 }
 
-// OpenPane splits a new pane into workspace, unfocused, starting its shell in
-// cwd (empty: Herdr's default) with env added to its environment. It splits
-// the largest pane of the workspace's first tab, across its longer side, so
-// panes stay as usable as one tab allows.
-func (c *Client) OpenPane(ctx context.Context, workspace, cwd string, env map[string]string) (Pane, error) {
+// Workspace looks a workspace up by the id CreateWorkspace returned. One that
+// no longer exists is IsGone; the next start creates a new one.
+func (c *Client) Workspace(ctx context.Context, id string) (Workspace, error) {
+	var r struct {
+		Workspace wireWorkspace `json:"workspace"`
+	}
+	if err := c.result(ctx, 0, "workspace get", &r, "workspace", "get", id); err != nil {
+		return Workspace{}, err
+	}
+	return Workspace{ID: r.Workspace.WorkspaceID, Label: r.Workspace.Label}, nil
+}
+
+// OpenTab creates a tab in workspace, unfocused, labelled label (empty:
+// Herdr's number), with its one pane's shell in cwd (empty: Herdr's default)
+// and env added to that pane's environment, and returns it with its root pane:
+// a member's own tab (Identity, Panes). A workspace that's gone is IsGone.
+func (c *Client) OpenTab(ctx context.Context, workspace, label, cwd string, env map[string]string) (Tab, error) {
 	envs, err := envArgs(env)
 	if err != nil {
-		return Pane{}, err
+		return Tab{}, err
 	}
-	var list struct {
-		Panes []wirePane `json:"panes"`
-	}
-	if err := c.result(ctx, 0, "pane list", &list, "pane", "list", "--workspace", workspace); err != nil {
-		return Pane{}, err
-	}
-	if len(list.Panes) == 0 {
-		return Pane{}, clientError("pane list", kindGone, "workspace "+workspace+" has no panes")
-	}
-	var layout wireLayout
-	if err := c.result(ctx, 0, "pane layout", &layout, "pane", "layout", "--pane", list.Panes[0].PaneID); err != nil {
-		return Pane{}, err
-	}
-	target, direction := list.Panes[0].PaneID, "right"
-	best := -1
-	for _, p := range layout.Layout.Panes {
-		if area := p.Rect.Width * p.Rect.Height; area > best {
-			best, target = area, p.PaneID
-			// A terminal cell is about twice as tall as it is wide.
-			direction = "down"
-			if p.Rect.Width >= 2*p.Rect.Height {
-				direction = "right"
-			}
-		}
-	}
-	args := []string{"pane", "split", target, "--direction", direction}
+	args := []string{"tab", "create", "--workspace", workspace}
 	if cwd != "" {
 		args = append(args, "--cwd", cwd)
 	}
+	if label != "" {
+		args = append(args, "--label", label)
+	}
 	args = append(append(args, envs...), "--no-focus")
 	var r struct {
-		Pane wirePane `json:"pane"`
+		Tab      wireTab  `json:"tab"`
+		RootPane wirePane `json:"root_pane"`
 	}
-	if err := c.result(ctx, 0, "pane split", &r, args...); err != nil {
-		return Pane{}, err
+	if err := c.result(ctx, 0, "tab create", &r, args...); err != nil {
+		return Tab{}, err
 	}
-	return r.Pane.pane(), nil
+	return Tab{ID: r.Tab.TabID, Workspace: r.Tab.WorkspaceID, Label: r.Tab.Label, RootPane: r.RootPane.PaneID}, nil
+}
+
+// CloseTab closes a tab, its panes and whatever runs in them; Herdr hangs up
+// their processes. Closing a tab that's already gone succeeds. Closing a tab's
+// only pane (ClosePane) closes the tab too.
+func (c *Client) CloseTab(ctx context.Context, id string) error {
+	err := c.result(ctx, 0, "tab close", nil, "tab", "close", id)
+	if IsGone(err) {
+		return nil
+	}
+	return err
 }
 
 // Pane returns one pane. A pane that doesn't exist is IsGone.

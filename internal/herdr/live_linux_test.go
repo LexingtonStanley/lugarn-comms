@@ -152,19 +152,23 @@ func TestLiveHerdr(t *testing.T) {
 	helper := copyHelper(t, t.TempDir(), "lugarn-helper")
 	weird := "a b\"c' $(touch " + filepath.Join(work, "pwned") + ") `id` %PATH% \\n ü\nsecond line"
 
-	// The workspace's --env reaches its root pane.
+	// The workspace's --env reaches its root pane: the runner's.
 	rootOut := filepath.Join(work, "root-env.json")
-	ws, created, err := c.EnsureWorkspace(ctx, WorkspaceName("livetest"), work, map[string]string{
+	ws, err := c.CreateWorkspace(ctx, WorkspaceName("livetest"), work, map[string]string{
 		"LUGARN_HERDR_HELPER": "env", "LUGARN_HERDR_HELPER_OUT": rootOut,
 		"LUGARN_COMMS_MEMBER": "m-root", "LUGARN_X": weird,
 	})
-	if err != nil || !created || ws.RootPane == "" {
-		t.Fatalf("EnsureWorkspace = %+v, %v, %v", ws, created, err)
+	if err != nil || ws.RootPane == "" || ws.RootTab == "" {
+		t.Fatalf("CreateWorkspace = %+v, %v", ws, err)
 	}
-	t.Logf("workspace %s %q root pane %s", ws.ID, ws.Label, ws.RootPane)
-	same, created, err := c.EnsureWorkspace(ctx, WorkspaceName("livetest"), work, nil)
-	if err != nil || created || same.ID != ws.ID {
-		t.Fatalf("second EnsureWorkspace = %+v, %v, %v", same, created, err)
+	t.Logf("CreateWorkspace: id %s label %q root tab %s root pane %s", ws.ID, ws.Label, ws.RootTab, ws.RootPane)
+	if got, err := c.Workspace(ctx, ws.ID); err != nil || got.ID != ws.ID || got.Label != ws.Label {
+		t.Fatalf("Workspace(%s) = %+v, %v", ws.ID, got, err)
+	}
+	_, err = c.Workspace(ctx, "w999")
+	t.Logf("Workspace(w999): %v (IsGone %v)", err, IsGone(err))
+	if !IsGone(err) {
+		t.Fatalf("Workspace(w999): %v", err)
 	}
 	if err := c.RunCommand(ctx, ws.RootPane, helper); err != nil {
 		t.Fatal(err)
@@ -178,36 +182,115 @@ func TestLiveHerdr(t *testing.T) {
 	}
 	t.Logf("root pane saw LUGARN_COMMS_MEMBER=%q LUGARN_X=%q", rootEnv["LUGARN_COMMS_MEMBER"], rootEnv["LUGARN_X"])
 
-	// A split's --env reaches its pane; the workspace's doesn't carry over.
-	splitOut := filepath.Join(work, "split-env.json")
+	// A member's tab: its --env reaches its pane, the workspace's doesn't.
+	tabOut := filepath.Join(work, "tab-env.json")
 	token := filepath.Join(work, "launch dir", "01J.token")
-	pane, err := c.OpenPane(ctx, ws.ID, work, map[string]string{
-		"LUGARN_HERDR_HELPER": "env", "LUGARN_HERDR_HELPER_OUT": splitOut,
-		"LUGARN_COMMS_MEMBER": "m-split", "LUGARN_COMMS_TOKEN_FILE": token,
+	tab, err := c.OpenTab(ctx, ws.ID, "writer", work, map[string]string{
+		"LUGARN_HERDR_HELPER": "env", "LUGARN_HERDR_HELPER_OUT": tabOut,
+		"LUGARN_COMMS_MEMBER": "m-tab", "LUGARN_COMMS_TOKEN_FILE": token,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.RunCommand(ctx, pane.ID, helper); err != nil {
+	t.Logf("OpenTab: tab %s label %q in %s, root pane %s", tab.ID, tab.Label, tab.Workspace, tab.RootPane)
+	if err := c.RunCommand(ctx, tab.RootPane, helper); err != nil {
 		t.Fatal(err)
 	}
-	var splitEnv map[string]string
-	if err := json.Unmarshal(waitFile(t, splitOut, 2), &splitEnv); err != nil {
+	var tabEnv map[string]string
+	if err := json.Unmarshal(waitFile(t, tabOut, 2), &tabEnv); err != nil {
 		t.Fatal(err)
 	}
-	if splitEnv["LUGARN_COMMS_MEMBER"] != "m-split" || splitEnv["LUGARN_COMMS_TOKEN_FILE"] != token {
-		t.Fatalf("split pane env = %q", splitEnv)
+	if tabEnv["LUGARN_COMMS_MEMBER"] != "m-tab" || tabEnv["LUGARN_COMMS_TOKEN_FILE"] != token {
+		t.Fatalf("tab pane env = %q", tabEnv)
 	}
-	_, inherited := splitEnv["LUGARN_X"]
-	t.Logf("split pane %s saw LUGARN_COMMS_MEMBER=%q LUGARN_COMMS_TOKEN_FILE=%q; workspace's LUGARN_X inherited: %v",
-		pane.ID, splitEnv["LUGARN_COMMS_MEMBER"], splitEnv["LUGARN_COMMS_TOKEN_FILE"], inherited)
+	_, inherited := tabEnv["LUGARN_X"]
+	t.Logf("tab pane %s saw LUGARN_COMMS_MEMBER=%q LUGARN_COMMS_TOKEN_FILE=%q; workspace's LUGARN_X inherited: %v",
+		tab.RootPane, tabEnv["LUGARN_COMMS_MEMBER"], tabEnv["LUGARN_COMMS_TOKEN_FILE"], inherited)
+	if inherited {
+		t.Fatal("the tab inherited the workspace's env")
+	}
 	if _, err := os.Stat(filepath.Join(work, "pwned")); err == nil {
 		t.Fatal("an env value was executed")
 	}
 
+	// Closing the tab closes its pane and ends its shell.
+	shell := shellPID(t, ctx, c, tab.RootPane)
+	if err := c.CloseTab(ctx, tab.ID); err != nil {
+		t.Fatal(err)
+	}
+	if exists, err := c.PaneExists(ctx, tab.RootPane); exists || err != nil {
+		t.Fatalf("pane after its tab closed: %v, %v", exists, err)
+	}
+	if !waitDead(shell) {
+		t.Fatalf("the tab's shell %d survived", shell)
+	}
+	if err := c.CloseTab(ctx, tab.ID); err != nil {
+		t.Fatalf("closing it again: %v", err)
+	}
+	if _, err := c.Workspace(ctx, ws.ID); err != nil {
+		t.Fatalf("the workspace went with the tab: %v", err)
+	}
+	t.Logf("CloseTab(%s): pane %s gone, shell %d gone, second close ok, workspace %s still there", tab.ID, tab.RootPane, shell, ws.ID)
+
 	t.Run("fake agent", func(t *testing.T) { liveFakeAgent(t, ctx, c, ws, work) })
 	t.Run("names", func(t *testing.T) { liveNames(t, ctx, c, ws, work) })
 	t.Run("opencode", func(t *testing.T) { liveOpenCode(t, ctx, c, ws, work) })
+
+	// Closing the runner's root pane, the last one, ends the workspace: the
+	// next start would create a new one.
+	if err := c.ClosePane(ctx, ws.RootPane); err != nil {
+		t.Fatal(err)
+	}
+	_, err = c.Workspace(ctx, ws.ID)
+	t.Logf("after its last pane closed, Workspace(%s): %v", ws.ID, err)
+	if !IsGone(err) {
+		t.Fatalf("workspace after its last pane closed: %v", err)
+	}
+}
+
+// shellPID is the pane's shell process.
+func shellPID(t *testing.T, ctx context.Context, c *Client, pane string) int {
+	t.Helper()
+	pids := paneProcesses(t, ctx, c, pane)
+	return pids[0]
+}
+
+// paneProcesses is the pane's shell, then its foreground processes.
+func paneProcesses(t *testing.T, ctx context.Context, c *Client, pane string) []int {
+	t.Helper()
+	out, err := c.call(ctx, 0, "pane process-info", "pane", "process-info", "--pane", pane)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var info struct {
+		Result struct {
+			ProcessInfo struct {
+				Shell      int `json:"shell_pid"`
+				Foreground []struct {
+					PID int `json:"pid"`
+				} `json:"foreground_processes"`
+			} `json:"process_info"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(out, &info); err != nil || info.Result.ProcessInfo.Shell <= 0 {
+		t.Fatalf("process-info: %s, %v", out, err)
+	}
+	pids := []int{info.Result.ProcessInfo.Shell}
+	for _, p := range info.Result.ProcessInfo.Foreground {
+		if p.PID != pids[0] {
+			pids = append(pids, p.PID)
+		}
+	}
+	return pids
+}
+
+func waitDead(pid int) bool {
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(100 * time.Millisecond) {
+		if !processAlive(pid) {
+			return true
+		}
+	}
+	return !processAlive(pid)
 }
 
 // liveFakeAgent starts the test binary as "pi" through a real `herdr agent
@@ -216,13 +299,14 @@ func liveFakeAgent(t *testing.T, ctx context.Context, c *Client, ws Workspace, w
 	fakebin := t.TempDir()
 	copyHelper(t, fakebin, "pi")
 	rec := filepath.Join(work, "agent.bin")
-	pane, err := c.OpenPane(ctx, ws.ID, work, map[string]string{
+	tab, err := c.OpenTab(ctx, ws.ID, "writer", work, map[string]string{
 		"PATH":                   fakebin + string(os.PathListSeparator) + os.Getenv("PATH"),
 		"LUGARN_HERDR_AGENT_OUT": rec,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	pane := Pane{ID: tab.RootPane}
 	name := AgentName("T_live-1", "writer")
 	args := []string{"--plain", "arg with space", `q"uote`, "s'ingle", "$(touch " + filepath.Join(work, "pwned") + ")", `back\slash`, "semi;colon", "%PATH%"}
 	a, err := c.StartAgent(ctx, StartOptions{Name: name, Harness: model.HarnessPi, Pane: pane.ID, Args: args, Timeout: 20 * time.Second})
@@ -366,40 +450,52 @@ func waitGone(t *testing.T, ctx context.Context, c *Client, name string) {
 	}
 }
 
-// liveNames checks ValidateAgentName against Herdr itself (decision 49), by
-// renaming a live agent, and workspace labels at the spec's longest.
+// liveNames checks the derived agent names, and ValidateAgentName, against
+// Herdr itself (decision 49) by renaming a live agent, and workspace labels at
+// the spec's longest.
 func liveNames(t *testing.T, ctx context.Context, c *Client, ws Workspace, work string) {
 	fakebin := t.TempDir()
 	copyHelper(t, fakebin, "pi")
-	pane, err := c.OpenPane(ctx, ws.ID, work, map[string]string{
+	tab, err := c.OpenTab(ctx, ws.ID, "names", work, map[string]string{
 		"PATH":                   fakebin + string(os.PathListSeparator) + os.Getenv("PATH"),
 		"LUGARN_HERDR_AGENT_OUT": filepath.Join(work, "names.bin"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.ClosePane(ctx, pane.ID)
-	if _, err := c.StartAgent(ctx, StartOptions{Name: "namecheck", Harness: model.HarnessPi, Pane: pane.ID, Timeout: 20 * time.Second}); err != nil {
+	defer c.CloseTab(ctx, tab.ID)
+	if _, err := c.StartAgent(ctx, StartOptions{Name: "namecheck", Harness: model.HarnessPi, Pane: tab.RootPane, Timeout: 20 * time.Second}); err != nil {
 		t.Fatal(err)
 	}
-	longest := strings.Repeat("t", 48) + "-" + strings.Repeat("m", 32)
-	for _, name := range []string{"a", "alpha-writer", "under_score", strings.Repeat("a", 32), strings.Repeat("a", 33),
-		"0team-writer", "UPPER", "dot.name", "-lead", longest} {
-		_, err := c.call(ctx, 0, "agent rename", "agent", "rename", pane.ID, name)
+	longMember := "abcdefghijklmnopqrstuvwxyz012345"
+	derived := []string{
+		AgentName(strings.Repeat("Z", 64), longMember),
+		AgentName("0team", "a"),
+		AgentName("T_1", "abcdefghijklmnopqrstuvwx-yz"),
+		AgentName("auth-rewrite", "reviewer"),
+	}
+	for _, name := range append(derived, "a", strings.Repeat("a", 32), strings.Repeat("a", 33),
+		"0team-writer", "UPPER", "-lead", strings.Repeat("t", 48)+"-"+longMember) {
+		_, err := c.call(ctx, 0, "agent rename", "agent", "rename", tab.RootPane, name)
 		herdrOK := err == nil
 		t.Logf("agent rename to %q (%d bytes): Herdr accepts=%v; ValidateAgentName accepts=%v %v", name, len(name), herdrOK, ValidateAgentName(name) == nil, err)
 		if herdrOK != (ValidateAgentName(name) == nil) {
 			t.Fatalf("ValidateAgentName disagrees with Herdr on %q", name)
 		}
 	}
+	for _, name := range derived {
+		if ValidateAgentName(name) != nil {
+			t.Fatalf("derived name %q refused", name)
+		}
+	}
 	for _, team := range []string{strings.Repeat("t", 48), "0digit-team"} {
 		label := WorkspaceName(team)
-		w, created, err := c.EnsureWorkspace(ctx, label, work, nil)
-		if err != nil || !created || w.Label != label {
-			t.Fatalf("workspace %q: %+v %v %v", label, w, created, err)
+		w, err := c.CreateWorkspace(ctx, label, work, nil)
+		if err != nil || w.Label != label {
+			t.Fatalf("workspace %q: %+v %v", label, w, err)
 		}
 		t.Logf("workspace label %q (%d bytes) accepted as %s", label, len(label), w.ID)
-		if _, err := c.call(ctx, 0, "workspace close", "workspace", "close", w.ID); err != nil {
+		if err := c.ClosePane(ctx, w.RootPane); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -412,51 +508,35 @@ func liveOpenCode(t *testing.T, ctx context.Context, c *Client, ws Workspace, wo
 	if _, err := exec.LookPath("opencode"); err != nil {
 		t.Skip("opencode isn't installed")
 	}
-	dir := t.TempDir()
-	pane, err := c.OpenPane(ctx, ws.ID, dir, nil)
+	tab, err := c.OpenTab(ctx, ws.ID, "opencode", t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := c.StartAgent(ctx, StartOptions{Name: "livetest-oc", Harness: model.HarnessOpenCode, Pane: pane.ID, Args: []string{"--standalone"}, Timeout: 60 * time.Second})
+	name := AgentName("T_live-1", "opencode")
+	a, err := c.StartAgent(ctx, StartOptions{Name: name, Harness: model.HarnessOpenCode, Pane: tab.RootPane, Args: []string{"--standalone"}, Timeout: 60 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := c.Agent(ctx, "livetest-oc")
+	got, err := c.Agent(ctx, name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("opencode: start status=%s; agent get: kind=%s status=%s activity=%s ready=%v session=%v", a.Status, got.Kind, got.Status, got.Activity, got.Ready, got.Session)
-	if got.Kind != "opencode" || got.Pane != pane.ID {
+	t.Logf("opencode %s: start status=%s; agent get: kind=%s status=%s activity=%s ready=%v session=%v", name, a.Status, got.Kind, got.Status, got.Activity, got.Ready, got.Session)
+	if got.Kind != "opencode" || got.Pane != tab.RootPane {
 		t.Fatalf("agent = %+v", got)
 	}
-	out, err := c.call(ctx, 0, "pane process-info", "pane", "process-info", "--pane", pane.ID)
-	if err != nil {
+	pids := paneProcesses(t, ctx, c, tab.RootPane)
+	if err := c.CloseTab(ctx, tab.ID); err != nil {
 		t.Fatal(err)
 	}
-	var info struct {
-		Result struct {
-			ProcessInfo struct {
-				Foreground []struct {
-					PID  int    `json:"pid"`
-					Name string `json:"name"`
-				} `json:"foreground_processes"`
-			} `json:"process_info"`
-		} `json:"result"`
-	}
-	if err := json.Unmarshal(out, &info); err != nil {
-		t.Fatal(err)
-	}
-	if err := c.ClosePane(ctx, pane.ID); err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(time.Second)
-	for _, p := range info.Result.ProcessInfo.Foreground {
-		t.Logf("opencode foreground process %d (%s) alive after close: %v", p.PID, p.Name, processAlive(p.PID))
-		if processAlive(p.PID) {
-			t.Fatalf("process %d survived its pane", p.PID)
+	for _, pid := range pids {
+		dead := waitDead(pid)
+		t.Logf("opencode tab process %d gone after CloseTab: %v", pid, dead)
+		if !dead {
+			t.Fatalf("process %d survived its tab", pid)
 		}
 	}
-	if _, err := c.Agent(ctx, "livetest-oc"); !IsGone(err) {
+	if _, err := c.Agent(ctx, name); !IsGone(err) {
 		t.Fatalf("opencode after close: %v", err)
 	}
 }
