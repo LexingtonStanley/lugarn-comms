@@ -92,7 +92,11 @@ func Args(l Launch, mode model.Mode) ([]string, error) {
 		if headless {
 			a = append(a, "run", "--format", "json")
 		}
-		a = append(a, "--standalone")
+		// 2.x's background service ignores per-launch config. 1.x has none, and
+		// its run and TUI reject the flag: they print help and exit 1 (ufo, 1.19.4).
+		if major >= 2 {
+			a = append(a, "--standalone")
+		}
 		if l.Model != "" && (headless || major == 1) {
 			a = append(a, "--model", l.Model)
 		}

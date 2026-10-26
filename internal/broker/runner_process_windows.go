@@ -4,9 +4,11 @@ package broker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"unsafe"
 
+	"github.com/LexingtonStanley/lugarn-comms/internal/harness"
 	"golang.org/x/sys/windows"
 )
 
@@ -43,7 +45,7 @@ func (p nativeProcesses) Cancel(ctx context.Context, pid int64, birth string) er
 	if birth == "" || birth != s.Birth {
 		return fmt.Errorf("refusing to kill unverified process %d", pid)
 	}
-	// C2c normally cancels the job. For an orphan, retain process handles while
+	// The recorded job is tried before this fallback. Retain process handles while
 	// walking the snapshot, and terminate descendants before the verified root.
 	return p.killTree(ctx, uint32(pid), birth, 0, map[uint32]bool{})
 }
@@ -96,5 +98,32 @@ func (p nativeProcesses) killTree(ctx context.Context, pid uint32, expected stri
 	if state == windows.WAIT_OBJECT_0 {
 		return nil
 	}
-	return windows.TerminateProcess(h, 1)
+	return terminateWindowsProcess(h, windows.TerminateProcess, windows.WaitForSingleObject)
+}
+
+// TerminateJob receives only an exact name read from the turn's private process
+// record. Missing names permit the caller's PID/birth fallback; access failures do not.
+func (nativeProcesses) TerminateJob(ctx context.Context, name string) (bool, error) {
+	if e := ctx.Err(); e != nil {
+		return false, e
+	}
+	return harness.TerminateJob(name)
+}
+
+// A process can finish between the zero-time wait and TerminateProcess. Windows
+// then returns ACCESS_DENIED even for our verified process. Keep the same handle
+// pinned and accept that error only if it signals within this short bounded wait.
+func terminateWindowsProcess(handle windows.Handle, terminate func(windows.Handle, uint32) error, wait func(windows.Handle, uint32) (uint32, error)) error {
+	err := terminate(handle, 1)
+	if !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+		return err
+	}
+	state, waitErr := wait(handle, 500)
+	if waitErr != nil {
+		return errors.Join(err, fmt.Errorf("wait for terminating process: %w", waitErr))
+	}
+	if state == windows.WAIT_OBJECT_0 {
+		return nil
+	}
+	return err
 }

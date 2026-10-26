@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,7 +26,10 @@ func (h *lifecycleHerdr) OpenTab(_ context.Context, _ string, _ string, _ string
 	return herdr.Tab{ID: "tab-owned", RootPane: "pane-owned", Workspace: "workspace-owned"}, nil
 }
 func (h *lifecycleHerdr) CloseTab(context.Context, string) error { h.closed++; return nil }
-func (h *lifecycleHerdr) RunCommand(context.Context, string, ...string) error {
+func (h *lifecycleHerdr) RunCommand(_ context.Context, _ string, args ...string) error {
+	if len(args) > 1 && args[1] == "pane-launch" {
+		return nil
+	}
 	return os.WriteFile(filepath.Join(filepath.Dir(h.env["LUGARN_COMMS_PANE_CONFIG"]), "shell-ready"), []byte("ready"), 0600)
 }
 func (h *lifecycleHerdr) StartAgent(_ context.Context, o herdr.StartOptions) (herdr.Agent, error) {
@@ -110,4 +114,29 @@ func TestIntegrationPaneLaunchAndSessionBeforePane(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Windows fakes observe the generated capsule instead of starting a shell.
+func (h *lifecycleHerdr) Agents(context.Context) ([]herdr.Agent, error) {
+	raw, e := os.ReadFile(h.env["LUGARN_COMMS_PANE_CONFIG"])
+	if e != nil {
+		return nil, e
+	}
+	var config paneLaunchCapsule
+	if e = json.Unmarshal(raw, &config); e != nil {
+		return nil, e
+	}
+	return []herdr.Agent{{Kind: string(config.Harness), Pane: "pane-owned", Workspace: "workspace-owned", Activity: model.ActivityBlocked}}, nil
+}
+func (h *lifecycleHerdr) RenameAgent(context.Context, string, string) error {
+	raw, e := os.ReadFile(h.env["LUGARN_COMMS_PANE_CONFIG"])
+	if e != nil {
+		return e
+	}
+	var config paneLaunchCapsule
+	if e = json.Unmarshal(raw, &config); e != nil {
+		return e
+	}
+	h.args = config.Args
+	return nil
 }

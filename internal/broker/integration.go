@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -26,6 +27,8 @@ type HerdrAPI interface {
 	RunCommand(context.Context, string, ...string) error
 	StartAgent(context.Context, herdr.StartOptions) (herdr.Agent, error)
 	Agent(context.Context, string) (herdr.Agent, error)
+	Agents(context.Context) ([]herdr.Agent, error)
+	RenameAgent(context.Context, string, string) error
 	Prompt(context.Context, string, string) (herdr.Agent, error)
 	Wait(context.Context, string, []model.Activity, time.Duration) (herdr.Agent, error)
 	ReadAgent(context.Context, string, int) (string, error)
@@ -45,10 +48,11 @@ type IntegrationOptions struct {
 // Integration binds the real drivers to the broker and runner. Constructing it
 // performs no host commands; operations resolve their own team/server as needed.
 type Integration struct {
-	b       *Broker
-	opts    IntegrationOptions
-	adapter *harnessAdapter
-	panes   *paneAdapter
+	b            *Broker
+	opts         IntegrationOptions
+	adapter      *harnessAdapter
+	panes        *paneAdapter
+	windowsPanes bool
 }
 
 // NewIntegration constructs adapters without launching any process or server.
@@ -72,7 +76,7 @@ func NewIntegration(b *Broker, opts IntegrationOptions) (*Integration, error) {
 	if opts.StartServer == nil {
 		opts.StartServer = herdr.StartServer
 	}
-	integration := &Integration{b: b, opts: opts}
+	integration := &Integration{b: b, opts: opts, windowsPanes: runtime.GOOS == "windows"}
 	integration.adapter = &harnessAdapter{binary: opts.Binary, state: b.opts.StateDir, home: opts.HomeDir, probe: b.opts.Probe, models: opts.Models, extra: opts.ExtraEnv}
 	integration.panes = &paneAdapter{clients: opts.Herdr, observed: map[string]model.Activity{}, submitted: map[string]bool{}, checked: map[string]int64{}}
 	return integration, nil
@@ -196,6 +200,7 @@ type harnessHandle struct {
 	acks   chan TurnAcknowledgement
 }
 
+func (h *harnessHandle) JobName() string                              { return h.handle.JobName }
 func (h *harnessHandle) PID() int64                                   { return int64(h.handle.PID) }
 func (h *harnessHandle) Acknowledgements() <-chan TurnAcknowledgement { return h.acks }
 func (h *harnessHandle) Cancel() error                                { h.handle.Cancel(); return nil }

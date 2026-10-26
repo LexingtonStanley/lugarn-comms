@@ -91,7 +91,9 @@ func TestArgs(t *testing.T) {
 						if mode == model.ModeHeadless {
 							want = []string{"run", "--format", "json"}
 						}
-						want = append(want, "--standalone")
+						if l.Version == "" || l.Version[0] != '1' {
+							want = append(want, "--standalone")
+						}
 						if l.Resume {
 							want = append(want, "--session", l.SessionID)
 						}
@@ -182,6 +184,13 @@ func TestOpenCodeModelFlagByVersionAndMode(t *testing.T) {
 			}
 			if found != (mode == model.ModeHeadless || version[0] == '1') || !session {
 				t.Fatal(version, mode, args)
+			}
+			standalone := false
+			for _, arg := range args {
+				standalone = standalone || arg == "--standalone"
+			}
+			if standalone != (version[0] == '2') {
+				t.Fatal("--standalone only for OpenCode 2:", version, mode, args)
 			}
 		}
 	}

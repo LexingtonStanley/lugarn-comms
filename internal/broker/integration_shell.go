@@ -19,29 +19,9 @@ type paneShellConfig struct{ Path, Ready string }
 // RunPaneShell is the native pane bootstrap. Its generated capsule is confined
 // to this state directory. It execs a clean shell without changing the config home.
 func RunPaneShell() error {
-	state, e := statedir.Resolve()
-	if e != nil {
-		return e
-	}
-	state, e = filepath.Abs(state)
-	if e != nil {
-		return e
-	}
-	path := os.Getenv("LUGARN_COMMS_PANE_CONFIG")
-	relative, e := filepath.Rel(filepath.Join(state, "launch"), path)
-	if e != nil || strings.HasPrefix(relative, "..") || filepath.Base(path) != "clean-shell.json" {
-		return invalid("invalid pane shell capsule")
-	}
-	parts := strings.Split(filepath.ToSlash(relative), "/")
-	if len(parts) != 2 || model.ValidateULID(parts[0]) != nil {
-		return invalid("invalid pane shell launch")
-	}
-	raw, e := os.ReadFile(path)
-	if e != nil {
-		return e
-	}
 	var config paneShellConfig
-	if e = json.Unmarshal(raw, &config); e != nil {
+	path, e := readPaneCapsule("clean-shell.json", "", &config)
+	if e != nil {
 		return e
 	}
 	if config.Ready != filepath.Join(filepath.Dir(path), "shell-ready") {

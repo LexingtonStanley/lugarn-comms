@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/harness"
 	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
@@ -197,6 +198,16 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 		return e
 	}
 	launchStarted = true
+	// The previous lease is durably ended now. Remove its secrets before any
+	// fallible pane setup, so conversion failure cannot strand the old launch.
+	if m.Lease.Launch != nil {
+		cleanup, done := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		e = l.r.removeLaunchFiles(cleanup, *m.Lease.Launch)
+		done()
+		if e != nil {
+			return e
+		}
+	}
 	desc := TurnLaunch{Mode: model.ModePane, Harness: *m.Harness, Profile: *m.Profile, Workdir: *m.Workdir, StateDir: l.i.b.opts.StateDir, LaunchID: id, MemberID: m.ID, Binary: binary, Session: starting.Session, NewSession: newSession}
 	if e = statedir.Ensure(l.i.b.opts.StateDir); e != nil {
 		return e
@@ -221,7 +232,13 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	if e != nil {
 		return e
 	}
-	env, bootstrap, e := l.i.preparePaneShell(ctx, launch, binary)
+	var env map[string]string
+	var bootstrap []string
+	if l.i.windowsPanes {
+		env, bootstrap, e = l.i.prepareWindowsPane(launch, binary, args)
+	} else {
+		env, bootstrap, e = l.i.preparePaneShell(ctx, launch, binary)
+	}
 	if e != nil {
 		return e
 	}
@@ -254,10 +271,15 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	if e = client.RunCommand(ctx, tab.RootPane, bootstrap...); e != nil {
 		return e
 	}
-	if e = l.i.waitShell(ctx, id); e != nil {
-		return e
+	var agent herdr.Agent
+	if l.i.windowsPanes {
+		agent, e = l.i.detectWindowsPane(ctx, client, tab.RootPane, *team.HerdrWorkspace, herdr.AgentName(m.Team, m.Name), *m.Harness)
+	} else {
+		if e = l.i.waitShell(ctx, id); e != nil {
+			return e
+		}
+		agent, e = client.StartAgent(ctx, herdr.StartOptions{Name: herdr.AgentName(m.Team, m.Name), Harness: *m.Harness, Pane: tab.RootPane, Args: args})
 	}
-	agent, e := client.StartAgent(ctx, herdr.StartOptions{Name: herdr.AgentName(m.Team, m.Name), Harness: *m.Harness, Pane: tab.RootPane, Args: args})
 	if e != nil {
 		return e
 	}
@@ -283,11 +305,6 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 		return e
 	}
 	success = true
-	if m.Lease.Launch != nil {
-		if e = l.r.removeLaunchFiles(ctx, *m.Lease.Launch); e != nil {
-			return e
-		}
-	}
 	return nil
 }
 func (l *integrationLifecycle) Exited(ctx context.Context, m model.Member) error {

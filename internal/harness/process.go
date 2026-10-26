@@ -34,6 +34,9 @@ var defaultProbe = hostprobe.New()
 // buffered acknowledgement, then closes at completion. Wait does not require a
 // channel consumer. PID and Events are immutable after Start returns.
 type Handle struct {
+	// JobName is the immutable Windows job identity, empty on POSIX. Persist it
+	// alongside PID and process birth before allowing a turn to detach.
+	JobName      string
 	PID          int
 	Events       <-chan Event
 	mu           sync.Mutex
@@ -123,12 +126,12 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 	cmd.Stdin = strings.NewReader(prompt)
 	// Bound pipe-drain time if a descendant keeps an inherited handle open.
 	cmd.WaitDelay = time.Second
-	group, err := newProcessGroup(cmd)
+	group, err := newProcessGroup(cmd, l.LaunchID)
 	if err != nil {
 		return nil, model.NewError(model.ErrorLaunchFailed, "cannot create process group").WithDetail("cause", err.Error())
 	}
 	events := make(chan Event, 1)
-	h := &Handle{cmd: cmd, group: group, done: make(chan struct{}), Events: events}
+	h := &Handle{JobName: group.jobName(), cmd: cmd, group: group, done: make(chan struct{}), Events: events}
 	p := NewParser(l.Harness, l.SessionID)
 	stream := &eventWriter{parser: p, emit: func(e Event) { events <- e }, abort: func() { h.stop(false, false) }}
 	stderr := &tailWriter{}
@@ -139,6 +142,7 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 	// in process_windows.go.
 	h.mu.Lock()
 	err = cmd.Start()
+	group.started()
 	if err == nil {
 		h.PID = cmd.Process.Pid
 		err = group.assign(cmd)
@@ -161,7 +165,9 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 			p.fail(err.Error())
 		}
 		h.mu.Lock()
-		if err := group.kill(); err != nil && h.controlError == "" {
+		// Normal root exit must not strand descendants, even though Windows
+		// jobs intentionally do not kill when their last handle is closed.
+		if err := group.finish(); err != nil && h.controlError == "" {
 			h.controlError = oneLine(err.Error())
 		}
 		group.close()

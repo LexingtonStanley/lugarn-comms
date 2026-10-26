@@ -10,7 +10,7 @@ import (
 
 type processGroup struct{ pid int }
 
-func newProcessGroup(cmd *exec.Cmd) (*processGroup, error) {
+func newProcessGroup(cmd *exec.Cmd, _ string) (*processGroup, error) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	return &processGroup{}, nil
 }
@@ -50,3 +50,8 @@ func (g *processGroup) kill() error {
 	return errors.Join(snapshotErr, killErr, err)
 }
 func (g *processGroup) close() {}
+
+func (g *processGroup) jobName() string { return "" }
+func (g *processGroup) started()        {}
+
+func (g *processGroup) finish() error { return g.kill() }

@@ -109,12 +109,9 @@ func (l *integrationLifecycle) waitRecipient(ctx context.Context, m model.Member
 		if e != nil {
 			return e
 		}
-		if cancel && turn != nil && turn.PID != nil {
-			birth := l.r.processBirth(*turn)
-			if birth != "" {
-				if e = cancelOwnedTree(ctx, *turn.PID, birth); e != nil {
-					return e
-				}
+		if cancel && turn != nil {
+			if e = l.r.cancelTurnProcess(ctx, *turn); e != nil {
+				return e
 			}
 		}
 		if !busy && turn == nil && !delivering {

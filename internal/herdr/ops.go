@@ -267,6 +267,16 @@ func (c *Client) Agents(ctx context.Context) ([]Agent, error) {
 	return out, nil
 }
 
+// RenameAgent names an already detected agent, addressed by its current name
+// or pane id. Windows pane callers first find the expected kind with Agents;
+// this does not start a harness or type any harness arguments into a shell.
+func (c *Client) RenameAgent(ctx context.Context, target, name string) error {
+	if e := ValidateAgentName(name); e != nil {
+		return e
+	}
+	return c.result(ctx, 0, "agent rename", nil, "agent", "rename", target, name)
+}
+
 // MaxPromptBytes is the longest inline pane delivery the spec allows (8 KiB of
 // UTF-8). Longer deliveries go through a file (Untrusted text).
 const MaxPromptBytes = 8192
