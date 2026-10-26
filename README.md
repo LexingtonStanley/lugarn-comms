@@ -8,6 +8,22 @@ the agents keep working while the phone is asleep.
 
 **Status:** under construction. Nothing here is ready to use yet.
 
+## Build
+
+Use Go 1.27 or newer (the initial toolchain is Go 1.27.3), available on your `PATH`.
+Run the tests and build all six Linux, macOS and Windows targets:
+
+```sh
+go test ./...
+scripts/build-all.sh
+```
+
+Binaries are written to `dist/lugarn-comms_dev_<os>_<arch>/`. Set `VERSION` and
+`COMMIT` to override the build metadata; they default to `dev` and the current Git
+commit. To cut a release, push a `v*` tag (for example, `v0.1.0`). GitHub Actions
+builds all six targets and publishes archives containing the binary, licence,
+notice and README, along with `SHA256SUMS`, in a GitHub release.
+
 ## Licence
 
 [PolyForm Shield 1.0.0](LICENSE.md). You may use, change and run this software for any
