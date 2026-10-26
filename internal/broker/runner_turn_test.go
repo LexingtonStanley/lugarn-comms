@@ -313,3 +313,29 @@ func TestRunnerClaudeAssignedSessionAndResume(t *testing.T) {
 		t.Fatal(second.launch)
 	}
 }
+
+func TestRunnerUnavailableHarnessFailsBeforeLaunch(t *testing.T) {
+	b, _ := setup(t)
+	runnerReady(t, b)
+	r := NewRunner(b, "t", RunnerOptions{Files: fakeLaunchFiles{}})
+	must(t, r.acquire(context.Background()))
+	b.opts.Host = unavailableHost{}
+	var m *model.Member
+	must(t, b.db.Read(context.Background(), func(tx *store.Tx) error { var e error; m, e = tx.GetMember("writer"); return e }))
+	_, e := r.launchHeadless(context.Background(), *m, model.LeaseCauseStart)
+	code(t, e, model.ErrorLaunchFailed)
+	must(t, b.db.Read(context.Background(), func(tx *store.Tx) error {
+		launches, e := tx.ListLaunches("t")
+		if e != nil {
+			return e
+		}
+		if len(launches) != 0 {
+			t.Fatal("created a launch for an unavailable harness")
+		}
+		v, e := tx.GetMember(m.ID)
+		if e == nil && (v.StopReason == nil || *v.StopReason != model.StopReasonLaunchFailed) {
+			t.Fatal(v)
+		}
+		return e
+	}))
+}

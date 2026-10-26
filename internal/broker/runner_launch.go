@@ -45,6 +45,13 @@ func (r *Runner) memberState(tx *store.Tx, m model.Member, state model.MemberSta
 	return r.b.event(tx, &m.Team, model.EventMemberStateChanged, true, &m.ID, nil, wire.MemberStateChangedEventData{Member: *updated, From: m.State, To: state, Reason: reason})
 }
 func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model.LeaseCause) (*model.Member, error) {
+	host := r.b.host(ctx)
+	if !host.CanRunHeadless(*m.Harness) {
+		return nil, r.launchFailed(ctx, m, invalid("harness cannot run headless"))
+	}
+	if issue := host.HarnessIssue(*m.Harness); issue != "" {
+		return nil, r.launchFailed(ctx, m, model.NewError(model.ErrorHarnessUnavailable, "harness is unavailable").WithDetail("reason", issue))
+	}
 	binary, e := r.opts.Binary(*m.Harness)
 	if e != nil {
 		return nil, r.launchFailed(ctx, m, e)
