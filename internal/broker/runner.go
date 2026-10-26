@@ -2,7 +2,6 @@ package broker
 
 import (
 	"context"
-	"errors"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -14,24 +13,28 @@ import (
 )
 
 var errRunnerLost = model.NewError(model.ErrorLeaseConflict, "runner ownership changed")
-var errRunnerGeneration = errors.New("runner member generation changed")
+var errRunnerGeneration = model.NewError(model.ErrorLeaseConflict, "runner member generation changed")
 
 // Runner drives one team. Construct a new value for every run; Run is single-use.
 // Cancelling its context detaches live turns; a team stop cancels them instead.
 type Runner struct {
-	b     *Broker
-	team  string
-	opts  RunnerOptions
-	owner model.Runner
-	used  atomic.Bool
-	mu    sync.Mutex
-	busy  map[string]bool
+	orphans map[string]runnerOrphan
+	b       *Broker
+	team    string
+	opts    RunnerOptions
+	owner   model.Runner
+	used    atomic.Bool
+	mu      sync.Mutex
+	busy    map[string]bool
 }
 
 // NewRunner constructs a runner over b's store and transaction helpers. It does
 // not acquire ownership or start processes until Run. The caller owns the store.
 func NewRunner(b *Broker, team string, opts RunnerOptions) *Runner {
 	d := NotBuiltRunnerDrivers{}
+	if opts.Processes == nil {
+		opts.Processes = nativeProcesses{}
+	}
 	if opts.Headless == nil {
 		opts.Headless = d
 	}
@@ -62,7 +65,7 @@ func NewRunner(b *Broker, team string, opts RunnerOptions) *Runner {
 	if opts.Binary == nil {
 		opts.Binary = b.opts.Probe.Binary
 	}
-	return &Runner{b: b, team: team, opts: opts, busy: map[string]bool{}}
+	return &Runner{b: b, team: team, opts: opts, busy: map[string]bool{}, orphans: map[string]runnerOrphan{}}
 }
 func (r *Runner) owns(t *store.Team) bool {
 	return t.Runner.PID != nil && r.owner.PID != nil && *t.Runner.PID == *r.owner.PID && t.Runner.StartedAt != nil && r.owner.StartedAt != nil && t.Runner.StartedAt.Equal(r.owner.StartedAt.Time)
@@ -159,6 +162,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	if e := r.acquire(ctx); e != nil {
 		return e
+	}
+	if e := r.reconcile(ctx); e != nil {
+		return model.AsError(e)
 	}
 	tick := time.NewTicker(r.opts.PollInterval)
 	defer tick.Stop()
