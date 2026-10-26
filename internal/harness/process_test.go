@@ -24,7 +24,12 @@ type fakeResolver struct {
 
 func (f fakeResolver) Binary(model.Harness) (string, error) { return f.path, f.err }
 
+var platformProcessHelpers = map[string]func() int{}
+
 func TestMain(m *testing.M) {
+	if helper := platformProcessHelpers[os.Getenv("LUGARN_HARNESS_HELPER")]; helper != nil {
+		os.Exit(helper())
+	}
 	if len(os.Args) > 1 && os.Args[1] == "mcp" {
 		os.Exit(serveFakeMCP())
 	}
@@ -53,6 +58,17 @@ func helper(mode string) int {
 		return 0
 	}
 	if mode == "tree" || mode == "tree-detached" || mode == "tree-exit" {
+		if mode == "tree-exit" {
+			for until := time.Now().Add(5 * time.Second); ; {
+				if _, e := os.Stat(filepath.Join(root, "root-assigned")); e == nil {
+					break
+				}
+				if time.Now().After(until) {
+					return 1
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+		}
 		child := exec.Command(os.Args[0])
 		if mode == "tree-detached" {
 			detachHelper(child)
@@ -302,6 +318,9 @@ func TestProcessNormalExitTerminatesDescendants(t *testing.T) {
 		t.Fatal(e)
 	}
 	t.Cleanup(h.Cancel)
+	if e = os.WriteFile(filepath.Join(root, "root-assigned"), nil, 0600); e != nil {
+		t.Fatal(e)
+	}
 	out := waitBounded(t, h)
 	raw, e := os.ReadFile(filepath.Join(root, "grandchild.pid"))
 	if e != nil {
