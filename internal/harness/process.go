@@ -165,7 +165,9 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 			p.fail(err.Error())
 		}
 		h.mu.Lock()
-		if err := group.kill(); err != nil && h.controlError == "" {
+		// Normal root exit must not strand descendants, even though Windows
+		// jobs intentionally do not kill when their last handle is closed.
+		if err := group.finish(); err != nil && h.controlError == "" {
 			h.controlError = oneLine(err.Error())
 		}
 		group.close()

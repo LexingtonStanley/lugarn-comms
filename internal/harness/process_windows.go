@@ -3,6 +3,7 @@ package harness
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -100,4 +101,24 @@ func (g *processGroup) close() {
 		_ = windows.CloseHandle(g.job)
 		g.job = 0
 	}
+}
+
+// finish runs while the creator still holds the full-access handle. The
+// harness's inherited query handle may already be closed by normal root exit.
+func (g *processGroup) finish() error {
+	if g.job == 0 {
+		return nil
+	}
+	var accounting struct {
+		TotalUserTime, TotalKernelTime, ThisPeriodTotalUserTime, ThisPeriodTotalKernelTime int64
+		TotalPageFaultCount, TotalProcesses, ActiveProcesses, TotalTerminatedProcesses     uint32
+	}
+	if err := windows.QueryInformationJobObject(g.job, windows.JobObjectBasicAccountingInformation, uintptr(unsafe.Pointer(&accounting)), uint32(unsafe.Sizeof(accounting)), nil); err != nil {
+		// Cleanup still attempts termination if accounting cannot be read.
+		return errors.Join(err, g.kill())
+	}
+	if accounting.ActiveProcesses > 0 {
+		return g.kill()
+	}
+	return nil
 }

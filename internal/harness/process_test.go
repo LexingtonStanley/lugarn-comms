@@ -52,7 +52,7 @@ func helper(mode string) int {
 		time.Sleep(20 * time.Second)
 		return 0
 	}
-	if mode == "tree" || mode == "tree-detached" {
+	if mode == "tree" || mode == "tree-detached" || mode == "tree-exit" {
 		child := exec.Command(os.Args[0])
 		if mode == "tree-detached" {
 			detachHelper(child)
@@ -62,7 +62,9 @@ func helper(mode string) int {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		defer func() { _ = child.Process.Kill(); _ = child.Wait() }()
+		if mode != "tree-exit" {
+			defer func() { _ = child.Process.Kill(); _ = child.Wait() }()
+		}
 		deadline := time.Now().Add(5 * time.Second)
 		for time.Now().Before(deadline) {
 			if _, err := os.Stat(filepath.Join(root, "heartbeat")); err == nil {
@@ -290,5 +292,27 @@ func TestStartChecksOpenCodeVersion(t *testing.T) {
 		if _, statErr := os.Stat(l.path(".opencode.json")); !os.IsNotExist(statErr) {
 			t.Fatalf("version %q wrote a config", version)
 		}
+	}
+}
+
+func TestProcessNormalExitTerminatesDescendants(t *testing.T) {
+	d, l, root := fakeDriver(t, "tree-exit")
+	h, e := d.Start(context.Background(), l, "ok")
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Cleanup(h.Cancel)
+	out := waitBounded(t, h)
+	raw, e := os.ReadFile(filepath.Join(root, "grandchild.pid"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	pid, e := strconv.Atoi(string(raw))
+	if e != nil {
+		t.Fatal(e)
+	}
+	assertDead(t, pid)
+	if Status(out) != model.TurnStatusSucceeded {
+		t.Fatalf("normal root exit: %+v", out)
 	}
 }

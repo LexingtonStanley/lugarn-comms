@@ -53,3 +53,5 @@ func (g *processGroup) close() {}
 
 func (g *processGroup) jobName() string { return "" }
 func (g *processGroup) started()        {}
+
+func (g *processGroup) finish() error { return g.kill() }
