@@ -150,8 +150,31 @@ func (r *Runner) executeRequest(ctx context.Context, req model.Request) error {
 	})
 }
 func (r *Runner) workMember(ctx context.Context, m model.Member) error {
-	_, e := r.syncHolds(ctx, m)
-	return e
+	held, e := r.syncHolds(ctx, m)
+	if e != nil || held {
+		return e
+	}
+	if m.Lease == nil {
+		return nil
+	}
+	if m.Lease.Driver == model.DriverNone && m.Origin == model.MemberOriginSpec && m.StopReason == nil {
+		if m.Mode != nil && *m.Mode == model.ModeHeadless {
+			_, e = r.launchHeadless(ctx, m, model.LeaseCauseStart)
+		} else {
+			e = r.opts.PaneLifecycle.Open(ctx, m, model.LeaseCauseStart)
+			if e != nil {
+				e = r.launchFailed(ctx, m, e)
+			}
+		}
+		if e != nil && model.AsError(e).Code == model.ErrorLaunchFailed {
+			return nil
+		}
+		return e
+	}
+	if m.State == model.MemberStateRunning && m.Lease.Driver == model.DriverHeadless {
+		return r.runTurn(ctx, m)
+	}
+	return nil
 }
 func (r *Runner) syncHolds(ctx context.Context, m model.Member) (bool, error) {
 	active := false
