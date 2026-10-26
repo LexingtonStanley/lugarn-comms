@@ -222,3 +222,46 @@ func TestStopMemberClosesPaneRecordedWhileWaiting(t *testing.T) {
 		t.Fatal("post-wait recorded pane was orphaned", h.closed)
 	}
 }
+
+type orderedReturnHerdr struct {
+	lifecycleHerdr
+	waited bool
+	ready  *bool
+	t      *testing.T
+}
+
+func (h *orderedReturnHerdr) Wait(ctx context.Context, name string, states []model.Activity, timeout time.Duration) (herdr.Agent, error) {
+	if !*h.ready {
+		h.t.Fatal("Herdr wait preceded in-flight delivery completion")
+	}
+	h.waited = true
+	return h.lifecycleHerdr.Wait(ctx, name, states, timeout)
+}
+func TestReturnHeadlessWaitsForDeliveringBeforeHerdr(t *testing.T) {
+	b, r, m := paneFixture(t, &panesStub{})
+	ctx := context.Background()
+	sendToWriter(t, b, "in-flight")
+	var items []store.DeliveryItem
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		var e error
+		items, e = tx.PickUpDeliveries(m.ID, 0, ptr(model.DeliveryViaPane), nil, &m.Lease.Generation, b.now())
+		return e
+	}))
+	ready := false
+	h := &orderedReturnHerdr{ready: &ready, t: t}
+	i, e := NewIntegration(b, IntegrationOptions{Herdr: func(string) HerdrAPI { return h }})
+	must(t, e)
+	l := &integrationLifecycle{i: i, r: r}
+	b.opts.Wait = func(ctx context.Context, _ time.Duration) error {
+		if h.closed != 0 {
+			t.Fatal("closed before delivery finished")
+		}
+		must(t, r.finishPane(ctx, m, items, model.DeliveryStateDelivered, nil))
+		ready = true
+		return nil
+	}
+	must(t, l.toHeadless(ctx, m, model.LeaseCauseReturnHeadless, true))
+	if !h.waited || !ready {
+		t.Fatal("missing waits")
+	}
+}

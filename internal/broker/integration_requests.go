@@ -87,13 +87,23 @@ func (l *integrationLifecycle) waitRecipient(ctx context.Context, m model.Member
 		busy := l.r.busy[m.ID]
 		l.r.mu.Unlock()
 		var turn *model.Turn
+		delivering := false
 		e := l.i.b.db.Read(ctx, func(tx *store.Tx) error {
 			var e error
 			turn, e = tx.GetLiveTurn(m.ID)
-			if missing(e) {
-				return nil
+			if e != nil && !missing(e) {
+				return e
 			}
-			return e
+			items, e := tx.ListTeamDeliveries(m.Team, model.DeliveryStateDelivering)
+			if e != nil {
+				return e
+			}
+			for _, item := range items {
+				if item.Delivery.To.ID == m.ID {
+					delivering = true
+				}
+			}
+			return nil
 		})
 		if e != nil {
 			return e
@@ -106,7 +116,7 @@ func (l *integrationLifecycle) waitRecipient(ctx context.Context, m model.Member
 				}
 			}
 		}
-		if !busy && turn == nil {
+		if !busy && turn == nil && !delivering {
 			return nil
 		}
 		if e = l.i.b.opts.Wait(ctx, 50*time.Millisecond); e != nil {
@@ -224,6 +234,9 @@ func (l *integrationLifecycle) toHeadless(ctx context.Context, m model.Member, c
 		return model.NewError(model.ErrorLeaseConflict, "member has no pane")
 	}
 	if wait {
+		if e := l.waitRecipient(ctx, m, false); e != nil {
+			return e
+		}
 		server, name := paneIdentity(m)
 		_, e := l.i.opts.Herdr(server).Wait(ctx, name, []model.Activity{model.ActivityIdle, model.ActivityDone}, 300*time.Second)
 		if e != nil {
@@ -235,11 +248,6 @@ func (l *integrationLifecycle) toHeadless(ctx context.Context, m model.Member, c
 	}
 	if wait {
 		if e := l.closePane(ctx, m); e != nil {
-			return e
-		}
-	}
-	if wait {
-		if e := l.waitRecipient(ctx, m, false); e != nil {
 			return e
 		}
 	}
