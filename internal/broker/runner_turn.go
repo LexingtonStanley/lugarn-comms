@@ -202,11 +202,19 @@ func (r *Runner) runPreparedTurn(ctx context.Context, w *runnerTurn) (err error)
 	done := make(chan TurnOutcome, 1)
 	exited := make(chan struct{})
 	go func() { done <- h.Wait(); close(exited) }()
+	identityRecorded := false
 	// Once Start succeeds, an error must not abandon a process that may never
 	// have reached the store. Reap it before dropping the in-memory handle.
 	// A normal runner cancellation returns nil and deliberately detaches instead.
 	defer func() {
 		if err == nil {
+			return
+		}
+		// Cancellation can race an acknowledgement/store write. Once the OS
+		// identity is durable, ordinary runner exit still detaches that turn.
+		// An unrecorded process must instead be cancelled and reaped.
+		if identityRecorded && ctx.Err() != nil && !r.stopping.Load() {
+			err = nil
 			return
 		}
 		cancelErr := h.Cancel()
@@ -240,6 +248,7 @@ func (r *Runner) runPreparedTurn(ctx context.Context, w *runnerTurn) (err error)
 	if e != nil {
 		return e
 	}
+	identityRecorded = true
 	acked := false
 	acks := h.Acknowledgements()
 	timer := time.NewTimer(w.timeout)
