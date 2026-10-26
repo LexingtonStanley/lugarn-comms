@@ -765,6 +765,22 @@ repeating until none is left. On Linux the runner sets `PR_SET_CHILD_SUBREAPER`,
 descendant that double-forks away is reparented to the runner, where the walk still finds it;
 the runner reaps the orphans it adopts. macOS has no equivalent, so there the process group
 plus ancestry is the best available.
+
+**On Windows**, a turn outlives a runner that exits, as it does on POSIX. So its job object
+has no kill-on-close, which would end the turn with the runner's handle. A restarted runner,
+or stop-team, still has to reach the whole tree, and orphans don't show up by ancestry
+there. So the job is named: `Local\lugarn-comms-<launch id>-<random>`, recorded with the
+turn's process identity. Creating it fails rather than joining a job that already has that
+name.
+
+A job keeps its name only while a handle to it is open. So the harness inherits a
+query-only handle to its own job, which holds the name for as long as the harness lives
+(verified on ufo: once the creator had exited, another process opened the job by name and
+terminated the tree). The runner terminates the job when a turn is cancelled, and when a
+turn ends with descendants still in it. Whoever finds a live turn later opens the job by
+name and terminates it. If the name is gone because the harness has exited, it falls back
+to the recorded pid and process identity.
+
 At most one live turn per member; at most `headless_turns` per team.
 
 A session's first turn draws its seal before the harness has reported an id; the runner keeps
@@ -1848,3 +1864,8 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     `~/.local/bin`, nvm and the like, and Linux Herdr panes skip the login ones. `hello`
     reports the capture (Flare). A Codex pane's workdir is checked against Codex's own record of the
     thread before launch, and its resume picker before the first delivery.
+69. **Windows turns outlive their runner.** Job objects lose `KILL_ON_JOB_CLOSE`. Each one is
+    named, and the harness inherits a query-only handle to it, which keeps the name alive.
+    So a restarted runner or stop-team can terminate the whole tree by name, orphans
+    included. This was verified on ufo: a job's name vanishes when its creator's last handle
+    closes, even while its processes run, unless a member process holds a handle.
