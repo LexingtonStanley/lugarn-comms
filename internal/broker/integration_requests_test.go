@@ -141,6 +141,9 @@ func TestIntegrationPaneExitRestoresHeadlessWithoutWaitingOnItself(t *testing.T)
 	must(t, l.Exited(bounded, *m))
 	m, e = l.current(ctx, "writer")
 	must(t, e)
+	if client.closed == 0 {
+		t.Fatal("pane exit left an owned clean-shell tab")
+	}
 	if m.Lease.Driver != model.DriverHeadless || m.Lease.Generation != 2 {
 		t.Fatal(m)
 	}

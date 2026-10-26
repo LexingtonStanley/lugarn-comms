@@ -133,14 +133,21 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 	if t.HerdrWorkspace != nil {
 		ws, e := client.Workspace(ctx, *t.HerdrWorkspace)
 		if e == nil {
-			if previous.Workspace != ws.ID || previous.Pane == "" {
-				return model.NewError(model.ErrorRunnerUnavailable, "recorded workspace has no owned runner pane")
+			workspace = ws.ID // The persisted id is authority; labels never are.
+			if previous.Workspace == ws.ID && previous.Pane != "" {
+				p, e := client.Pane(ctx, previous.Pane)
+				if e == nil && p.Workspace == ws.ID {
+					pane = p.ID
+				} else if e != nil && !herdr.IsGone(e) {
+					return e
+				}
 			}
-			p, e := client.Pane(ctx, previous.Pane)
-			if e == nil && p.Workspace == ws.ID {
-				workspace, pane = ws.ID, p.ID
-			} else if e != nil && !herdr.IsGone(e) {
-				return e
+			if pane == "" {
+				tab, e := client.OpenTab(ctx, ws.ID, "runner", i.b.opts.StateDir, i.rootEnv())
+				if e != nil {
+					return e
+				}
+				pane = tab.RootPane
 			}
 		} else if !herdr.IsGone(e) {
 			return e

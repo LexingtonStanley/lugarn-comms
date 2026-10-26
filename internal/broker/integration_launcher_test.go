@@ -28,6 +28,10 @@ func (h *launcherHerdr) CreateWorkspace(_ context.Context, _ string, _ string, e
 	h.env = env
 	return herdr.Workspace{ID: "w-owned", RootPane: "p-owned"}, nil
 }
+func (h *launcherHerdr) OpenTab(_ context.Context, _ string, _ string, _ string, env map[string]string) (herdr.Tab, error) {
+	h.env = env
+	return herdr.Tab{RootPane: "p-owned"}, nil
+}
 func (h *launcherHerdr) Workspace(context.Context, string) (herdr.Workspace, error) {
 	return herdr.Workspace{ID: "w-owned"}, nil
 }
@@ -66,6 +70,13 @@ func TestIntegrationLauncherRecordsWorkspaceIDAndNativeBridge(t *testing.T) {
 		}
 		return e
 	}))
+	// Teardown removed placement while a member tab kept the workspace alive.
+	must(t, os.Remove(i.placementPath("t")))
+	must(t, b.db.Read(context.Background(), func(tx *store.Tx) error { var e error; team, e = tx.GetTeam("t"); return e }))
+	must(t, i.Launch(context.Background(), *team))
+	if h.created != 1 {
+		t.Fatal("created another workspace instead of a runner tab")
+	}
 }
 
 func TestIntegrationRunnerBridgeHandlesSourcePathWithSpaces(t *testing.T) {

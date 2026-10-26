@@ -298,6 +298,9 @@ func (l *integrationLifecycle) Exited(ctx context.Context, m model.Member) error
 		return l.r.paneRetry(ctx, m, e)
 	}
 	if m.Mode != nil && *m.Mode == model.ModeHeadless {
+		if e := l.closePane(ctx, m); e != nil {
+			return e
+		}
 		return l.toHeadless(ctx, m, model.LeaseCausePaneExit, false)
 	}
 	return l.stopMember(ctx, m, reason, cause)
