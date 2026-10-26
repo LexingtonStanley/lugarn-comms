@@ -1,0 +1,15 @@
+{
+  "protocol": 1,
+  "op": "continue-budget",
+  "ok": true,
+  "result": {
+    "hops": {
+      "used": 17,
+      "allowance": 32,
+      "base": 16,
+      "exhausted": false
+    },
+    "rounds": [],
+    "released": 1
+  }
+}

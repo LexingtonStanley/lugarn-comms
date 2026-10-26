@@ -1,0 +1,16 @@
+{
+  "member": {
+    "id": "01M5W864AG1HYGCPWPQ5E6EYCN",
+    "name": "web",
+    "harness": "opencode",
+    "profile": "workspace",
+    "mode": "headless",
+    "state": "running",
+    "workdir": "/home/lex/code/flare-lugarn/auth-rewrite-web",
+    "worktree": {
+      "path": "/home/lex/code/flare-lugarn/auth-rewrite-web",
+      "branch": "lugarn/auth-rewrite/web"
+    }
+  },
+  "task_message": "01M5W86JZ8H3BV4H15G5E4G7X0"
+}

@@ -1,0 +1,187 @@
+{
+  "protocol": 1,
+  "op": "timeline",
+  "ok": true,
+  "result": {
+    "events": [
+      {
+        "type": "member.added",
+        "cursor": "9f3c2a71d4e85b06a1c7e2f490b3d58e.1001",
+        "at": "2026-10-26T14:01:30.330Z",
+        "team": "fmvq3a1x7k2",
+        "timeline": true,
+        "data": {
+          "member": {
+            "id": "01M5W85YF0SS6YS3C4DWA7N360",
+            "team": "fmvq3a1x7k2",
+            "name": "api",
+            "kind": "agent",
+            "role": "worker",
+            "origin": "spawn",
+            "spawned_by": {
+              "id": "fmvq3a1y0c4",
+              "name": "lead"
+            },
+            "harness": "codex",
+            "profile": "workspace",
+            "mode": "headless",
+            "folder": "/home/lex/code/flare",
+            "worktree": {
+              "path": "/home/lex/code/flare-lugarn/auth-rewrite-api",
+              "branch": "lugarn/auth-rewrite/api"
+            },
+            "workdir": "/home/lex/code/flare-lugarn/auth-rewrite-api",
+            "state": "starting",
+            "stop_reason": null,
+            "activity": null,
+            "lease": {
+              "driver": "none",
+              "generation": 0,
+              "launch": null,
+              "pane": null
+            },
+            "last_driver": null,
+            "held_until": null,
+            "herdr": null,
+            "session": null,
+            "sessions": [],
+            "host": null,
+            "created_at": "2026-10-26T14:01:30.330Z",
+            "started_at": null,
+            "stopped_at": null,
+            "removed_at": null,
+            "removed_reason": null
+          }
+        }
+      },
+      {
+        "type": "message.created",
+        "cursor": "9f3c2a71d4e85b06a1c7e2f490b3d58e.1002",
+        "at": "2026-10-26T14:01:30.330Z",
+        "team": "fmvq3a1x7k2",
+        "timeline": true,
+        "data": {
+          "message": {
+            "id": "01M5W861CRYYK596NGYA1DQ91K",
+            "team": "fmvq3a1x7k2",
+            "from": {
+              "id": "fmvq3a1y0c4",
+              "name": "lead"
+            },
+            "kind": "task",
+            "broadcast": false,
+            "reply_to": null,
+            "text": "Port the token refresh in src/auth/refresh.ts to the new client. Report back with a summary and the files you changed.",
+            "hop": 4,
+            "round": null,
+            "turn": null,
+            "created_at": "2026-10-26T14:01:30.330Z",
+            "deliveries": [
+              {
+                "to": {
+                  "id": "01M5W85YF0SS6YS3C4DWA7N360",
+                  "name": "api"
+                },
+                "state": "delivered",
+                "reason": null,
+                "via": "headless",
+                "wake": true,
+                "attempts": 1,
+                "notify": null,
+                "turn": "01M5W862VM5GQAPENECFSECZP1",
+                "updated_at": "2026-10-26T14:01:35.515Z",
+                "delivered_at": "2026-10-26T14:01:35.515Z"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "policy.denied",
+        "cursor": "9f3c2a71d4e85b06a1c7e2f490b3d58e.1030",
+        "at": "2026-10-26T14:03:20.400Z",
+        "team": "fmvq3a1x7k2",
+        "timeline": true,
+        "data": {
+          "action": "spawn",
+          "actor": {
+            "id": "fmvq3a1y0c4",
+            "name": "lead"
+          },
+          "target": null,
+          "message_id": null,
+          "error": {
+            "code": "spawn_cap_reached",
+            "message": "lead already has 3 workers running (running at once: 3)",
+            "details": {
+              "cap": "running_at_once",
+              "limit": 3,
+              "current": 3
+            }
+          }
+        }
+      },
+      {
+        "type": "message.created",
+        "cursor": "9f3c2a71d4e85b06a1c7e2f490b3d58e.1036",
+        "at": "2026-10-26T14:04:00.880Z",
+        "team": "fmvq3a1x7k2",
+        "timeline": true,
+        "data": {
+          "message": {
+            "id": "01M5W86ME4NTH82F7AG3BCKKDJ",
+            "team": "fmvq3a1x7k2",
+            "from": {
+              "id": "fmvq3a1y0c4",
+              "name": "lead"
+            },
+            "kind": "message",
+            "broadcast": false,
+            "reply_to": null,
+            "text": "Should the cookie fallback stay until 1.13? api needs to know before it deletes it.",
+            "hop": null,
+            "round": null,
+            "turn": null,
+            "created_at": "2026-10-26T14:04:00.880Z",
+            "deliveries": [
+              {
+                "to": {
+                  "id": "01M5W85RKG4MNPZX45HY43KWJR",
+                  "name": "human"
+                },
+                "state": "delivered",
+                "reason": null,
+                "via": "human",
+                "wake": false,
+                "attempts": 0,
+                "notify": true,
+                "turn": null,
+                "updated_at": "2026-10-26T14:04:00.880Z",
+                "delivered_at": "2026-10-26T14:04:00.880Z"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "budget.changed",
+        "cursor": "9f3c2a71d4e85b06a1c7e2f490b3d58e.1041",
+        "at": "2026-10-26T14:05:02.174Z",
+        "team": "fmvq3a1x7k2",
+        "timeline": true,
+        "data": {
+          "hops": {
+            "used": 17,
+            "allowance": 16,
+            "base": 16,
+            "exhausted": true
+          },
+          "cause": "exhausted",
+          "by": null
+        }
+      }
+    ],
+    "has_more_before": true,
+    "has_more_after": true
+  }
+}

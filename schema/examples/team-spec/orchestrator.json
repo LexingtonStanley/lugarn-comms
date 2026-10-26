@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "id": "fmvq3a1x7k2",
+  "name": "auth-rewrite",
+  "pattern": "orchestrator",
+  "herdr": {
+    "server": "default"
+  },
+  "limits": {
+    "hop_budget": 16,
+    "review_rounds": 3,
+    "per_recipient": 1,
+    "headless_turns": 3,
+    "turn_timeout_seconds": 1800
+  },
+  "members": [
+    {
+      "id": "fmvq3a1y0c4",
+      "name": "lead",
+      "role": "orchestrator",
+      "harness": "claude",
+      "folder": "/home/lex/code/flare",
+      "worktree": false,
+      "profile": "workspace",
+      "mode": "pane",
+      "brief": "You are {{member}}, the orchestrator of team {{team}} on Lugarn.\nBreak the task into pieces and start a worker for each with spawn(name, harness, task). Workers report back to you; answer each with reply(id). Keep messages short. Escalate decisions and anything you're unsure about to `human`. Stop a worker with stop(member) once its piece is merged. Stop when the task is done and tell `human` what changed.\n\nTeam:\n{{roster}}\n\nTools:\n{{tools}}",
+      "task": "Move the auth module from the legacy session cookie to the token client in src/auth/client.ts. Keep the public API of src/auth/index.ts unchanged.",
+      "spawn": {
+        "enabled": true,
+        "running_at_once": 3,
+        "per_run": 8,
+        "harnesses": null,
+        "mode": "headless",
+        "folder": "worktree",
+        "max_profile": "workspace",
+        "brief": "You are {{member}}, a worker started by {{spawner}} in team {{team}} on Lugarn.\nDo the task you're given in your own folder. When you finish or get stuck, tell {{spawner}} in one short message. Don't start unrelated work.\n\nTools:\n{{tools}}"
+      }
+    }
+  ],
+  "grid": []
+}

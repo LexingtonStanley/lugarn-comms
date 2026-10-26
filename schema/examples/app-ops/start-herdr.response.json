@@ -1,0 +1,15 @@
+{
+  "protocol": 1,
+  "op": "start-herdr",
+  "ok": true,
+  "result": {
+    "herdr": {
+      "installed": true,
+      "version": "0.9.5",
+      "running": true,
+      "server": "default"
+    },
+    "started": true,
+    "method": "detached"
+  }
+}

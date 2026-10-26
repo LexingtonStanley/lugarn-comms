@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "id": "fmvq6d4p2q5",
+  "name": "release-notes",
+  "pattern": "pipeline",
+  "members": [
+    {
+      "id": "fmvq6d4p4r8",
+      "name": "collect",
+      "role": "stage",
+      "harness": "codex",
+      "folder": "/home/lex/code/flare",
+      "profile": "read-only",
+      "mode": "headless",
+      "brief": "You are {{member}}, stage 1 of {{team}}. List every user-visible change since the last tag and send the list to draft.\n\nTools:\n{{tools}}",
+      "task": "Collect the changes since v1.8.0."
+    },
+    {
+      "id": "fmvq6d4p6t1",
+      "name": "draft",
+      "role": "stage",
+      "harness": "claude",
+      "folder": "/home/lex/code/flare",
+      "profile": "workspace",
+      "mode": "headless",
+      "brief": "You are {{member}}, stage 2 of {{team}}. Turn the list you receive into release notes in docs/releases/ and send the file path to polish.\n\nTools:\n{{tools}}"
+    },
+    {
+      "id": "fmvq6d4p8v3",
+      "name": "polish",
+      "role": "stage",
+      "harness": "opencode",
+      "folder": "/home/lex/code/flare",
+      "profile": "workspace",
+      "mode": "headless",
+      "brief": "You are {{member}}, the last stage of {{team}}. Edit the notes for clarity, then send `human` a two-line summary.\n\nTools:\n{{tools}}"
+    }
+  ],
+  "grid": [
+    {
+      "from": "collect",
+      "to": "draft",
+      "can": [
+        "message",
+        "wake"
+      ]
+    },
+    {
+      "from": "draft",
+      "to": "polish",
+      "can": [
+        "message",
+        "wake"
+      ]
+    }
+  ]
+}

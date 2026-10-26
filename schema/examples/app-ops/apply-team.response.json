@@ -1,0 +1,42 @@
+{
+  "protocol": 1,
+  "op": "apply-team",
+  "request_id": "r2",
+  "ok": true,
+  "result": {
+    "team": {
+      "id": "fmvq4b2z1d8",
+      "name": "login-fix",
+      "pattern": "writer_reviewer",
+      "revision": 1,
+      "run": 0,
+      "state": "stopped",
+      "runner": {
+        "state": "down",
+        "pid": null,
+        "pane": null,
+        "started_at": null,
+        "heartbeat_at": null
+      },
+      "hops": {
+        "used": 0,
+        "allowance": 16,
+        "base": 16,
+        "exhausted": false
+      },
+      "rounds": [],
+      "counts": {
+        "members": 2,
+        "running": 0,
+        "headless_turns": 0,
+        "queued": 0,
+        "held": 0,
+        "uncertain": 0
+      },
+      "started_at": null,
+      "stopped_at": null,
+      "last_app_contact_at": "2026-10-26T14:00:20.740Z"
+    },
+    "warnings": []
+  }
+}

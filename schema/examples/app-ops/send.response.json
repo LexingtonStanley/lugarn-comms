@@ -1,0 +1,40 @@
+{
+  "protocol": 1,
+  "op": "send",
+  "ok": true,
+  "result": {
+    "message": {
+      "id": "01M5W86788S5AA819X9YP98106",
+      "team": "fmvq3a1x7k2",
+      "from": {
+        "id": "01M5W85RKG4MNPZX45HY43KWJR",
+        "name": "human"
+      },
+      "kind": "message",
+      "broadcast": false,
+      "reply_to": null,
+      "text": "Keep the cookie fallback until the mobile app ships 1.13.",
+      "hop": null,
+      "round": null,
+      "turn": null,
+      "created_at": "2026-10-26T14:05:10.470Z",
+      "deliveries": [
+        {
+          "to": {
+            "id": "fmvq3a1y0c4",
+            "name": "lead"
+          },
+          "state": "queued",
+          "reason": null,
+          "via": null,
+          "wake": true,
+          "attempts": 0,
+          "notify": null,
+          "turn": null,
+          "updated_at": "2026-10-26T14:05:10.470Z",
+          "delivered_at": null
+        }
+      ]
+    }
+  }
+}

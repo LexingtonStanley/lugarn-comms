@@ -1,0 +1,78 @@
+{
+  "protocol": 1,
+  "op": "hello",
+  "ok": true,
+  "result": {
+    "broker": {
+      "version": "0.1.0",
+      "commit": "3f9e2c1",
+      "protocol": 1,
+      "protocols": [
+        1
+      ]
+    },
+    "schemas": {
+      "team_spec": [
+        1
+      ],
+      "store": 1
+    },
+    "capabilities": [
+      "spawn",
+      "watch",
+      "open-terminal",
+      "return-headless",
+      "start-herdr",
+      "resolve-delivery",
+      "hold",
+      "worktrees"
+    ],
+    "host": {
+      "id": "41d07be29c5a3f8e6b1d24c97a0e5f13",
+      "os": "windows",
+      "arch": "amd64",
+      "hostname": "ufo",
+      "state_dir": "C:\\Users\\lex\\AppData\\Local\\Lugarn\\comms"
+    },
+    "herdr": {
+      "installed": true,
+      "version": "0.9.5",
+      "running": true,
+      "server": "default"
+    },
+    "harnesses": [
+      {
+        "harness": "claude",
+        "installed": true,
+        "version": "2.1.310",
+        "supported": true,
+        "issue": null,
+        "headless": true
+      },
+      {
+        "harness": "codex",
+        "installed": true,
+        "version": "0.164.0",
+        "supported": true,
+        "issue": null,
+        "headless": true
+      },
+      {
+        "harness": "opencode",
+        "installed": true,
+        "version": null,
+        "supported": false,
+        "issue": "shim_only",
+        "headless": false
+      },
+      {
+        "harness": "pi",
+        "installed": false,
+        "version": null,
+        "supported": false,
+        "issue": "not_installed",
+        "headless": false
+      }
+    ]
+  }
+}

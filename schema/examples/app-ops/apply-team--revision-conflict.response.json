@@ -1,0 +1,15 @@
+{
+  "protocol": 1,
+  "op": "apply-team",
+  "request_id": "r7",
+  "ok": false,
+  "error": {
+    "code": "revision_conflict",
+    "message": "team auth-rewrite is at revision 3, not 2: re-read it and apply again",
+    "details": {
+      "team": "fmvq3a1x7k2",
+      "expected": 2,
+      "actual": 3
+    }
+  }
+}

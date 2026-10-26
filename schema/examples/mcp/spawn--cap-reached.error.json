@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "spawn_cap_reached",
+    "message": "lead already has 3 workers running (running at once: 3)",
+    "details": {
+      "cap": "running_at_once",
+      "limit": 3,
+      "current": 3
+    }
+  }
+}

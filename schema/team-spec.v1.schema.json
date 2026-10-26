@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/LexingtonStanley/lugarn-comms/main/schema/team-spec.v1.schema.json",
+  "title": "lugarn-comms team spec v1",
+  "description": "What the app pushes with `apply-team`. Rules that JSON Schema can't express (unique names, grid names that exist, no self edges, the team size cap) are listed in docs/protocol.md under 'Validating a spec' and enforced by the broker.",
+  "$ref": "#/$defs/TeamSpec",
+  "$defs": {
+    "TeamSpec": {
+      "type": "object",
+      "properties": {
+        "version": { "const": 1 },
+        "id": { "$ref": "common.v1.schema.json#/$defs/OpaqueId" },
+        "name": { "$ref": "common.v1.schema.json#/$defs/TeamName" },
+        "pattern": { "$ref": "common.v1.schema.json#/$defs/Pattern" },
+        "herdr": { "$ref": "#/$defs/HerdrSettings" },
+        "limits": { "$ref": "#/$defs/Limits" },
+        "members": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 24,
+          "items": { "$ref": "#/$defs/MemberSpec" }
+        },
+        "grid": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/GridEdge" }
+        }
+      },
+      "required": ["version", "id", "name", "pattern", "members", "grid"],
+      "additionalProperties": false
+    },
+    "HerdrSettings": {
+      "type": "object",
+      "properties": {
+        "server": {
+          "description": "The Herdr server the team runs on. Default `default`.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "default": "default"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Limits": {
+      "type": "object",
+      "properties": {
+        "hop_budget": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 16 },
+        "review_rounds": { "type": "integer", "minimum": 1, "maximum": 100, "default": 3 },
+        "per_recipient": {
+          "description": "Deliveries or turns in flight per recipient. Fixed at 1 in v1: a session has one driver.",
+          "const": 1,
+          "default": 1
+        },
+        "headless_turns": { "type": "integer", "minimum": 1, "maximum": 24, "default": 3 },
+        "turn_timeout_seconds": { "type": "integer", "minimum": 60, "maximum": 86400, "default": 1800 }
+      },
+      "additionalProperties": false
+    },
+    "MemberSpec": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "common.v1.schema.json#/$defs/OpaqueId" },
+        "name": { "$ref": "common.v1.schema.json#/$defs/AgentName" },
+        "role": { "$ref": "common.v1.schema.json#/$defs/Role" },
+        "harness": { "$ref": "common.v1.schema.json#/$defs/Harness" },
+        "folder": { "$ref": "common.v1.schema.json#/$defs/Path" },
+        "worktree": {
+          "description": "Run in a new git worktree of `folder` rather than in `folder` itself.",
+          "type": "boolean",
+          "default": false
+        },
+        "profile": { "$ref": "common.v1.schema.json#/$defs/Profile" },
+        "mode": { "$ref": "common.v1.schema.json#/$defs/Mode" },
+        "brief": {
+          "description": "The role brief template that opens the member's first prompt in each new session. Placeholders: {{member}} {{role}} {{team}} {{harness}} {{spawner}} {{roster}} {{tools}}.",
+          "$ref": "common.v1.schema.json#/$defs/Text"
+        },
+        "task": {
+          "description": "The initial task, posted as a message from `human` when the team starts fresh. Null or absent: no initial task.",
+          "oneOf": [{ "$ref": "common.v1.schema.json#/$defs/Text" }, { "type": "null" }]
+        },
+        "spawn": { "$ref": "#/$defs/SpawnSettings" },
+        "host": {
+          "description": "Reserved for the multi-machine programme. Must be null or absent in v1.",
+          "type": "null"
+        }
+      },
+      "required": ["id", "name", "role", "harness", "folder", "profile", "mode", "brief"],
+      "additionalProperties": false
+    },
+    "SpawnSettings": {
+      "description": "Whether and how this member may start workers. Absent means spawning is off.",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "running_at_once": { "type": "integer", "minimum": 1, "maximum": 24, "default": 3 },
+        "per_run": { "type": "integer", "minimum": 1, "maximum": 24, "default": 8 },
+        "harnesses": {
+          "description": "Harnesses the member may spawn. Null or absent: every harness the host has that the broker supports.",
+          "oneOf": [
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "common.v1.schema.json#/$defs/Harness" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "mode": { "$ref": "common.v1.schema.json#/$defs/Mode", "default": "headless" },
+        "folder": { "$ref": "common.v1.schema.json#/$defs/SpawnFolder", "default": "worktree" },
+        "max_profile": { "$ref": "common.v1.schema.json#/$defs/Profile", "default": "workspace" },
+        "brief": {
+          "description": "The role brief template for workers this member spawns. Required when enabled.",
+          "oneOf": [{ "$ref": "common.v1.schema.json#/$defs/Text" }, { "type": "null" }]
+        }
+      },
+      "required": ["enabled"],
+      "if": { "properties": { "enabled": { "const": true } } },
+      "then": {
+        "required": ["brief"],
+        "properties": { "brief": { "$ref": "common.v1.schema.json#/$defs/Text" } }
+      },
+      "additionalProperties": false
+    },
+    "GridEdge": {
+      "description": "What `from` may do to `to`. `wake` requires `message`. Names may be spec members or live spawned members; never `human`.",
+      "type": "object",
+      "properties": {
+        "from": { "$ref": "common.v1.schema.json#/$defs/AgentName" },
+        "to": { "$ref": "common.v1.schema.json#/$defs/AgentName" },
+        "can": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.v1.schema.json#/$defs/GridCapability" }
+        }
+      },
+      "required": ["from", "to", "can"],
+      "if": { "properties": { "can": { "contains": { "const": "wake" } } } },
+      "then": { "properties": { "can": { "contains": { "const": "message" } } } },
+      "additionalProperties": false
+    }
+  }
+}

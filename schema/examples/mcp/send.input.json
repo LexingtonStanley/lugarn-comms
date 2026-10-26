@@ -1,0 +1,4 @@
+{
+  "to": "api",
+  "text": "Also drop the unused refreshLegacy export."
+}

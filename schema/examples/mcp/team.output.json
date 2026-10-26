@@ -1,0 +1,70 @@
+{
+  "team": {
+    "id": "fmvq3a1x7k2",
+    "name": "auth-rewrite",
+    "pattern": "orchestrator",
+    "state": "running",
+    "run": 1
+  },
+  "me": {
+    "id": "fmvq3a1y0c4",
+    "name": "lead",
+    "role": "orchestrator",
+    "harness": "claude",
+    "profile": "workspace",
+    "mode": "pane",
+    "spawned_by": null,
+    "can_spawn": true
+  },
+  "members": [
+    {
+      "id": "01M5W85RKG4MNPZX45HY43KWJR",
+      "name": "human",
+      "kind": "human",
+      "role": null,
+      "harness": null,
+      "mode": null,
+      "state": "running",
+      "activity": null,
+      "spawned_by": null,
+      "can": [
+        "message"
+      ],
+      "spawned_by_me": false
+    },
+    {
+      "id": "01M5W85YF0SS6YS3C4DWA7N360",
+      "name": "api",
+      "kind": "agent",
+      "role": "worker",
+      "harness": "codex",
+      "mode": "headless",
+      "state": "running",
+      "activity": "working",
+      "spawned_by": "lead",
+      "can": [
+        "message",
+        "wake"
+      ],
+      "spawned_by_me": true
+    }
+  ],
+  "hops": {
+    "used": 5,
+    "allowance": 16
+  },
+  "spawn": {
+    "running": 1,
+    "running_at_once": 3,
+    "spawned_this_run": 1,
+    "per_run": 8,
+    "harnesses": [
+      "claude",
+      "codex",
+      "opencode"
+    ],
+    "mode": "headless",
+    "folder": "worktree",
+    "max_profile": "workspace"
+  }
+}

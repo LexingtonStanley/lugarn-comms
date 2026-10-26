@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "denied",
+    "message": "api may not message web",
+    "details": {
+      "action": "message",
+      "message_id": "01M5W86EJM9Q9G8XE6SZAEAVSN"
+    }
+  }
+}
