@@ -1393,7 +1393,7 @@ event was written.
 | `team.state_changed`      | `team`, `from`, `to`                                      | yes                            | start-team, stop-team, runner  |
 | `runner.state_changed`    | `team`, `from`, `to`                                      | yes                            | runner; the first process to see a stale heartbeat |
 | `member.added`            | `member`                                                  | yes                            | apply-team, spawn              |
-| `member.state_changed`    | `member`, `from`, `to`, `reason`                          | yes                            | runner, stop-team              |
+| `member.state_changed`    | `member`, `from`, `to`, `reason`, `error`                 | yes                            | runner, stop-team              |
 | `member.activity_changed` | `member` (ref), `from`, `to`                              | no                             | runner                         |
 | `member.session_added`    | `member`, `session`                                       | yes                            | runner                         |
 | `member.removed`          | `member`                                                  | no                             | apply-team, start-team         |
@@ -1426,8 +1426,13 @@ The broker doesn't keep an attention list; the app derives its Inbox items from 
 | A held delivery (not budget or rounds) | `delivery.changed` to `held`                               | `delivery.changed` out of `held`                     |
 | An uncertain delivery             | `delivery.changed` to `uncertain`                               | `resolve-delivery`                                   |
 | Runner stopped                    | `runner.state_changed` to `down` while the team runs            | `runner.state_changed` to `up`, or the team stopping |
-| A spawn or launch failed          | `member.state_changed` to `stopped`, `launch_failed`            | the person dismissing it                             |
+| A spawn or launch failed          | `member.state_changed` to `stopped`, `launch_failed`, with its `error` | the person dismissing it                      |
 | A trust question or other dialog  | `member.activity_changed` to `blocked`                          | activity leaving `blocked`                           |
+
+`member.state_changed`'s `error` is the failure when `reason` is `launch_failed`: an `Error`
+(`code`, `message`, `details`, with `details.cause` naming what failed, such as
+`workdir_missing`, `resume_picker` or `unresolvable`), else null. That's how the person
+learns why a launch failed. The runner's own log is in a pane they may never see.
 
 Agent-written text in any of these is rendered as plain text.
 
