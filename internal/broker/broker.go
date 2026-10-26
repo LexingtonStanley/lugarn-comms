@@ -295,3 +295,5 @@ func (b *Broker) grid(tx *store.Tx, team string) ([]model.GridEdge, error) {
 	}
 	return out, nil
 }
+
+func (b *Broker) cursorAt(seq int64) (string, error) { return model.MakeCursor(b.db.HostID(), seq) }
