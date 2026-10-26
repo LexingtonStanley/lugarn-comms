@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -94,7 +95,8 @@ func readFile(t *testing.T, file string) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return data
+	// A checkout with core.autocrlf may still hand Windows CRLF line endings.
+	return bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
 }
 
 func exampleAt(t *testing.T, file string, line int, path string) []byte {
