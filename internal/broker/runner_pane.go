@@ -1,19 +1,17 @@
 package broker
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/LexingtonStanley/lugarn-comms/internal/harness"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/policy"
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
 	"github.com/LexingtonStanley/lugarn-comms/internal/store"
 	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
-	"github.com/google/uuid"
 )
 
 func (r *Runner) paneHolds(ctx context.Context, m model.Member, reason *model.DeliveryReason) error {
@@ -50,38 +48,21 @@ func (r *Runner) paneHolds(ctx context.Context, m model.Member, reason *model.De
 	})
 }
 func (r *Runner) pointerSession(m model.Member) (string, error) {
-	if r.opts.HomeDir == "" || m.Harness == nil || *m.Harness != model.HarnessClaude || m.Lease.Launch == nil {
+	if r.opts.HomeDir == "" || m.Harness == nil || *m.Harness != model.HarnessClaude || m.Lease == nil || m.Lease.Launch == nil {
 		return "", nil
 	}
-	f, e := os.Open(filepath.Join(r.opts.HomeDir, ".lugarn", "conversations", *m.Lease.Launch))
+	path := filepath.Join(r.opts.HomeDir, ".lugarn", "conversations", *m.Lease.Launch)
+	info, e := os.Lstat(path)
 	if os.IsNotExist(e) {
 		return "", nil
 	}
 	if e != nil {
 		return "", e
 	}
-	defer f.Close()
-	last := ""
-	scan := bufio.NewScanner(f)
-	scan.Buffer(make([]byte, 4096), 1<<20)
-	for scan.Scan() {
-		var line map[string]json.RawMessage
-		if json.Unmarshal(scan.Bytes(), &line) != nil {
-			continue
-		}
-		if _, subagent := line["agent_id"]; subagent {
-			continue
-		}
-		var id string
-		if json.Unmarshal(line["session_id"], &id) != nil {
-			continue
-		}
-		u, e := uuid.Parse(id)
-		if e == nil && id == u.String() {
-			last = id
-		}
+	if !info.Mode().IsRegular() {
+		return "", nil
 	}
-	return last, scan.Err()
+	return harness.ReadPointer(r.opts.HomeDir, *m.Lease.Launch)
 }
 
 type runnerPanePoll struct {
