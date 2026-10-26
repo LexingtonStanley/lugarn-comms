@@ -620,7 +620,7 @@ queueing it; it may stay held as `rounds`.
 | Any member with a live hold                | Holds (`person_control`) until the hold is released or lapses ([Holds](#holds)), so injected text never mixes with the person's typing. |
 | Headless, no turn running                  | Starts a turn with every queued message for it in one prompt, if the team is under `headless_turns`.     |
 | Headless, turn running                     | Leaves it queued for the next turn.                                                                       |
-| Stopped                                    | If a queued delivery for it has `wake`, relaunches it in its last driver (its home mode if it never ran), then delivers. Otherwise the messages stay `queued`. |
+| Stopped                                    | If a queued delivery for it has `wake`, relaunches it in its last driver (its home mode if it never ran), then delivers. Otherwise the messages stay `queued`. A member stopped with `launch_failed` is woken again only by a `wake` delivery newer than its failure, or by the person, so a launch that can't succeed isn't retried every pass. |
 | `starting` or `stopping`                   | Waits.                                                                                                    |
 
 Each recipient has at most one delivery or turn in flight. A pane delivery, like a turn,
