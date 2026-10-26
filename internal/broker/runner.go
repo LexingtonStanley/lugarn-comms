@@ -18,14 +18,19 @@ var errRunnerGeneration = model.NewError(model.ErrorLeaseConflict, "runner membe
 // Runner drives one team. Construct a new value for every run; Run is single-use.
 // Cancelling its context detaches live turns; a team stop cancels them instead.
 type Runner struct {
-	orphans map[string]runnerOrphan
-	b       *Broker
-	team    string
-	opts    RunnerOptions
-	owner   model.Runner
-	used    atomic.Bool
-	mu      sync.Mutex
-	busy    map[string]bool
+	workers      sync.WaitGroup
+	stopping     atomic.Bool
+	workerErrors chan error
+	wake         chan struct{}
+	handles      map[string]TurnHandle
+	orphans      map[string]runnerOrphan
+	b            *Broker
+	team         string
+	opts         RunnerOptions
+	owner        model.Runner
+	used         atomic.Bool
+	mu           sync.Mutex
+	busy         map[string]bool
 }
 
 // NewRunner constructs a runner over b's store and transaction helpers. It does
@@ -65,7 +70,7 @@ func NewRunner(b *Broker, team string, opts RunnerOptions) *Runner {
 	if opts.Binary == nil {
 		opts.Binary = b.opts.Probe.Binary
 	}
-	return &Runner{b: b, team: team, opts: opts, busy: map[string]bool{}, orphans: map[string]runnerOrphan{}}
+	return &Runner{b: b, team: team, opts: opts, busy: map[string]bool{}, orphans: map[string]runnerOrphan{}, workerErrors: make(chan error, 64), wake: make(chan struct{}, 1), handles: map[string]TurnHandle{}}
 }
 func (r *Runner) owns(t *store.Team) bool {
 	return t.Runner.PID != nil && r.owner.PID != nil && *t.Runner.PID == *r.owner.PID && t.Runner.StartedAt != nil && r.owner.StartedAt != nil && t.Runner.StartedAt.Equal(r.owner.StartedAt.Time)
@@ -137,9 +142,10 @@ func (r *Runner) acquire(ctx context.Context) error {
 func (r *Runner) heartbeat(ctx context.Context) error {
 	return r.write(ctx, nil, func(tx *store.Tx, t *store.Team) error {
 		now := r.b.now()
-		r.owner.HeartbeatAt = &now
+		owner := r.owner
+		owner.HeartbeatAt = &now
 		previous := t.Runner.State
-		if e := tx.Heartbeat(t.ID, r.owner, now); e != nil {
+		if e := tx.Heartbeat(t.ID, owner, now); e != nil {
 			return e
 		}
 		if previous != model.RunnerStateUp {
@@ -154,56 +160,56 @@ func (r *Runner) heartbeat(ctx context.Context) error {
 	})
 }
 
-// Run acquires the team runner lease and maintains its heartbeat until ctx ends
-// or the team stops. Cancellation never records completion for a live turn.
+// Run acquires the runner lease, reconciles, then schedules recipient work.
+// Cancellation detaches turns; team stopping cancels them and ends headless leases.
 func (r *Runner) Run(ctx context.Context) error {
 	if !r.used.CompareAndSwap(false, true) {
 		return invalid("Runner.Run is single-use")
 	}
+	if r.b.opts.StateDir == "" {
+		return invalid("runner requires an explicit state directory")
+	}
 	if e := r.acquire(ctx); e != nil {
 		return e
 	}
-	if e := r.reconcile(ctx); e != nil {
+	workCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	heartbeatDone := make(chan struct{})
+	go func() { defer close(heartbeatDone); r.heartbeats(workCtx) }()
+	defer func() { cancel(); <-heartbeatDone }()
+	if e := r.reconcile(workCtx); e != nil {
+		if ctx.Err() != nil {
+			return nil
+		}
 		return model.AsError(e)
 	}
 	tick := time.NewTicker(r.opts.PollInterval)
 	defer tick.Stop()
-	last := time.Now()
 	for {
+		stop, e := r.pass(workCtx)
+		if e != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
+			return model.AsError(e)
+		}
+		if stop {
+			r.stopping.Store(true)
+			cancel()
+			cleanup, done := context.WithTimeout(context.WithoutCancel(ctx), 25*time.Second)
+			defer done()
+			return r.stop(cleanup)
+		}
 		select {
 		case <-ctx.Done():
 			return nil
+		case e := <-r.workerErrors:
+			if ctx.Err() != nil {
+				return nil
+			}
+			return model.AsError(e)
 		case <-tick.C:
-			if time.Since(last) >= r.opts.HeartbeatInterval {
-				if e := r.heartbeat(ctx); e != nil {
-					if ctx.Err() != nil {
-						return nil
-					}
-					return e
-				}
-				last = time.Now()
-			}
-			var stop bool
-			e := r.b.db.Read(ctx, func(tx *store.Tx) error {
-				t, e := tx.GetTeam(r.team)
-				if e != nil {
-					return e
-				}
-				if !r.owns(t) {
-					return errRunnerLost
-				}
-				stop = t.State == model.TeamStateStopping || t.State == model.TeamStateStopped
-				return nil
-			})
-			if e != nil {
-				if ctx.Err() != nil {
-					return nil
-				}
-				return e
-			}
-			if stop {
-				return nil
-			}
+		case <-r.wake:
 		}
 	}
 }
