@@ -945,7 +945,7 @@ re-parses:
    - bash sets a default `HISTFILE` when it's unset, and saves the typed launch lines there
      on exit. An empty one saves nothing (Flare).
 
-   C2d pins the exact commands and verifies them under zsh, bash, fish and PowerShell. If a host can't give that guarantee, the pane launch fails
+   C2d pins the exact commands and verifies them under zsh, bash and fish; Windows is below. If a host can't give that guarantee, the pane launch fails
    (`harness_unavailable`, `details.reason: unresolvable`) rather than running whatever the
    person's shell finds.
    Every broker-made path in that command line must survive Herdr's typing into each of those
@@ -953,6 +953,18 @@ re-parses:
    with spaces (a Windows home like `C:\Users\First Last`, a macOS one). If it doesn't for some
    shell, broker-made paths are restricted to `[A-Za-z0-9._/:\\-]` and a launch with any
    other path fails with a clear issue.
+
+   **On Windows the pane launch can't use `herdr agent start`.**
+   - Herdr starts every pane as `pwsh -NoExit -Command <its prompt hook>` (the hook emits OSC 9;9 with the cwd), and the person's profile loads.
+   - `agent start` only accepts a pane whose own shell is at its prompt with nothing running under it. A nested shell counts as busy (`agent_pane_busy`), with or without Herdr's prompt hook (verified on ufo). Windows has no `exec` to replace the pane's shell the way POSIX does.
+
+   So on Windows the broker types one line into the pane's own shell: `<broker> pane-launch <launch id>`.
+   - It's plain words and an absolute path, which a profile alias or function can't redirect.
+   - That process reads the launch's capsule and starts the harness with its exact argv, so PowerShell never parses an argument.
+   - The harness gets the per-launch `PATH` and the pane's console. `pane-launch` ignores Ctrl+C, leaving it to the harness, and exits with the harness's exit code.
+   - Herdr detects the agent from its screen as usual. A wrapper in between doesn't matter (verified on ufo).
+   - The broker then names it with `herdr agent rename <pane> <agent name>`, once `herdr agent list` shows an agent of the expected kind in that pane. It waits up to 30 seconds for that, and otherwise the launch fails (`launch_failed`, `details.cause: agent_not_detected`).
+   - The typed line lands in the person's PowerShell history. It carries no secret.
 4. **On Windows**, every harness the broker execs must resolve to a native `.exe`: Claude's
    native install, and the native binaries that Codex's and OpenCode's npm packages ship
    behind their `.cmd` and `.ps1` shims. The broker never execs a `.cmd` or `.bat`:
@@ -1869,3 +1881,7 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     So a restarted runner or stop-team can terminate the whole tree by name, orphans
     included. This was verified on ufo: a job's name vanishes when its creator's last handle
     closes, even while its processes run, unless a member process holds a handle.
+70. **Windows panes skip `herdr agent start`.** It needs the pane's own shell idle at its prompt,
+    and Windows can't replace that shell (verified on ufo: a nested `-NoProfile` shell counts
+    as busy, hook or not). The broker types `<broker> pane-launch <launch id>` instead, starts
+    the harness with exact argv, and names the agent Herdr detects with `agent rename`.
