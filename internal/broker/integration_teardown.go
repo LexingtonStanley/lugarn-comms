@@ -105,7 +105,7 @@ func (i *Integration) Close(ctx context.Context, t store.Team, members []model.M
 	record(helper.cleanLaunchFiles(ctx))
 	if placement.BridgeDir != "" {
 		// A sidecar never authorizes removing an arbitrary host directory.
-		if filepath.Clean(filepath.Dir(placement.BridgeDir)) != filepath.Clean(os.TempDir()) || !strings.HasPrefix(filepath.Base(placement.BridgeDir), "lugarn-runner-") {
+		if (filepath.Clean(filepath.Dir(placement.BridgeDir)) != filepath.Clean(os.TempDir()) && filepath.Clean(filepath.Dir(placement.BridgeDir)) != filepath.Clean(i.b.opts.StateDir)) || !strings.HasPrefix(filepath.Base(placement.BridgeDir), "lugarn-runner-") {
 			record(model.NewError(model.ErrorInternal, "invalid native runner bridge directory"))
 		} else {
 			for until := time.Now().Add(3 * time.Second); ; {

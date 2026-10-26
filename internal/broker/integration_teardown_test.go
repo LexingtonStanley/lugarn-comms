@@ -33,6 +33,12 @@ func TestIntegrationTeardownEndsOwnedLaunchArtifacts(t *testing.T) {
 	client := &teardownHerdr{err: errors.New("server disappeared")}
 	i, e := NewIntegration(b, IntegrationOptions{HomeDir: home, Herdr: func(string) HerdrAPI { return client }})
 	must(t, e)
+	source, e := os.Executable()
+	must(t, e)
+	raw, e := os.ReadFile(source)
+	must(t, e)
+	i.opts.Binary = filepath.Join(t.TempDir(), "broker with spaces"+filepath.Ext(source))
+	must(t, os.WriteFile(i.opts.Binary, raw, 0700))
 	bridge, dir, e := i.runnerBridge()
 	must(t, e)
 	defer os.RemoveAll(dir)

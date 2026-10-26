@@ -102,6 +102,8 @@ func (i *Integration) preparePaneShell(ctx context.Context, l harness.Launch, bi
 		return nil, nil, e
 	}
 	env["LUGARN_COMMS_PANE_CONFIG"] = path
+	// The runner is started from the plain original executable or native bridge.
+	// Keeping that invariant avoids reparsing an original path containing spaces.
 	bridge := i.opts.Binary
 	if safe, e := plainNativePath(bridge); e == nil && plainLaunchPath.MatchString(safe) {
 		bridge = safe

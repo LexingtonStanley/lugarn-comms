@@ -58,11 +58,23 @@ func (i *Integration) savePlacement(team string, p runnerPlacement) error {
 var plainLaunchPath = regexp.MustCompile(`^[A-Za-z0-9._/:\\-]+$`)
 
 func (i *Integration) runnerBridge() (string, string, error) {
-	dir, e := os.MkdirTemp("", "lugarn-runner-")
+	if plainLaunchPath.MatchString(i.opts.Binary) {
+		return i.opts.Binary, "", nil
+	}
+	base := ""
+	if plainLaunchPath.MatchString(i.b.opts.StateDir) {
+		base = i.b.opts.StateDir
+	}
+	dir, e := os.MkdirTemp(base, "lugarn-runner-")
 	if e != nil {
 		return "", "", e
 	}
-	fail := func(e error) (string, string, error) { _ = os.RemoveAll(dir); return "", "", e }
+	fail := func(e error) (string, string, error) {
+		if dir != "" {
+			_ = os.RemoveAll(dir)
+		}
+		return "", "", e
+	}
 	if e = statedir.Ensure(dir); e != nil {
 		return fail(e)
 	}
@@ -174,7 +186,9 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 	}
 	placed := runnerPlacement{Workspace: workspace, Pane: pane, BridgeDir: dir, Binary: bridge}
 	if e = i.savePlacement(t.ID, placed); e != nil {
-		_ = os.RemoveAll(dir)
+		if dir != "" {
+			_ = os.RemoveAll(dir)
+		}
 		_ = client.ClosePane(context.WithoutCancel(ctx), pane)
 		return e
 	}
@@ -226,7 +240,9 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		_ = client.ClosePane(cleanup, pane)
-		_ = os.RemoveAll(dir)
+		if dir != "" {
+			_ = os.RemoveAll(dir)
+		}
 		return model.NewError(model.ErrorRunnerUnavailable, "runner could not start").WithDetail("cause", fmt.Sprint(e))
 	}
 	return nil

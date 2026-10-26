@@ -92,6 +92,9 @@ func TestIntegrationRunnerBridgeHandlesSourcePathWithSpaces(t *testing.T) {
 	bridge, dir, e := i.runnerBridge()
 	must(t, e)
 	defer os.RemoveAll(dir)
+	if plainLaunchPath.MatchString(b.opts.StateDir) && filepath.Dir(dir) != b.opts.StateDir {
+		t.Fatal("bridge should use executable state filesystem", dir)
+	}
 	cmd := exec.Command(bridge)
 	cmd.Env = append(os.Environ(), "LUGARN_INTEGRATION_HELPER=exit-seven")
 	e = cmd.Run()
@@ -136,4 +139,20 @@ func TestIntegrationStartPreflightDoesNotHoldWriter(t *testing.T) {
 	writing, stop := context.WithTimeout(ctx, time.Second)
 	defer stop()
 	must(t, b.db.Write(writing, func(tx *store.Tx) error { _, e := tx.TouchAppContact(ptr("t"), b.now()); return e }))
+}
+
+func TestIntegrationBridgeUsesPlainExecutable(t *testing.T) {
+	b, _ := setup(t)
+	binary, e := os.Executable()
+	must(t, e)
+	if !plainLaunchPath.MatchString(binary) {
+		t.Skip("test executable path is not plain")
+	}
+	i, e := NewIntegration(b, IntegrationOptions{Binary: binary})
+	must(t, e)
+	actual, dir, e := i.runnerBridge()
+	must(t, e)
+	if actual != binary || dir != "" {
+		t.Fatal("unnecessary temporary executable", actual, dir)
+	}
 }
