@@ -100,9 +100,15 @@ else about it is designed here.
 The directory and `launch/` are `0700` on POSIX; files are `0600`. On Windows each gets a
 protected DACL (inheritance off) with one entry: full control for the current user.
 
-Two paths outside it matter: #136's pointer files at `~/.lugarn/conversations/<launch id>.json`,
-and worktrees (see [Worktrees](#worktrees)), which live next to the repository, not in the
-state directory.
+Two paths outside it matter:
+
+- #136's pointer files at `~/.lugarn/conversations/<launch id>`, with no extension. Each line
+  is Claude's SessionStart hook input from one session start, so the `session_id` of the last
+  line without an `agent_id` (a subagent's) names the current session. The broker passes the
+  same hook to its Claude launches. #136's own pruning only touches UUID names, so the runner
+  deletes a launch's pointer file once the launch has ended and its last session is recorded.
+- Worktrees (see [Worktrees](#worktrees)), which live next to the repository, not in the
+  state directory.
 
 ## The team spec
 
@@ -482,7 +488,8 @@ confirms.
 
 1. Wait for the pane agent to be `idle` or `done`, up to 300 seconds; past that the request
    fails with `timeout` and nothing changes. A delivery in flight to the pane finishes first.
-2. Read the current session id from #136's pointer file, `~/.lugarn/conversations/<launch id>.json`.
+2. Read the current session id from #136's pointer file, `~/.lugarn/conversations/<launch id>`:
+   the `session_id` of its last line that has no `agent_id` (a subagent's).
    If a `/clear` changed it, record the new id (`pointer`). Codex has no pointer yet, so it goes
    back to its original thread; that's a documented v1 limit.
 3. Close the pane, then confirm the agent's process is gone: Herdr no longer lists the agent,
