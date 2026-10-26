@@ -94,15 +94,22 @@ else about it is designed here.
 | `comms.db`, `-wal`, `-shm`        | The store (SQLite, WAL)                                                 | permanent                   |
 | `launch/<launch id>.token`        | The launch's token, one line                                            | deleted when the launch ends |
 | `launch/<launch id>.json`         | Claude's `--mcp-config` file for the launch                             | deleted when the launch ends |
+| `launch/<launch id>.settings.json` | Claude's `--settings` file for a pane launch: #136's SessionStart hook  | deleted when the launch ends |
 | `launch/<launch id>.opencode.json`| OpenCode's per-launch config (`OPENCODE_CONFIG`): the MCP registration and the profile's `permission` block | deleted when the launch ends |
 | `launch/<launch id>/msg-<message id>-<attempt>.md` | A pane delivery too long to inline ([Untrusted text](#untrusted-text)) | deleted when the launch ends |
 
 The directory and `launch/` are `0700` on POSIX; files are `0600`. On Windows each gets a
 protected DACL (inheritance off) with one entry: full control for the current user.
 
-Two paths outside it matter: #136's pointer files at `~/.lugarn/conversations/<launch id>.json`,
-and worktrees (see [Worktrees](#worktrees)), which live next to the repository, not in the
-state directory.
+Two paths outside it matter:
+
+- #136's pointer files at `~/.lugarn/conversations/<launch id>`, with no extension. Each line
+  is Claude's SessionStart hook input from one session start, so the `session_id` of the last
+  line without an `agent_id` (a subagent's) names the current session. The broker passes the
+  same hook to its Claude launches. #136's own pruning only touches UUID names, so the runner
+  deletes a launch's pointer file once the launch has ended and its last session is recorded.
+- Worktrees (see [Worktrees](#worktrees)), which live next to the repository, not in the
+  state directory.
 
 ## The team spec
 
@@ -125,7 +132,7 @@ The app owns the spec and pushes all of it with `apply-team`. Schema:
 | Field                  | Default | Range     | Meaning                                                                          |
 | ---------------------- | ------- | --------- | -------------------------------------------------------------------------------- |
 | `hop_budget`           | 16      | 1–1000    | Agent-originated messages in a row before deliveries pause; also the Continue step |
-| `review_rounds`        | 3       | 1–100     | Writer → reviewer rounds per pair before escalation; also its Continue step      |
+| `review_rounds`        | 3       | 1–100     | Reviews per writer–reviewer pair before escalation; also its Continue step       |
 | `per_recipient`        | 1       | 1 only    | Deliveries or turns in flight per recipient. A session has one driver.           |
 | `headless_turns`       | 3       | 1–24      | Headless turns running at once in the team                                       |
 | `turn_timeout_seconds` | 1800    | 60–86400  | A headless turn is cancelled after this long, status `timed_out`                 |
@@ -205,12 +212,16 @@ The schema covers shapes and ranges. The broker also checks, and refuses with
 `invalid_request` and `details.errors: [{ "path", "message" }]`:
 
 1. Member ids and names are unique within the spec.
-2. No spec member id belongs to another team, or to a spawned member of this one.
+2. No spec member id belongs to another team, or to `human`, a spawned member or a removed
+   member of this one: ids are never reused.
 3. Grid names exist (spec members or live spawned members); no `human`; no self edge; one edge
    per pair.
 4. `folder` is absolute in the host's syntax.
 5. The team name isn't used by another team (`name_taken`).
 6. Live agent members, spec plus spawned, number at most 24.
+7. No spec member takes a live spawned member's name.
+8. A member's `mode` is `headless` only if its harness can run headless
+   (`hello.harnesses[].headless`). pi can't in v1.
 
 Problems that don't block the apply come back as `warnings`:
 
@@ -225,15 +236,18 @@ Problems that don't block the apply come back as `warnings`:
 
 `apply-team` carries `if_revision`, the revision the app last saw. `0` creates the team and
 fails if the id exists. Otherwise it must equal the current revision, or the op fails with
-`revision_conflict` and the app re-reads with `get-team`. The revision goes up on every apply
+`revision_conflict` and the app re-reads with `get-team`. A non-zero `if_revision` for a team
+that doesn't exist is also `revision_conflict`, with the current revision reported as 0. The revision goes up on every apply
 and every spawn, because a spawn adds a member and grid edges.
 
 The stored grid becomes exactly `spec.grid`. Edges a spawn added are in the grid `get-team`
 returns, so an app that read, edited and applied keeps them; leaving one out revokes it.
 
 While the team is running, an apply may change the grid, limits, briefs, tasks, spawn
-settings, profiles and modes. Grid, limits and spawn settings take effect at once; profiles and
-modes from each member's next launch. Adding, removing or renaming members, or changing a
+settings, roles, the pattern, profiles and modes. The grid, limits, spawn settings and roles
+take effect at once; profiles and modes from each member's next launch. A new `hop_budget` or
+`review_rounds` is the step for the next Continue and the allowance at the next reset; the
+current allowance stands. Adding, removing or renaming members, or changing a
 member's harness, folder or worktree flag, or the team's name or Herdr server, needs the team
 stopped, and fails with `team_running` otherwise.
 
@@ -276,6 +290,18 @@ is fresh.
 3. Fails requests left `running` with `internal`, and executes `pending` ones.
 4. Checks each `pane` lease against Herdr. A pane that's gone is handled as a pane exit
    ([Leases](#leases-and-launches)).
+5. Deletes leftover launch files, so a crash leaves no token behind. One store serves every
+   team, and another team's runner may be creating a launch at that moment, so:
+   - The broker commits a launch's row before it writes any of the launch's files.
+   - The step lists `launch/` first, then reads the store. It considers only the names
+     `<ULID>.token`, `<ULID>.json`, `<ULID>.settings.json`, `<ULID>.opencode.json` and the
+     directory `<ULID>/`, checks each with `lstat`, and never follows a symbolic link (a link
+     is removed as a link).
+   - It deletes the files of this team's launches that have ended. A ULID the store doesn't
+     know is deleted only if its file is more than 60 seconds old.
+   - Pointer files under `~/.lugarn/conversations/` follow the same name and `lstat` rules,
+     with one difference: only launches this store knows have ended are deleted, never
+     unknown ids, since another state directory (`LUGARN_COMMS_HOME`) may own them.
 
 ### start-team
 
@@ -473,7 +499,8 @@ confirms.
 
 1. Wait for the pane agent to be `idle` or `done`, up to 300 seconds; past that the request
    fails with `timeout` and nothing changes. A delivery in flight to the pane finishes first.
-2. Read the current session id from #136's pointer file, `~/.lugarn/conversations/<launch id>.json`.
+2. Read the current session id from #136's pointer file, `~/.lugarn/conversations/<launch id>`:
+   the `session_id` of its last line that has no `agent_id` (a subagent's).
    If a `/clear` changed it, record the new id (`pointer`). Codex has no pointer yet, so it goes
    back to its original thread; that's a documented v1 limit.
 3. Close the pane, then confirm the agent's process is gone: Herdr no longer lists the agent,
@@ -614,8 +641,10 @@ ends when its member or the team stops. It applies whatever the member's driver.
 ### Messages to `human`
 
 - **Length.** At most 8,000 code points. An agent's longer `send` or `reply` fails with
-  `invalid_request`, telling it to shorten the message. A longer auto-reply is cut at 8,000,
-  ending with the line `[… cut by Lugarn: <n> more characters in the transcript]`.
+  `invalid_request`, telling it to shorten the message. A longer auto-reply is cut so that,
+  with its last line `[… cut by Lugarn: <n> more characters in the transcript]`, it's at most
+  8,000; `<n>` counts the code points removed. An auto-reply to an agent is cut the same way at
+  65,536.
 - **Rate limit.** Of one member's messages to `human`, at most 5 in any 10 minutes raise
   attention. The broker counts the sender's messages to `human` in the 10 minutes before each
   one: under 5, the delivery has `notify: true`; otherwise `notify: false`, and the message is
@@ -663,9 +692,10 @@ one blank line.
 
 ### Replies
 
-An agent answers with `reply(id, text)`, or `send(to, text, reply_to)`. Both are messages to
-the original sender and go through the grid like any other: in a pipeline, B can't answer A.
-`reply` only accepts ids of messages the caller received.
+An agent answers with `reply(id, text)`, which goes to the original sender, or
+`send(to, text, reply_to)`, which goes to `to` and records what it answers. Both go through the
+grid like any other message: in a pipeline, B can't answer A. Either accepts only the id of a
+message the caller received (`not_found` otherwise).
 
 **Auto-replies.** When a headless turn succeeds with non-empty final text, the runner posts
 that text, kind `auto_reply`, to each distinct sender of the messages the turn consumed,
@@ -705,7 +735,13 @@ A turn is one run of the harness's headless mode with one prompt, written to its
 | `timed_out` | Ran past `turn_timeout_seconds` and was cancelled                                            |
 | `lost`      | A restarted runner couldn't see how it ended                                                 |
 
-Cancelling kills the process group on POSIX (`Setpgid`) and the job object on Windows.
+Cancelling kills the process group on POSIX (`Setpgid`) and the job object on Windows. On
+POSIX that isn't enough on its own: Codex starts its MCP servers in a process group of their
+own (C2c), so the driver also kills every descendant of the harness it finds by ancestry,
+repeating until none is left. On Linux the runner sets `PR_SET_CHILD_SUBREAPER`, so a
+descendant that double-forks away is reparented to the runner, where the walk still finds it;
+the runner reaps the orphans it adopts. macOS has no equivalent, so there the process group
+plus ancestry is the best available.
 At most one live turn per member; at most `headless_turns` per team.
 
 A session's first turn draws its seal before the harness has reported an id; the runner keeps
@@ -767,7 +803,9 @@ re-parses:
    its delivery attempt; `0600`, or the owner-only DACL on Windows), and the pane gets this
    fixed prompt instead:
    `[lugarn · <n> new message(s) for you are in <path> · read that file now · seal <seal>]`.
-   The file is deleted when the launch ends.
+   The file is deleted when the launch ends. On Linux and macOS an inline prompt sits in the
+   `herdr` client's argv while it runs, so other users on the host can read it with `ps` or in
+   `/proc/<pid>/cmdline` (unless `/proc` has `hidepid`). That's fine on a single-user host.
 3. **Pane launches** pass fixed arguments only: harness flags, broker-made paths and session
    ids that match their pattern. The brief and the task arrive afterwards as the first
    delivery, never in `herdr agent start … -- <args>`, which Herdr re-wraps in PowerShell on
@@ -799,25 +837,34 @@ messages in a row, auto-replies included. A message from the person resets the c
   renumbered; those within the new allowance are queued.
 
 Each change emits `budget.changed` with cause `used`, `exhausted`, `continued` or `reset`.
+When a continue or a reset leaves deliveries still held, an `exhausted` follows it, so the
+person's attention comes back rather than clearing with deliveries still waiting.
 Its `by` is `human` for a continue or a reset by message, and null otherwise (`rounds.changed`
 likewise).
 
 ## Review rounds
 
-- **What counts:** each accepted message from a `writer`-role member to a `reviewer`-role
-  member, auto-replies included. Counts are per (writer, reviewer) pair.
+- **What counts:** each accepted message from a `reviewer`-role member to a `writer`-role
+  member, auto-replies included: one answer, one round, an answer to the writer's question
+  included. The writer's own messages don't count. So with a headless reviewer, a writer's
+  question still costs a round, because the reviewer's turn auto-replies to it. That's fine:
+  the cap is there to break loops. Counts are per (writer, reviewer) pair.
 - The message's round is the pair's new count. Over the pair's allowance (default
   `review_rounds`), it's accepted `held` (`rounds`), the pair is exhausted, and
   `rounds.changed` (`exhausted`) raises attention: the person decides.
 - **Continue** (`continue-budget`, kind `rounds`, with `writer` and `reviewer`, or neither for
   every exhausted pair) adds `amount`, default `review_rounds`.
-- **Reset:** a message from `human` to either member of the pair, and every team start.
+- **Reset:** a message from `human` to either member of the pair, and every team start. The
+  pair's held-for-rounds deliveries are counted again in order and renumbered, as for the hop
+  budget. Continues and resets that leave some held raise `exhausted` again, likewise.
 
 ## Spawning
 
 `spawn(name, harness, task, profile?, mode?)`, from the MCP tool or the CLI. The checks run in
 this order, inside one `BEGIN IMMEDIATE` transaction so two spawns can't both slip under a
-cap. The first that fails is the error, and every policy refusal also writes `policy.denied`.
+cap. The first that fails is the error, and every policy refusal (error codes 20–26) also
+writes `policy.denied`. Check 5 also covers the harness, profile, mode and task values, including
+a headless `mode` (given, or defaulted from `spawn.mode`) on a harness that can't run headless.
 
 | # | Check                                                                     | Error                 |
 | - | ------------------------------------------------------------------------- | --------------------- |
@@ -860,17 +907,24 @@ as an auto-reply. A pane worker gets the task in its pane and answers with `repl
 
 ### Worktrees
 
-Spec members with `worktree: true` and spawned workers that get a worktree use the same rule:
+Spec members with `worktree: true` and spawned workers that get a worktree use the same rule.
+They need git 2.20 or later, the first to remove a worktree whose folder is already gone
+without `--force` (removal is by path, never `prune`); a CI job runs the worktree tests on
+git 2.20. With an older git, apply warns and the member shares its folder.
 
 - **Base:** the spec member's `folder`, or the spawner's workdir. It must be inside a git
   repository; if it isn't, the member shares the folder and apply warned about it.
-- **Path:** `<parent of the repo's top level>/<repo name>-lugarn/<team name>-<member name>`.
+- **Path:** `<parent of the repo's main working tree>/<repo name>-lugarn/<team name>-<member name>`.
+  The main working tree is the parent of `git rev-parse --git-common-dir`, so a spawner that
+  is itself in a worktree gives its workers siblings, not nested folders.
   It isn't `<repo>-wt/`, which people and orchestrators already use for their own worktrees.
 - **Branch:** `lugarn/<team name>/<member name>`, created from the base's `HEAD`.
-- If the store's `worktrees` table records this path for this team and member, and it hasn't
-  been removed, it's reused, so a restart picks up where it left off. Anything else at the
-  path counts as taken, including a worktree on the same branch that the broker didn't make,
-  and `-2`, `-3`… is appended to both. The broker never takes over a person's own worktree.
+- If the store's `worktrees` table records this path for this team (by id) and member (by
+  name, since a respawned worker gets a new id), and it hasn't been removed, it's reused, so a
+  restart picks up where it left off. Anything else at the path counts as taken, including a
+  worktree on the same branch that the broker didn't make, and so does a branch that already
+  exists with nothing at the path. Then `-2`, `-3`… is appended to both, taking the lowest
+  free suffix. The broker never takes over a person's own worktree.
 - Each one is recorded in the store's `worktrees` table: repo, path, branch, base, member,
   created and removed times.
 - The broker never removes a worktree on its own. The person does, through
@@ -928,6 +982,10 @@ call `herdr agent prompt` itself, and Herdr's socket has no permission check. Th
 confused agents, not hostile ones. A real boundary needs an OS user per agent, which is out of
 scope.
 
+Nothing is pruned in v1, so every message body stays in `comms.db` until the person deletes
+the state directory. Anything running as the user can read it. A retention op is planned
+after v1 (decision 63).
+
 ## App ops
 
 The app runs `lugarn-comms app <op>` over SSH exec, writes one JSON request to stdin, closes
@@ -981,7 +1039,15 @@ Result:
 - `schemas`: `team_spec` (spec versions accepted), `store` (the store's migration version);
 - `capabilities`: feature flags. Known: `spawn`, `watch`, `open-terminal`, `return-headless`,
   `start-herdr`, `resolve-delivery`, `hold`, `worktrees`. Clients ignore unknown flags;
-- `host`: `id`, `os`, `arch`, `hostname`, `state_dir`;
+- `host`: `id`, `os`, `arch`, `hostname`, `state_dir`, and `logind`: on Linux with
+  systemd-logind, `kill_user_processes` (logind's `KillUserProcesses`) and `linger` (the
+  user's `Linger`); null elsewhere or when `loginctl` can't say. With `kill_user_processes`
+  true, logind kills everything in a session's scope when that session ends, and a process
+  an SSH exec starts stays in that scope even under `setsid`. So `start-herdr` starts Herdr
+  under the user's service manager instead ([start-herdr](#start-herdr)), which outlives the
+  person's sessions only with linger on: the app suggests `loginctl enable-linger` when
+  `kill_user_processes` is true and `linger` is false. With `kill_user_processes` false,
+  `setsid` is enough and linger doesn't matter;
 - `herdr`: `installed`, `version`, `running`, `server` (`default`);
 - `harnesses`: per harness `installed`, `version`, `supported`, `issue`
   (`not_installed`, `unsupported_version`, `shim_only`) and `headless` (whether the broker can
@@ -1111,8 +1177,10 @@ its own, and refuses:
 | `dirty`              | it has uncommitted work. v1 never removes that: the person commits or cleans up by hand. |
 | `git_failed`         | git refused; `message` carries git's reason                                  |
 
-Otherwise it runs `git worktree remove <path>` (`git worktree prune` if the directory is
-already `missing`), then `git branch -d <branch>`, never `-D`. Result: `removed` (`path`,
+Otherwise it runs `git worktree remove <path>`, never with `--force`, then
+`git branch -d <branch>`, never `-D`. For a directory that's already `missing`, the same
+`git worktree remove <path>` drops just that registration; it never runs `git worktree prune`,
+which would also drop the person's other missing worktrees. Result: `removed` (`path`,
 `branch`, `branch_outcome`) and `refused` (`path`, `reason`, `message`); each listed path is
 in exactly one. `branch_outcome` is `deleted`, `kept_unmerged` (git refused `-d`, so the
 branch stays and is reported) or `missing` (already gone). Each removal sets the record's
@@ -1121,14 +1189,21 @@ branch stays and is reported) or `missing` (already gone). Each removal sets the
 ### start-herdr
 
 Request: `server` (default `default`). Result: `herdr`, `started`, `method` (`detached`,
-`wmi`, or null if it was already running). Errors: `herdr_unavailable`
+`systemd`, `wmi`, or null if it was already running). Errors: `herdr_unavailable`
 (`details.reason: not_installed` or `start_timeout`).
 
 - If the server already answers, nothing happens: `started: false`.
-- On Linux and macOS the broker starts `herdr server` itself, detached: in its own session
-  (`setsid`), with stdin, stdout and stderr on the null device (`detached`). **Not verified
-  yet**: lexbox had no stopped default server to test against, so C2 verifies that it
-  survives the SSH connection closing.
+- On Linux with logind's `KillUserProcesses=yes` (`hello.host.logind`), the broker starts it
+  under the user's service manager:
+  `systemd-run --user --unit=lugarn-herdr-<server> --collect -- <herdr> --session <server> server`
+  (`systemd`). It then belongs to `user@.service`, not the SSH session's scope, and survives
+  the session ending, but only with linger on; without it, the user manager stops when the
+  person's last session ends. The runner and every pane are the server's children, so they
+  live and die with it.
+- Otherwise, on Linux and macOS, the broker starts `herdr server` itself, detached: in its
+  own session (`setsid`), with stdin, stdout and stderr on the null device (`detached`). C2b
+  verified on lexbox that it survives its parent exiting and the parent's terminal hanging
+  up; a real SSH logout under `KillUserProcesses=yes` is the case above.
 - On Windows the broker creates `herdr server` through WMI (`Win32_Process.Create`), so it
   belongs to the WMI service rather than the SSH session's job object and outlives the
   connection (`wmi`, verified on ufo). A process started any other way inside the session
@@ -1423,7 +1498,7 @@ table against the schemas, and `scripts/check-migrations.py` checks the SQL agai
 | `EventType`        | `team.applied`, `team.state_changed`, `runner.state_changed`, `member.added`, `member.state_changed`, `member.activity_changed`, `member.session_added`, `member.removed`, `lease.changed`, `message.created`, `delivery.changed`, `turn.started`, `turn.finished`, `policy.denied`, `budget.changed`, `rounds.changed`, `request.changed`, `auth.rejected`, `worktree.removed` | events |
 | `ErrorCode`        | `internal`, `invalid_request`, `unauthenticated`, `unsupported_version`, `not_found`, `unknown_member`, `denied`, `spawn_disabled`, `spawn_cap_reached`, `harness_not_allowed`, `profile_too_high`, `nesting_not_allowed`, `name_taken`, `team_not_running`, `team_running`, `runner_unavailable`, `herdr_unavailable`, `harness_unavailable`, `launch_failed`, `lease_conflict`, `revision_conflict`, `cursor_invalid`, `timeout` | errors |
 | `OpName`           | `hello`, `apply-team`, `get-team`, `start-team`, `stop-team`, `status`, `members`, `timeline`, `send`, `continue-budget`, `resolve-delivery`, `hold`, `open-terminal`, `return-headless`, `stop-member`, `worktrees`, `remove-worktrees`, `start-herdr`, `watch` | app ops |
-| `HerdrStartMethod` | `detached`, `wmi` | `start-herdr` |
+| `HerdrStartMethod` | `detached`, `systemd`, `wmi` | `start-herdr` |
 | `GitState`         | `missing`, `clean`, `dirty` | `worktrees` |
 | `WorktreeRefusal`  | `member_not_stopped`, `dirty`, `unknown_path`, `git_failed` | `remove-worktrees` |
 | `BranchOutcome`    | `deleted`, `kept_unmerged`, `missing` | `remove-worktrees`, `worktree.removed` |
@@ -1459,8 +1534,10 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 11. An exhausted budget holds messages (`held`, `budget`) instead of refusing them, so
     Continue releases them and agents don't need to retry. So there's no `budget_exhausted`
     error.
-12. A round is any writer-role → reviewer-role message, counted per pair. A message from the
-    person to either member resets the pair; `continue-budget` with `kind: rounds` continues it.
+12. A round is each reviewer-role → writer-role message, counted per pair: each answer the
+    reviewer gives its writer, an answer to a question included. The writer's own messages
+    don't count. A message from the person to either member resets the pair;
+    `continue-budget` with `kind: rounds` continues it.
 13. Replies go through the grid like any message.
 14. `stop` from an agent is limited to its own workers; it isn't a grid capability.
 
@@ -1510,7 +1587,8 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     still counts toward `per_run`.
 37. Worktrees go to `<repo parent>/<repo>-lugarn/<team>-<member>` on branch
     `lugarn/<team>/<member>`, are reused on restart only when the store recorded them, and
-    are never deleted.
+    are never deleted by the broker on its own: only the person's `remove-worktrees` removes
+    them.
 38. A spawned worker's default profile is the lower of `workspace` and the effective highest;
     `mode` may be either, whatever the setting.
 39. The broker doesn't enforce pattern shapes. Role is an enum; a Codex `reviewer` runs in
@@ -1520,7 +1598,8 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 
 40. The `events` table is the audit log, the watch source and (where flagged) the timeline.
     Budgets are `hop_counters` and `round_counters`; spawn counters are a view, so they can't
-    drift. Nothing is pruned in v1.
+    drift. Nothing is pruned in v1: message bodies stay in `comms.db`
+    ([Identity](#identity)).
 41. `app` ops repeat the op in the JSON, which must match argv, and exit with the mapped code.
 42. `watch` marks the end of replay with `watch.live`, sends a heartbeat every 15 s, and ends
     with an `error` line on failure.
@@ -1568,8 +1647,8 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 57. **Worktree clean-up.** `worktrees` lists what the broker made, with git state.
     `remove-worktrees` removes only the listed paths, refusing a member that isn't stopped, a
     dirty tree or an unknown path, and deletes branches with `-d` only. Each removal emits a
-    new `worktree.removed` event for the audit log. A missing directory is pruned rather than
-    refused. The store gains a `worktrees` table, and `members.worktree_id` points at it.
+    new `worktree.removed` event for the audit log. A missing directory's registration is removed
+    (`git worktree remove`, not a repo-wide prune) rather than refused. The store gains a `worktrees` table, and `members.worktree_id` points at it.
 58. **Messages to `human`.** Capped at 8,000 code points: an agent's send is refused, while an
     auto-reply is cut with a marker, since nobody is there to retry it. Past 5 in 10 minutes
     per member, deliveries carry `notify: false`. The app renders agent text as plain text.
@@ -1578,4 +1657,34 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 60. **One tool set.** The MCP server lists all six tools to every member, so Claude's
     `--allowedTools` and Codex's per-tool approvals are the same fixed list for every launch.
 61. **Herdr on POSIX.** `start-herdr` runs `herdr server` itself under `setsid`, with stdio on
-    the null device (`detached`, renamed from `daemon`); C2 verifies it survives.
+    the null device (`detached`, renamed from `daemon`). `setsid` doesn't escape logind's
+    `KillUserProcesses=yes`: the process stays in the SSH session's scope. With that setting
+    it uses `systemd-run --user` instead (`systemd`), which needs linger (decision 66).
+
+**Added after the review of #2**
+
+62. **Rounds count reviewer answers.** A round is a reviewer's message to its writer, an answer
+    to a question included, not the writer's to its reviewer (decision 12).
+63. **Open:** a retention op that prunes message bodies and events by age, per team. Until
+    then nothing is pruned, and the security notes say so ([Identity](#identity)).
+64. **Launch files after a crash.** Reconciling on runner start deletes `launch/` files with
+    no live launch, so a crashed runner leaves no token on disk. A launch's row is committed
+    before its files exist; only ULID-shaped names are touched, by `lstat`, never through a
+    link; an unknown id's files must be over 60 s old (Flare's review).
+65. **Inline pane text on POSIX** is readable in the `herdr` client's argv by other users on
+    the host while it runs. Fine on a single-user host; a shared one would want the file path
+    for every delivery.
+66. **logind.** `hello` reports `host.logind` (`kill_user_processes`, `linger`). Only
+    `kill_user_processes: true` matters: then `start-herdr` uses `systemd-run --user`, and the
+    app asks for `loginctl enable-linger` if `linger` is false. With it false, `setsid` is
+    enough and linger is irrelevant. (Flare corrected the first version of this, which had
+    linger alone saving a `setsid` Herdr.)
+67. **From the policy engine's build (C1b).** Spec member names may not take live spawned
+    names; ids are never reused, `human`'s and removed members' included; roles and the
+    pattern may change while running; a new `hop_budget` or `review_rounds` waits for the
+    next Continue or reset; `exhausted` is raised again when deliveries stay held; rounds
+    resets renumber like hop resets; auto-replies are cut with the marker inside the cap
+    (8,000 to `human`, 65,536 to agents); `send`'s `reply_to` must be a message the caller
+    received; policy refusals are codes 20–26; worktree paths start from the main working
+    tree, reuse matches team id and member name, and an existing branch counts as taken;
+    a harness that can't run headless can't be given headless mode.

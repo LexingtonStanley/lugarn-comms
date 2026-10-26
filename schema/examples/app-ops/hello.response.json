@@ -33,7 +33,11 @@
       "os": "linux",
       "arch": "amd64",
       "hostname": "lexbox",
-      "state_dir": "/home/lex/.lugarn/comms"
+      "state_dir": "/home/lex/.lugarn/comms",
+      "logind": {
+        "kill_user_processes": false,
+        "linger": true
+      }
     },
     "herdr": {
       "installed": true,
