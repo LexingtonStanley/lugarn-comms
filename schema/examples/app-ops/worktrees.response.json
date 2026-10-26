@@ -5,7 +5,7 @@
   "result": {
     "worktrees": [
       {
-        "path": "/home/lex/code/flare-wt/auth-rewrite-api",
+        "path": "/home/lex/code/flare-lugarn/auth-rewrite-api",
         "branch": "lugarn/auth-rewrite/api",
         "repo": "/home/lex/code/flare",
         "base": "main",
@@ -23,7 +23,7 @@
         }
       },
       {
-        "path": "/home/lex/code/flare-wt/auth-rewrite-web",
+        "path": "/home/lex/code/flare-lugarn/auth-rewrite-web",
         "branch": "lugarn/auth-rewrite/web",
         "repo": "/home/lex/code/flare",
         "base": "main",
@@ -41,7 +41,7 @@
         }
       },
       {
-        "path": "/home/lex/code/flare-wt/auth-rewrite-docs",
+        "path": "/home/lex/code/flare-lugarn/auth-rewrite-docs",
         "branch": "lugarn/auth-rewrite/docs",
         "repo": "/home/lex/code/flare",
         "base": "main",

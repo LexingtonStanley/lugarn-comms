@@ -27,10 +27,10 @@
             "mode": "headless",
             "folder": "/home/lex/code/flare",
             "worktree": {
-              "path": "/home/lex/code/flare-wt/auth-rewrite-api",
+              "path": "/home/lex/code/flare-lugarn/auth-rewrite-api",
               "branch": "lugarn/auth-rewrite/api"
             },
-            "workdir": "/home/lex/code/flare-wt/auth-rewrite-api",
+            "workdir": "/home/lex/code/flare-lugarn/auth-rewrite-api",
             "state": "starting",
             "stop_reason": null,
             "activity": null,

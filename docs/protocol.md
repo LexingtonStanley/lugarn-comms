@@ -423,10 +423,13 @@ Each change emits `lease.changed` with the full member record.
 
 A pane resumes a session by id, and Codex and OpenCode only report theirs once a turn has run.
 So before a member on a harness that reports its id gets its first pane, and while it has no
-session yet, the runner runs one headless turn carrying **the brief alone**. That turn
-consumes no messages and posts no auto-reply. When it ends, the member moves to its pane
-exactly as [open-terminal](#open-in-terminal) would, with `cause: start`, and the task, along
-with anything else queued for it, goes in as the first pane delivery. The session already
+session yet, the runner runs one headless turn carrying **the brief alone**. The broker ends
+that brief with a fixed line: reply that you're ready, then wait for your task and change
+nothing until it arrives. A Codex or OpenCode member on the workspace profile would otherwise
+start work before the person sees its pane. That turn consumes no messages and posts no
+auto-reply. When it ends, the member moves to its pane exactly as
+[open-terminal](#open-in-terminal) would, with `cause: start`, and the task, along with
+anything else queued for it, goes in as the first pane delivery. The session already
 has its brief, so that delivery doesn't repeat it. The member is `running` on a headless
 lease meanwhile. Its session id is therefore known before any pane exists, and Reading finds
 the conversation from the start.
@@ -861,10 +864,13 @@ Spec members with `worktree: true` and spawned workers that get a worktree use t
 
 - **Base:** the spec member's `folder`, or the spawner's workdir. It must be inside a git
   repository; if it isn't, the member shares the folder and apply warned about it.
-- **Path:** `<parent of the repo's top level>/<repo name>-wt/<team name>-<member name>`.
+- **Path:** `<parent of the repo's top level>/<repo name>-lugarn/<team name>-<member name>`.
+  It isn't `<repo>-wt/`, which people and orchestrators already use for their own worktrees.
 - **Branch:** `lugarn/<team name>/<member name>`, created from the base's `HEAD`.
-- If the path already holds a worktree on that branch, it's reused, so a restart picks up
-  where it left off. If the path is taken by anything else, `-2`, `-3`… is appended to both.
+- If the store's `worktrees` table records this path for this team and member, and it hasn't
+  been removed, it's reused, so a restart picks up where it left off. Anything else at the
+  path counts as taken, including a worktree on the same branch that the broker didn't make,
+  and `-2`, `-3`… is appended to both. The broker never takes over a person's own worktree.
 - Each one is recorded in the store's `worktrees` table: repo, path, branch, base, member,
   created and removed times.
 - The broker never removes a worktree on its own. The person does, through
@@ -1502,8 +1508,9 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 35. Turn timeout defaults to 30 minutes. `per_recipient` is fixed at 1 in v1.
 36. Live agent members are capped at 24 (`spawn_cap_reached`, `team_size`). A failed spawn
     still counts toward `per_run`.
-37. Worktrees go to `<repo parent>/<repo>-wt/<team>-<member>` on branch
-    `lugarn/<team>/<member>`, are reused on restart, and are never deleted.
+37. Worktrees go to `<repo parent>/<repo>-lugarn/<team>-<member>` on branch
+    `lugarn/<team>/<member>`, are reused on restart only when the store recorded them, and
+    are never deleted.
 38. A spawned worker's default profile is the lower of `workspace` and the effective highest;
     `mode` may be either, whatever the setting.
 39. The broker doesn't enforce pattern shapes. Role is an enum; a Codex `reviewer` runs in
@@ -1540,8 +1547,9 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 53. **A session before a pane.** Codex and OpenCode report their session ids, so a pane-mode
     member on either first runs one headless turn with the brief alone, then opens in its
     pane, where the task arrives as the first delivery. That way the person sees the work
-    happen in the pane. Claude picks its id up front. A C2b check may replace the headless
-    first turn with Herdr's `agent_session` fields.
+    happen in the pane. The headless turn's brief ends with that wait-for-your-task line.
+    Claude picks its id up front. A C2b check may replace the headless first turn with
+    Herdr's `agent_session` fields.
 54. **Holds.** `hold` with a 10–120 s TTL that the app renews, or `release: true`. It holds
     deliveries (`person_control`) whatever the member's driver, lapses on its own, and ends
     when the member or team stops. Renewals emit no events; the held deliveries'
