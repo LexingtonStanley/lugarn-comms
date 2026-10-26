@@ -1145,8 +1145,10 @@ its own, and refuses:
 | `dirty`              | it has uncommitted work. v1 never removes that: the person commits or cleans up by hand. |
 | `git_failed`         | git refused; `message` carries git's reason                                  |
 
-Otherwise it runs `git worktree remove <path>` (`git worktree prune` if the directory is
-already `missing`), then `git branch -d <branch>`, never `-D`. Result: `removed` (`path`,
+Otherwise it runs `git worktree remove <path>`, never with `--force`, then
+`git branch -d <branch>`, never `-D`. For a directory that's already `missing`, the same
+`git worktree remove <path>` drops just that registration; it never runs `git worktree prune`,
+which would also drop the person's other missing worktrees. Result: `removed` (`path`,
 `branch`, `branch_outcome`) and `refused` (`path`, `reason`, `message`); each listed path is
 in exactly one. `branch_outcome` is `deleted`, `kept_unmerged` (git refused `-d`, so the
 branch stays and is reported) or `missing` (already gone). Each removal sets the record's
@@ -1545,7 +1547,8 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     still counts toward `per_run`.
 37. Worktrees go to `<repo parent>/<repo>-lugarn/<team>-<member>` on branch
     `lugarn/<team>/<member>`, are reused on restart only when the store recorded them, and
-    are never deleted.
+    are never deleted by the broker on its own: only the person's `remove-worktrees` removes
+    them.
 38. A spawned worker's default profile is the lower of `workspace` and the effective highest;
     `mode` may be either, whatever the setting.
 39. The broker doesn't enforce pattern shapes. Role is an enum; a Codex `reviewer` runs in
@@ -1604,8 +1607,8 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 57. **Worktree clean-up.** `worktrees` lists what the broker made, with git state.
     `remove-worktrees` removes only the listed paths, refusing a member that isn't stopped, a
     dirty tree or an unknown path, and deletes branches with `-d` only. Each removal emits a
-    new `worktree.removed` event for the audit log. A missing directory is pruned rather than
-    refused. The store gains a `worktrees` table, and `members.worktree_id` points at it.
+    new `worktree.removed` event for the audit log. A missing directory's registration is removed
+    (`git worktree remove`, not a repo-wide prune) rather than refused. The store gains a `worktrees` table, and `members.worktree_id` points at it.
 58. **Messages to `human`.** Capped at 8,000 code points: an agent's send is refused, while an
     auto-reply is cut with a marker, since nobody is there to retry it. Past 5 in 10 minutes
     per member, deliveries carry `notify: false`. The app renders agent text as plain text.
