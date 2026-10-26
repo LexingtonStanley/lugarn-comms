@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -41,7 +43,7 @@ func TestRun(t *testing.T) {
 	}
 	for _, command := range []string{"run"} {
 		for _, args := range [][]string{{command}, {command, "--help"}} {
-			tests = append(tests, testCase{name: strings.Join(args, " "), args: args, code: 2, stderr: fmt.Sprintf("lugarn-comms: %s is not implemented yet\n", command)})
+			tests = append(tests, testCase{name: strings.Join(args, " "), args: args, code: 2, stderr: fmt.Sprintf("lugarn-comms: %s is not implemented yet (C2)\n", command)})
 		}
 	}
 	for _, tt := range tests {
@@ -100,15 +102,18 @@ func (failingWriter) Write([]byte) (int, error) {
 }
 
 func TestFrontDoorDispatch(t *testing.T) {
+	t.Setenv("LUGARN_COMMS_HOME", t.TempDir())
+	t.Setenv("LUGARN_COMMS_MEMBER", "")
+	t.Setenv("LUGARN_COMMS_TOKEN_FILE", "")
 	for _, tt := range []struct {
 		args  []string
 		input string
 		code  int
 		out   string
 	}{
-		{[]string{"app", "status"}, `{"protocol":1,"op":"status","request_id":"x"}`, 1, `"message":"not implemented yet (C1d)"`},
-		{[]string{"team"}, "", 1, `"error"`},
-		{[]string{"--format", "json", "team"}, "", 1, `"error"`},
+		{[]string{"app", "status"}, `{"protocol":1,"op":"status","request_id":"x"}`, 0, `"teams":[]`},
+		{[]string{"team"}, "", 3, `"error"`},
+		{[]string{"--format", "json", "team"}, "", 3, `"error"`},
 		{[]string{"spawn"}, "", 2, `"invalid_request"`},
 		{[]string{"stop"}, "", 2, `"invalid_request"`},
 		{[]string{"mcp"}, "", 3, ""},
@@ -123,5 +128,37 @@ func TestFrontDoorDispatch(t *testing.T) {
 				t.Fatal(out.String())
 			}
 		})
+	}
+}
+
+func TestStartupErrorsUseFaceFormats(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(path, []byte("not a directory"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("LUGARN_COMMS_HOME", path)
+	for _, tt := range []struct {
+		args  []string
+		input string
+		op    string
+	}{
+		{[]string{"app", "status"}, `{"protocol":1,"op":"status","request_id":"startup"}`, "status"},
+		{[]string{"team"}, "", ""},
+	} {
+		var out, diag bytes.Buffer
+		if got := runWithInput(context.Background(), tt.args, strings.NewReader(tt.input), &out, &diag); got != 1 {
+			t.Fatalf("exit %d: %s %s", got, &out, &diag)
+		}
+		var v map[string]any
+		if err := json.Unmarshal(out.Bytes(), &v); err != nil {
+			t.Fatal(err)
+		}
+		failure := v["error"].(map[string]any)
+		if failure["code"] != "internal" {
+			t.Fatal(v)
+		}
+		if tt.op != "" && (v["op"] != tt.op || v["request_id"] != "startup") {
+			t.Fatal(v)
+		}
 	}
 }

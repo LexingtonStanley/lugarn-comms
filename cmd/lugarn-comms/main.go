@@ -8,15 +8,19 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/agentops"
 	"github.com/LexingtonStanley/lugarn-comms/internal/appops"
+	"github.com/LexingtonStanley/lugarn-comms/internal/broker"
 	"github.com/LexingtonStanley/lugarn-comms/internal/cli"
 	"github.com/LexingtonStanley/lugarn-comms/internal/mcpserver"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/service"
+	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
+	"github.com/LexingtonStanley/lugarn-comms/internal/store"
 	"github.com/LexingtonStanley/lugarn-comms/internal/version"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -89,7 +93,9 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 		if len(args) != 2 {
 			return usageError(stderr, "usage: lugarn-comms app <op>")
 		}
-		return appops.Run(ctx, args[1], stdin, stdout, &service.Fake{})
+		svc, closeStore := openService(ctx)
+		defer closeStore()
+		return appops.Run(ctx, args[1], stdin, stdout, svc)
 	case "mcp":
 		flags := flag.NewFlagSet("mcp", flag.ContinueOnError)
 		flags.SetOutput(stderr)
@@ -108,8 +114,9 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 			fmt.Fprintln(stderr, "unauthenticated: --member and --token-file are required")
 			return 3
 		}
-		stub := &service.Fake{}
-		server, err := mcpserver.New(agentops.Identity{Member: *member, TokenFile: *token}, stub, stub)
+		svc, closeStore := openService(ctx)
+		defer closeStore()
+		server, err := mcpserver.New(agentops.Identity{Member: *member, TokenFile: *token}, svc, svc)
 		if err == nil {
 			reader, ok := stdin.(io.ReadCloser)
 			if !ok {
@@ -123,15 +130,17 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 		}
 		return 0
 	case "send", "reply", "inbox", "team", "spawn", "stop":
-		stub := &service.Fake{}
-		return cli.Run(ctx, args, stdin, stdout, stderr, stub, stub)
+		svc, closeStore := openService(ctx)
+		defer closeStore()
+		return cli.Run(ctx, args, stdin, stdout, stderr, svc, svc)
 	case "run":
-		fmt.Fprintf(stderr, "lugarn-comms: %s is not implemented yet\n", args[0])
+		fmt.Fprintf(stderr, "lugarn-comms: %s is not implemented yet (C2)\n", args[0])
 		return 2
 	default:
 		if len(args) > 0 && (args[0] == "--member" || args[0] == "--token-file" || args[0] == "--format" || strings.HasPrefix(args[0], "--member=") || strings.HasPrefix(args[0], "--token-file=") || strings.HasPrefix(args[0], "--format=")) {
-			stub := &service.Fake{}
-			return cli.Run(ctx, args, stdin, stdout, stderr, stub, stub)
+			svc, closeStore := openService(ctx)
+			defer closeStore()
+			return cli.Run(ctx, args, stdin, stdout, stderr, svc, svc)
 		}
 		return usageError(stderr, fmt.Sprintf("unknown subcommand %q", args[0]))
 	}
@@ -153,3 +162,26 @@ func writeOutput(stdout, stderr io.Writer, output string) int {
 type writerCloser struct{ io.Writer }
 
 func (writerCloser) Close() error { return nil }
+
+// A startup failure is served through the existing front doors so app envelopes,
+// CLI JSON/text and MCP tool failures retain their normal formats.
+type services interface {
+	service.App
+	service.Tools
+	service.Authenticator
+}
+
+func openService(ctx context.Context) (services, func()) {
+	dir, err := statedir.Resolve()
+	if err == nil {
+		err = statedir.Ensure(dir)
+	}
+	if err != nil {
+		return errorService{model.AsError(err)}, func() {}
+	}
+	db, err := store.Open(ctx, filepath.Join(dir, "comms.db"))
+	if err != nil {
+		return errorService{model.AsError(err)}, func() {}
+	}
+	return broker.New(db, broker.Options{StateDir: dir}), func() { _ = db.Close() }
+}
