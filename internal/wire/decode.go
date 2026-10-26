@@ -135,37 +135,3 @@ func DecodeToolInput(name string, b []byte) (any, error) {
 	}
 	return v, model.DecodeStrict(b, v)
 }
-
-// Preserve pre-amendment examples that omit logind, while new host records always
-// emit it (null on hosts without logind). The checked-in schema predates PR #3.
-func (h *HelloResultHost) UnmarshalJSON(b []byte) error {
-	type plain HelloResultHost
-	var v plain
-	if err := model.DecodeStrict(b, &v); err != nil {
-		return err
-	}
-	var keys map[string]json.RawMessage
-	if err := json.Unmarshal(b, &keys); err != nil {
-		return err
-	}
-	*h = HelloResultHost(v)
-	_, present := keys["logind"]
-	h.legacy = !present
-	return nil
-}
-func (h HelloResultHost) MarshalJSON() ([]byte, error) {
-	type plain HelloResultHost
-	if !h.legacy {
-		return json.Marshal(plain(h))
-	}
-	b, err := json.Marshal(plain(h))
-	if err != nil {
-		return nil, err
-	}
-	var obj map[string]json.RawMessage
-	if err := json.Unmarshal(b, &obj); err != nil {
-		return nil, err
-	}
-	delete(obj, "logind")
-	return json.Marshal(obj)
-}

@@ -83,6 +83,10 @@ func TestExamplesRoundTrip(t *testing.T) {
 					if err = json.Unmarshal(encoded, &after); err != nil {
 						t.Fatal(err)
 					}
+					if folder == "app-ops" {
+						normalizeAppExample(before)
+						normalizeAppExample(after)
+					}
 					if !reflect.DeepEqual(before, after) {
 						t.Fatalf("round trip changed JSON\noriginal: %s\nencoded: %s", b, encoded)
 					}
@@ -136,7 +140,7 @@ func TestNewHelloIncludesLogindNull(t *testing.T) {
 	}
 }
 
-func TestApplyTeamPresencePreservesLargeRevision(t *testing.T) {
+func TestApplyTeamPreservesLargeRevision(t *testing.T) {
 	file := filepath.Join("..", "..", "schema", "examples", "app-ops", "apply-team.request.json")
 	b, err := os.ReadFile(file)
 	if err != nil {
@@ -153,5 +157,63 @@ func TestApplyTeamPresencePreservesLargeRevision(t *testing.T) {
 	}
 	if !strings.Contains(string(encoded), `"if_revision":9007199254740993`) {
 		t.Fatal(string(encoded))
+	}
+}
+
+// Omitted and null nullable fields have identical meanings in a team spec.
+func normalizeSpecExample(value any) {
+	spec, ok := value.(map[string]any)
+	if !ok {
+		return
+	}
+	members, _ := spec["members"].([]any)
+	for _, value := range members {
+		member, ok := value.(map[string]any)
+		if !ok {
+			continue
+		}
+		for _, key := range []string{"task", "host"} {
+			if _, present := member[key]; !present {
+				member[key] = nil
+			}
+		}
+		if spawn, ok := member["spawn"].(map[string]any); ok {
+			for _, key := range []string{"harnesses", "brief"} {
+				if _, present := spawn[key]; !present {
+					spawn[key] = nil
+				}
+			}
+		}
+	}
+}
+func normalizeAppExample(value any) {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return
+	}
+	normalizeSpecExample(object["spec"])
+	result, _ := object["result"].(map[string]any)
+	normalizeSpecExample(result["spec"])
+	if object["op"] == "hello" {
+		if host, ok := result["host"].(map[string]any); ok {
+			// PR #3 adds host.logind to the hello schema and examples.
+			if _, present := host["logind"]; !present {
+				host["logind"] = nil
+			}
+		}
+	}
+}
+
+func TestExampleNormalizationScope(t *testing.T) {
+	var got, expected any
+	if err := json.Unmarshal([]byte(`{"spec":{"members":[{"brief":"required","spawn":{}}]},"result":{"spec":{"members":[{"task":"keep","host":null,"spawn":{"brief":"keep","harnesses":[]}}]}},"data":{"members":[{"spawn":{}}]},"host":{}}`), &got); err != nil {
+		t.Fatal(err)
+	}
+	normalizeAppExample(got)
+	if err := json.Unmarshal([]byte(`{"spec":{"members":[{"brief":"required","task":null,"host":null,"spawn":{"brief":null,"harnesses":null}}]},"result":{"spec":{"members":[{"task":"keep","host":null,"spawn":{"brief":"keep","harnesses":[]}}]}},"data":{"members":[{"spawn":{}}]},"host":{}}`), &expected); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("normalization changed unrelated fields: %#v", got)
 	}
 }

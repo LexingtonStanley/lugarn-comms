@@ -25,7 +25,6 @@ type HelloRequest struct {
 
 // ApplyTeamRequest mirrors its v1 wire object.
 type ApplyTeamRequest struct {
-	specShape  any
 	Protocol   int64          `json:"protocol"`
 	Op         OpName         `json:"op"`
 	RequestID  *string        `json:"request_id,omitempty"`
@@ -952,7 +951,6 @@ type HelloResultHost struct {
 	Hostname string         `json:"hostname"`
 	StateDir string         `json:"state_dir"`
 	Logind   *LogindInfo    `json:"logind"`
-	legacy   bool
 }
 
 // WorktreeItemGit mirrors its v1 wire object.

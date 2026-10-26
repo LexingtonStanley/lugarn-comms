@@ -37,7 +37,7 @@ func New(identity agentops.Identity, svc service.Tools, auth service.Authenticat
 				return failure(model.AsError(inputErr)), nil
 			}
 			if authErr != nil {
-				return failure(authErr), nil
+				return failure(model.AsError(authErr)), nil
 			}
 			output, err := agentops.CallTool(ctx, svc, caller, input)
 			if err != nil {

@@ -58,5 +58,5 @@ type Token struct {
 // Authenticator owns token lookup, revocation checks and auth.rejected events.
 // A nil token denotes an absent, empty or unreadable token file.
 type Authenticator interface {
-	Authenticate(context.Context, string, *Token, model.Face) (Caller, *model.Error)
+	Authenticate(context.Context, string, *Token, model.Face) (Caller, error)
 }

@@ -29,7 +29,7 @@ type Fake struct {
 	RemoveWorktreesFunc func(context.Context, wire.RemoveWorktreesRequest) (wire.RemoveWorktreesResult, error)
 	StartHerdrFunc      func(context.Context, wire.StartHerdrRequest) (wire.StartHerdrResult, error)
 	WatchFunc           func(context.Context, wire.WatchRequest, func(wire.WatchLine) error) error
-	AuthenticateFunc    func(context.Context, string, *Token, model.Face) (Caller, *model.Error)
+	AuthenticateFunc    func(context.Context, string, *Token, model.Face) (Caller, error)
 	ToolSendFunc        func(context.Context, Caller, wire.SendInput) (wire.SendOutput, error)
 	ToolReplyFunc       func(context.Context, Caller, wire.ReplyInput) (wire.ReplyOutput, error)
 	ToolInboxFunc       func(context.Context, Caller, wire.InboxInput) (wire.InboxOutput, error)
@@ -192,7 +192,7 @@ func (f *Fake) Watch(ctx context.Context, req wire.WatchRequest, emit func(wire.
 	}
 	return NotImplemented()
 }
-func (f *Fake) Authenticate(ctx context.Context, member string, token *Token, face model.Face) (Caller, *model.Error) {
+func (f *Fake) Authenticate(ctx context.Context, member string, token *Token, face model.Face) (Caller, error) {
 	if f.AuthenticateFunc != nil {
 		return f.AuthenticateFunc(ctx, member, token, face)
 	}

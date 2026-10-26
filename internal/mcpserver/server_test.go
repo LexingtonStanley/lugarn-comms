@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -45,7 +46,7 @@ func TestToolsThroughSDK(t *testing.T) {
 	var fail atomic.Bool
 	fake := exampleFake(t, &fail)
 	var calls atomic.Int64
-	fake.AuthenticateFunc = func(_ context.Context, member string, token *service.Token, face model.Face) (service.Caller, *model.Error) {
+	fake.AuthenticateFunc = func(_ context.Context, member string, token *service.Token, face model.Face) (service.Caller, error) {
 		calls.Add(1)
 		if face != model.FaceMCP {
 			t.Error(face)
@@ -114,7 +115,7 @@ func TestToolsThroughSDK(t *testing.T) {
 	}
 }
 func TestBadArgumentsAreToolErrors(t *testing.T) {
-	fake := &service.Fake{AuthenticateFunc: func(context.Context, string, *service.Token, model.Face) (service.Caller, *model.Error) {
+	fake := &service.Fake{AuthenticateFunc: func(context.Context, string, *service.Token, model.Face) (service.Caller, error) {
 		return service.Caller{}, nil
 	}}
 	cs := session(t, agentops.Identity{}, fake)
@@ -154,12 +155,12 @@ func TestTokenRereadAndAuthFailure(t *testing.T) {
 	token2, _ := model.NewToken()
 	var mu sync.Mutex
 	var hashes []string
-	fake := &service.Fake{AuthenticateFunc: func(_ context.Context, member string, token *service.Token, face model.Face) (service.Caller, *model.Error) {
+	fake := &service.Fake{AuthenticateFunc: func(_ context.Context, member string, token *service.Token, face model.Face) (service.Caller, error) {
 		if member != "m" || face != model.FaceMCP {
 			t.Errorf("identity %s %s", member, face)
 		}
 		if token == nil {
-			return service.Caller{}, model.NewError(model.ErrorUnauthenticated, "no token")
+			return service.Caller{}, fmt.Errorf("token lookup: %w", model.NewError(model.ErrorUnauthenticated, "no token"))
 		}
 		if token.Hash != model.HashToken(string(token.Bytes)) {
 			t.Error("incorrect hash")
@@ -230,7 +231,7 @@ func checkText(t *testing.T, result *mcp.CallToolResult, want string) {
 
 func TestOmittedArgumentsForNoRequiredInputs(t *testing.T) {
 	fake := &service.Fake{
-		AuthenticateFunc: func(context.Context, string, *service.Token, model.Face) (service.Caller, *model.Error) {
+		AuthenticateFunc: func(context.Context, string, *service.Token, model.Face) (service.Caller, error) {
 			return service.Caller{}, nil
 		},
 		ToolTeamFunc: func(context.Context, service.Caller, wire.TeamInput) (wire.TeamOutput, error) {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,7 +19,7 @@ import (
 )
 
 func authFake() *service.Fake {
-	return &service.Fake{AuthenticateFunc: func(context.Context, string, *service.Token, model.Face) (service.Caller, *model.Error) {
+	return &service.Fake{AuthenticateFunc: func(context.Context, string, *service.Token, model.Face) (service.Caller, error) {
 		return service.Caller{MemberID: "caller"}, nil
 	}}
 }
@@ -132,7 +133,7 @@ func TestIdentityFlagsAndEnvironment(t *testing.T) {
 	} {
 		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {
 			fake := authFake()
-			fake.AuthenticateFunc = func(_ context.Context, member string, got *service.Token, face model.Face) (service.Caller, *model.Error) {
+			fake.AuthenticateFunc = func(_ context.Context, member string, got *service.Token, face model.Face) (service.Caller, error) {
 				if member != tt.member || face != model.FaceCLI {
 					t.Errorf("member %q face %s", member, face)
 				}
@@ -165,7 +166,7 @@ func TestArgumentFailures(t *testing.T) {
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			fake := authFake()
-			fake.AuthenticateFunc = func(context.Context, string, *service.Token, model.Face) (service.Caller, *model.Error) {
+			fake.AuthenticateFunc = func(context.Context, string, *service.Token, model.Face) (service.Caller, error) {
 				t.Error("authenticated invalid args")
 				return service.Caller{}, nil
 			}
@@ -211,8 +212,8 @@ func TestErrorExitCodesAndFormats(t *testing.T) {
 }
 func TestAuthenticationFailure(t *testing.T) {
 	fake := authFake()
-	fake.AuthenticateFunc = func(context.Context, string, *service.Token, model.Face) (service.Caller, *model.Error) {
-		return service.Caller{}, model.NewError(model.ErrorUnauthenticated, "no token")
+	fake.AuthenticateFunc = func(context.Context, string, *service.Token, model.Face) (service.Caller, error) {
+		return service.Caller{}, fmt.Errorf("token lookup: %w", model.NewError(model.ErrorUnauthenticated, "no token"))
 	}
 	var out, diag bytes.Buffer
 	if code := Run(context.Background(), []string{"team"}, strings.NewReader(""), &out, &diag, fake, fake); code != 3 || !strings.Contains(out.String(), `"code":"unauthenticated"`) {
