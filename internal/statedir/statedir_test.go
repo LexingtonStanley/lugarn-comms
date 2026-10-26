@@ -108,9 +108,14 @@ func TestWriteSecretAtomicReaders(t *testing.T) {
 			default:
 			}
 			data, err := os.ReadFile(path)
-			// Windows rename may be refused while a reader holds an open handle;
-			// successful reads must still always see a complete value.
+			// Windows rename may be refused while a reader holds an open handle,
+			// and a reader may be refused (ERROR_SHARING_VIOLATION 32,
+			// ERROR_ACCESS_DENIED 5) while the file is being replaced. Successful
+			// reads must still always see a complete value.
 			if err != nil {
+				if runtime.GOOS == "windows" && (errors.Is(err, syscall.Errno(32)) || errors.Is(err, syscall.Errno(5))) {
+					continue
+				}
 				t.Errorf("read: %v", err)
 				return
 			}

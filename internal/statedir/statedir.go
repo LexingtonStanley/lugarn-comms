@@ -51,6 +51,8 @@ func Ensure(dir string) error {
 // WriteSecret atomically replaces path with data in a private file. The parent
 // must already exist; callers normally create it with Ensure. Temporary files
 // are private before any secret bytes are written and are removed on failure.
+// On Windows a reader racing the replace can be refused with a sharing
+// violation; launch files are written once and never replaced while read.
 func WriteSecret(path string, data []byte) error {
 	f, err := os.CreateTemp(filepath.Dir(path), ".lugarn-secret-*")
 	if err != nil {
