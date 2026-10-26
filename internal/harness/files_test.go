@@ -188,3 +188,69 @@ func TestPointerRecordsEveryPlatform(t *testing.T) {
 		})
 	}
 }
+
+// OpenCode's config follows its major version: 2.x gets the flat entry and
+// the native mcp.servers entry, 1.x the flat entry alone, without codemode,
+// since 1.0's entry schema is strict and has no Code Mode.
+func TestOpenCodeConfigByVersion(t *testing.T) {
+	for _, tc := range []struct {
+		version string
+		native  bool
+	}{
+		{"2.1.4", true}, {"v2.0.0", true}, {"2.3.0-beta.1", true},
+		{"1.19.4", false}, {"v1.0.0", false}, {"1", false},
+	} {
+		t.Run(tc.version, func(t *testing.T) {
+			l := testLaunch(t, model.HarnessOpenCode)
+			l.Version = tc.version
+			if err := WriteFiles(l); err != nil {
+				t.Fatal(err)
+			}
+			mcp := readJSON(t, l.path(".opencode.json"))["mcp"].(map[string]any)
+			flat := mcp["lugarn"].(map[string]any)
+			command, _ := json.Marshal(append([]string{l.Binary}, l.mcpArgs()...))
+			gotCommand, _ := json.Marshal(flat["command"])
+			if flat["type"] != "local" || flat["enabled"] != true || string(gotCommand) != string(command) {
+				t.Fatalf("flat entry %v", flat)
+			}
+			_, hasServers := mcp["servers"]
+			codemode, hasCodemode := flat["codemode"]
+			if tc.native {
+				native := mcp["servers"].(map[string]any)["lugarn"].(map[string]any)
+				if len(mcp) != 2 || codemode != false || native["codemode"] != false || native["disabled"] != false || !reflect.DeepEqual(native["command"], flat["command"]) {
+					t.Fatalf("2.x mcp = %v", mcp)
+				}
+			} else if len(mcp) != 1 || hasServers || hasCodemode || len(flat) != 3 {
+				t.Fatalf("1.x mcp = %v", mcp)
+			}
+		})
+	}
+	for version, code := range map[string]model.ErrorCode{
+		"":      model.ErrorInvalidRequest,
+		"next":  model.ErrorInvalidRequest,
+		"3.0.0": model.ErrorHarnessUnavailable,
+		"0.9.1": model.ErrorHarnessUnavailable,
+		"12.1":  model.ErrorHarnessUnavailable,
+	} {
+		l := testLaunch(t, model.HarnessOpenCode)
+		l.Version = version
+		err := WriteFiles(l)
+		if p := model.AsError(err); p == nil || p.Code != code {
+			t.Fatalf("version %q: %v, want %s", version, err, code)
+		}
+		if _, statErr := os.Stat(l.path(".opencode.json")); !os.IsNotExist(statErr) {
+			t.Fatalf("version %q wrote a config", version)
+		}
+	}
+	// Other harnesses don't need a version.
+	for _, h := range []model.Harness{model.HarnessClaude, model.HarnessCodex, model.HarnessPi} {
+		if err := WriteFiles(testLaunch(t, h)); err != nil {
+			t.Fatalf("%s without a version: %v", h, err)
+		}
+	}
+	l := testLaunch(t, model.HarnessCodex)
+	l.Version = "1.0\n--evil"
+	if l.Validate() == nil {
+		t.Fatal("accepted a version with a newline")
+	}
+}

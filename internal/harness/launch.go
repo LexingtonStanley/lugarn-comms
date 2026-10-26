@@ -28,6 +28,12 @@ type Launch struct {
 	SessionID string
 	Resume    bool
 	ExtraEnv  map[string]string
+	// Version is the harness's version as hostprobe reports it: hello's
+	// harnesses[].version, such as "2.1.4". OpenCode needs it, because its
+	// per-launch config differs between 1.x and 2.x (WriteFiles). The caller
+	// passes it rather than WriteFiles probing, because pane launches never go
+	// through Driver and the caller already has hello's probe.
+	Version string
 }
 
 var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
@@ -62,6 +68,9 @@ func (l Launch) Validate() error {
 			return bad("launch paths must be absolute and contain no NUL or newline")
 		}
 	}
+	if len(l.Version) > 128 || strings.ContainsAny(l.Version, "\x00\r\n") {
+		return bad("invalid harness version")
+	}
 	if l.SessionID != "" && !validSession(l.Harness, l.SessionID) {
 		return bad("invalid harness session id")
 	}
@@ -93,3 +102,25 @@ func (l Launch) path(suffix string) string {
 
 // TokenPath is the private token file that the caller writes before launching.
 func (l Launch) TokenPath() string { return l.path(".token") }
+
+var majorPattern = regexp.MustCompile(`^v?([0-9]{1,6})(\.|$)`)
+
+// openCodeMajor is OpenCode's major version, 1 or 2, from Launch.Version.
+// Without a version there's no telling which config shape OpenCode reads.
+func openCodeMajor(version string) (int, error) {
+	if version == "" {
+		return 0, model.NewError(model.ErrorInvalidRequest, "an OpenCode launch needs the harness version (hello's harnesses[].version)")
+	}
+	m := majorPattern.FindStringSubmatch(version)
+	if m == nil {
+		return 0, model.NewError(model.ErrorInvalidRequest, "unrecognised OpenCode version").WithDetail("version", version)
+	}
+	switch m[1] {
+	case "1":
+		return 1, nil
+	case "2":
+		return 2, nil
+	}
+	return 0, model.NewError(model.ErrorHarnessUnavailable, "OpenCode "+version+" isn't supported").
+		WithDetails(map[string]any{"reason": "unsupported_version", "version": version})
+}

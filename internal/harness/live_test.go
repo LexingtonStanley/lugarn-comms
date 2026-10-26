@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/LexingtonStanley/lugarn-comms/internal/hostprobe"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
 	"github.com/google/uuid"
@@ -116,6 +117,12 @@ func TestLive(t *testing.T) {
 			}
 			if harness == model.HarnessOpenCode {
 				l.Model = "opencode-go/iceman-contributor-free"
+				// The installed version decides the config shape, as hello's would.
+				for _, info := range hostprobe.New().Harnesses(context.Background()) {
+					if info.Harness == harness && info.Version != nil {
+						l.Version = *info.Version
+					}
+				}
 			}
 			if err = statedir.Ensure(l.StateDir); err != nil {
 				t.Fatal(err)
