@@ -41,6 +41,8 @@ type TurnOutcome struct {
 // only: loss of the runner must leave the process alive. Cancel, not cancellation
 // of the runner's context, terminates the process group/job and all its children.
 type Headless interface {
+	// Start returns promptly with a PID-bearing handle, or an error before any
+	// process was started. The prompt goes on stdin; ctx is startup-only.
 	Start(context.Context, TurnLaunch, string) (TurnHandle, error)
 }
 
@@ -48,9 +50,15 @@ type Headless interface {
 // once and drains output until exit. Cancel is idempotent and must return promptly
 // after initiating process-tree termination; Wait then completes promptly.
 type TurnHandle interface {
+	// PID returns the started process ID; it must be positive and stable.
 	PID() int64
+	// Acknowledgements yields at most one acknowledgement, then closes.
 	Acknowledgements() <-chan TurnAcknowledgement
+	// Wait is called once, drains output, and retains acknowledgement/session
+	// information even if exit races the acknowledgement channel.
 	Wait() TurnOutcome
+	// Cancel initiates termination of the process group/job, is idempotent,
+	// and makes Wait complete promptly. It must never signal by process name.
 	Cancel() error
 }
 
@@ -58,7 +66,10 @@ type TurnHandle interface {
 // owns the token and overflow files. Delete must tolerate absent files. Methods
 // run outside store transactions and must not change global harness config.
 type LaunchFiles interface {
+	// Write creates private per-launch config after the runner wrote the token.
+	// It must honor ctx and never edit global harness configuration.
 	Write(context.Context, TurnLaunch) error
+	// Delete removes only this launch ID's harness config, tolerating absence.
 	Delete(context.Context, string) error
 }
 
@@ -73,9 +84,16 @@ type PaneObservation struct {
 // WaitActivity observes activity caused by the last Submit, including activity
 // already observed before WaitActivity starts; false at the deadline is uncertain.
 type Panes interface {
+	// State observes the agent on this member's recorded pane lease.
 	State(context.Context, model.Member) (PaneObservation, error)
+	// Submit sends the prompt once and remembers the activity baseline. An error
+	// means it was definitely not submitted; adapters must classify ambiguity.
 	Submit(context.Context, model.Member, string) error
+	// WaitSettled waits for a non-working state; timeout returns working without
+	// an error so this recipient can stay busy while others continue.
 	WaitSettled(context.Context, model.Member, time.Duration) (PaneObservation, error)
+	// WaitActivity confirms activity since Submit, including changes already
+	// observed. At the deadline it returns false without retrying submission.
 	WaitActivity(context.Context, model.Member, time.Duration) (bool, error)
 }
 
@@ -83,6 +101,8 @@ type Panes interface {
 // request.changed events. Adapters must fence their lease-bound writes by the
 // recorded member generation and stop on ctx cancellation/runner lease loss.
 type RequestExecutor interface {
+	// Execute receives a request already marked running, carries out its side
+	// effects, and returns its failure or nil. It must honor ctx cancellation.
 	Execute(context.Context, model.Request) error
 }
 
@@ -90,7 +110,11 @@ type RequestExecutor interface {
 // disappearance. Open covers pane-mode startup/wake and session-before-a-pane.
 // Adapters own those lease changes and must fence them by member generation.
 type PaneLifecycle interface {
+	// Open receives a starting member and performs pane/session preparation and
+	// guarded lease changes. It runs outside any store transaction.
 	Open(context.Context, model.Member, model.LeaseCause) error
+	// Exited handles a vanished pane, including any conversion/relaunch needed
+	// by its home mode. It must guard writes by this snapshot's generation.
 	Exited(context.Context, model.Member) error
 }
 
@@ -104,7 +128,11 @@ type ProcessState struct {
 // Processes probes orphan turns and cancels only a process whose PID and birth
 // still match. Empty/unknown birth must never authorize killing a reused PID.
 type Processes interface {
+	// Inspect reports liveness and the OS birth identity. Permission/inspection
+	// errors must not be represented as a definitely absent process.
 	Inspect(context.Context, int64) (ProcessState, error)
+	// Cancel terminates only the matching PID/birth and its descendants; an
+	// empty or mismatched identity must not authorize any signal.
 	Cancel(context.Context, int64, string) error
 }
 
