@@ -41,7 +41,11 @@ func assertPrivate(t *testing.T, path string, dir bool) {
 	}
 	// FILE_ALL_ACCESS from winnt.h: STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0x1ff.
 	const fileAllAccess = 0x001f01ff
-	if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE || ace.Header.AceFlags != 0 || ace.Mask != fileAllAccess {
+	var flags uint8
+	if dir {
+		flags = windows.OBJECT_INHERIT_ACE | windows.CONTAINER_INHERIT_ACE
+	}
+	if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE || ace.Header.AceFlags != flags || ace.Mask != fileAllAccess {
 		t.Fatalf("unexpected ACE: %+v", ace)
 	}
 }
