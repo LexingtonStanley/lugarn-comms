@@ -62,9 +62,7 @@ func TestArgs(t *testing.T) {
 							want = append(want, "--settings", l.path(".settings.json"))
 						}
 					case model.HarnessCodex:
-						if mode == model.ModeHeadless {
-							want = append(want, "--no-daemon")
-						}
+						want = append(want, "--no-daemon")
 						if p == model.ProfileBypass {
 							want = append(want, "--dangerously-bypass-approvals-and-sandbox")
 						} else {

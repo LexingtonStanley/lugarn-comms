@@ -57,9 +57,9 @@ func Args(l Launch, mode model.Mode) ([]string, error) {
 			a = append(a, "--settings", l.path(".settings.json"))
 		}
 	case model.HarnessCodex:
-		if headless {
-			a = append(a, "--no-daemon")
-		}
+		// Without it the TUI, like exec, starts a shared `codex app-server
+		// --managed-daemon` that outlives the pane (C2b). It's a global flag.
+		a = append(a, "--no-daemon")
 		if l.Profile == model.ProfileBypass {
 			a = append(a, "--dangerously-bypass-approvals-and-sandbox")
 		} else {
