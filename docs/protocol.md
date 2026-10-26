@@ -205,12 +205,16 @@ The schema covers shapes and ranges. The broker also checks, and refuses with
 `invalid_request` and `details.errors: [{ "path", "message" }]`:
 
 1. Member ids and names are unique within the spec.
-2. No spec member id belongs to another team, or to a spawned member of this one.
+2. No spec member id belongs to another team, or to `human`, a spawned member or a removed
+   member of this one: ids are never reused.
 3. Grid names exist (spec members or live spawned members); no `human`; no self edge; one edge
    per pair.
 4. `folder` is absolute in the host's syntax.
 5. The team name isn't used by another team (`name_taken`).
 6. Live agent members, spec plus spawned, number at most 24.
+7. No spec member takes a live spawned member's name.
+8. A member's `mode` is `headless` only if its harness can run headless
+   (`hello.harnesses[].headless`). pi can't in v1.
 
 Problems that don't block the apply come back as `warnings`:
 
@@ -225,15 +229,18 @@ Problems that don't block the apply come back as `warnings`:
 
 `apply-team` carries `if_revision`, the revision the app last saw. `0` creates the team and
 fails if the id exists. Otherwise it must equal the current revision, or the op fails with
-`revision_conflict` and the app re-reads with `get-team`. The revision goes up on every apply
+`revision_conflict` and the app re-reads with `get-team`. A non-zero `if_revision` for a team
+that doesn't exist is also `revision_conflict`, with the current revision reported as 0. The revision goes up on every apply
 and every spawn, because a spawn adds a member and grid edges.
 
 The stored grid becomes exactly `spec.grid`. Edges a spawn added are in the grid `get-team`
 returns, so an app that read, edited and applied keeps them; leaving one out revokes it.
 
 While the team is running, an apply may change the grid, limits, briefs, tasks, spawn
-settings, profiles and modes. Grid, limits and spawn settings take effect at once; profiles and
-modes from each member's next launch. Adding, removing or renaming members, or changing a
+settings, roles, the pattern, profiles and modes. The grid, limits, spawn settings and roles
+take effect at once; profiles and modes from each member's next launch. A new `hop_budget` or
+`review_rounds` is the step for the next Continue and the allowance at the next reset; the
+current allowance stands. Adding, removing or renaming members, or changing a
 member's harness, folder or worktree flag, or the team's name or Herdr server, needs the team
 stopped, and fails with `team_running` otherwise.
 
@@ -616,8 +623,10 @@ ends when its member or the team stops. It applies whatever the member's driver.
 ### Messages to `human`
 
 - **Length.** At most 8,000 code points. An agent's longer `send` or `reply` fails with
-  `invalid_request`, telling it to shorten the message. A longer auto-reply is cut at 8,000,
-  ending with the line `[… cut by Lugarn: <n> more characters in the transcript]`.
+  `invalid_request`, telling it to shorten the message. A longer auto-reply is cut so that,
+  with its last line `[… cut by Lugarn: <n> more characters in the transcript]`, it's at most
+  8,000; `<n>` counts the code points removed. An auto-reply to an agent is cut the same way at
+  65,536.
 - **Rate limit.** Of one member's messages to `human`, at most 5 in any 10 minutes raise
   attention. The broker counts the sender's messages to `human` in the 10 minutes before each
   one: under 5, the delivery has `notify: true`; otherwise `notify: false`, and the message is
@@ -665,9 +674,10 @@ one blank line.
 
 ### Replies
 
-An agent answers with `reply(id, text)`, or `send(to, text, reply_to)`. Both are messages to
-the original sender and go through the grid like any other: in a pipeline, B can't answer A.
-`reply` only accepts ids of messages the caller received.
+An agent answers with `reply(id, text)`, which goes to the original sender, or
+`send(to, text, reply_to)`, which goes to `to` and records what it answers. Both go through the
+grid like any other message: in a pipeline, B can't answer A. Either accepts only the id of a
+message the caller received (`not_found` otherwise).
 
 **Auto-replies.** When a headless turn succeeds with non-empty final text, the runner posts
 that text, kind `auto_reply`, to each distinct sender of the messages the turn consumed,
@@ -803,6 +813,8 @@ messages in a row, auto-replies included. A message from the person resets the c
   renumbered; those within the new allowance are queued.
 
 Each change emits `budget.changed` with cause `used`, `exhausted`, `continued` or `reset`.
+When a continue or a reset leaves deliveries still held, an `exhausted` follows it, so the
+person's attention comes back rather than clearing with deliveries still waiting.
 Its `by` is `human` for a continue or a reset by message, and null otherwise (`rounds.changed`
 likewise).
 
@@ -817,13 +829,17 @@ likewise).
   `rounds.changed` (`exhausted`) raises attention: the person decides.
 - **Continue** (`continue-budget`, kind `rounds`, with `writer` and `reviewer`, or neither for
   every exhausted pair) adds `amount`, default `review_rounds`.
-- **Reset:** a message from `human` to either member of the pair, and every team start.
+- **Reset:** a message from `human` to either member of the pair, and every team start. The
+  pair's held-for-rounds deliveries are counted again in order and renumbered, as for the hop
+  budget. Continues and resets that leave some held raise `exhausted` again, likewise.
 
 ## Spawning
 
 `spawn(name, harness, task, profile?, mode?)`, from the MCP tool or the CLI. The checks run in
 this order, inside one `BEGIN IMMEDIATE` transaction so two spawns can't both slip under a
-cap. The first that fails is the error, and every policy refusal also writes `policy.denied`.
+cap. The first that fails is the error, and every policy refusal (error codes 20–26) also
+writes `policy.denied`. Check 5 also covers the harness, profile, mode and task values, including
+a headless `mode` (given, or defaulted from `spawn.mode`) on a harness that can't run headless.
 
 | # | Check                                                                     | Error                 |
 | - | ------------------------------------------------------------------------- | --------------------- |
@@ -870,13 +886,17 @@ Spec members with `worktree: true` and spawned workers that get a worktree use t
 
 - **Base:** the spec member's `folder`, or the spawner's workdir. It must be inside a git
   repository; if it isn't, the member shares the folder and apply warned about it.
-- **Path:** `<parent of the repo's top level>/<repo name>-lugarn/<team name>-<member name>`.
+- **Path:** `<parent of the repo's main working tree>/<repo name>-lugarn/<team name>-<member name>`.
+  The main working tree is the parent of `git rev-parse --git-common-dir`, so a spawner that
+  is itself in a worktree gives its workers siblings, not nested folders.
   It isn't `<repo>-wt/`, which people and orchestrators already use for their own worktrees.
 - **Branch:** `lugarn/<team name>/<member name>`, created from the base's `HEAD`.
-- If the store's `worktrees` table records this path for this team and member, and it hasn't
-  been removed, it's reused, so a restart picks up where it left off. Anything else at the
-  path counts as taken, including a worktree on the same branch that the broker didn't make,
-  and `-2`, `-3`… is appended to both. The broker never takes over a person's own worktree.
+- If the store's `worktrees` table records this path for this team (by id) and member (by
+  name, since a respawned worker gets a new id), and it hasn't been removed, it's reused, so a
+  restart picks up where it left off. Anything else at the path counts as taken, including a
+  worktree on the same branch that the broker didn't make, and so does a branch that already
+  exists with nothing at the path. Then `-2`, `-3`… is appended to both, taking the lowest
+  free suffix. The broker never takes over a person's own worktree.
 - Each one is recorded in the store's `worktrees` table: repo, path, branch, base, member,
   created and removed times.
 - The broker never removes a worktree on its own. The person does, through
@@ -1610,3 +1630,12 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     for every delivery.
 66. **logind.** `hello` reports `host.logind` (`kill_user_processes`, `linger`) so the app can
     ask for `loginctl enable-linger` before a logout kills the team.
+67. **From the policy engine's build (C1b).** Spec member names may not take live spawned
+    names; ids are never reused, `human`'s and removed members' included; roles and the
+    pattern may change while running; a new `hop_budget` or `review_rounds` waits for the
+    next Continue or reset; `exhausted` is raised again when deliveries stay held; rounds
+    resets renumber like hop resets; auto-replies are cut with the marker inside the cap
+    (8,000 to `human`, 65,536 to agents); `send`'s `reply_to` must be a message the caller
+    received; policy refusals are codes 20–26; worktree paths start from the main working
+    tree, reuse matches team id and member name, and an existing branch counts as taken;
+    a harness that can't run headless can't be given headless mode.
