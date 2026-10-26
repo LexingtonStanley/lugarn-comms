@@ -163,7 +163,7 @@ func (r *Runner) runPreparedTurn(ctx context.Context, w *runnerTurn) (err error)
 		e = r.b.db.Read(ctx, func(tx *store.Tx) error {
 			s, e := tx.GetMemberSession(m.ID, *m.Session)
 			if e == nil {
-				desc.NewSession = s.Source == model.SessionSourceAssigned && s.BriefedAt == nil
+				desc.NewSession = s.Source == model.SessionSourceAssigned && s.BriefedAt == nil && !r.b.sessionStarted(m.ID, *m.Session)
 			}
 			return e
 		})

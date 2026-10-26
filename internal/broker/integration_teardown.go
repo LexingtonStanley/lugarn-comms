@@ -138,8 +138,14 @@ func (i *Integration) capturePointer(ctx context.Context, m model.Member) error 
 	}
 	helper := NewRunner(i.b, m.Team, RunnerOptions{HomeDir: i.opts.HomeDir})
 	id, e := helper.pointerSession(m)
-	if e != nil || id == "" || m.Session != nil && *m.Session == id {
+	if e != nil || id == "" {
 		return e
+	}
+	if e = i.b.rememberOrigin(m, id); e != nil {
+		return e
+	}
+	if m.Session != nil && *m.Session == id {
+		return nil
 	}
 	seal, e := model.NewSeal()
 	if e != nil {

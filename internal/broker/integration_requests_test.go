@@ -3,6 +3,9 @@ package broker
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -140,5 +143,55 @@ func TestIntegrationPaneExitRestoresHeadlessWithoutWaitingOnItself(t *testing.T)
 	must(t, e)
 	if m.Lease.Driver != model.DriverHeadless || m.Lease.Generation != 2 {
 		t.Fatal(m)
+	}
+}
+
+func TestIntegrationUnusedClaudeSessionStartsThenResumesWithoutLosingBrief(t *testing.T) {
+	b, _ := setup(t)
+	ctx := context.Background()
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		if e := tx.UpdateTeam("t", store.TeamPatch{HerdrWorkspace: ptr(ptr("workspace-owned"))}, b.now()); e != nil {
+			return e
+		}
+		return tx.UpdateMember("writer", store.MemberPatch{Harness: ptr(ptr(model.HarnessClaude))}, b.now())
+	}))
+	runnerReady(t, b)
+	client := &lifecycleHerdr{}
+	bin, e := os.Executable()
+	must(t, e)
+	i, e := NewIntegration(b, IntegrationOptions{Binary: bin, HomeDir: t.TempDir(), Herdr: func(string) HerdrAPI { return client }})
+	must(t, e)
+	r := i.Runner("t", RunnerOptions{Binary: func(model.Harness) (string, error) { return bin, nil }})
+	must(t, r.acquire(ctx))
+	l := r.opts.PaneLifecycle.(*integrationLifecycle)
+	m, e := l.current(ctx, "writer")
+	must(t, e)
+	m, e = r.launchHeadless(ctx, *m, model.LeaseCauseStart)
+	must(t, e)
+	// Assigning an id did not create a harness session. The first pane must use
+	// --session-id, even though the member already carries that assigned id.
+	must(t, l.Open(ctx, *m, model.LeaseCauseOpenTerminal))
+	if !slices.Contains(client.args, "--session-id") || slices.Contains(client.args, "--resume") {
+		t.Fatal(client.args)
+	}
+	m, e = l.current(ctx, "writer")
+	must(t, e)
+	// Simulate the real SessionStart hook, with no delivery/brief yet.
+	pointer := filepath.Join(i.opts.HomeDir, ".lugarn", "conversations")
+	must(t, os.MkdirAll(pointer, 0700))
+	must(t, os.WriteFile(filepath.Join(pointer, *m.Lease.Launch), []byte("{\"session_id\":\""+*m.Session+"\"}\n"), 0600))
+	must(t, l.toHeadless(ctx, *m, model.LeaseCauseReturnHeadless, true))
+	m, e = l.current(ctx, "writer")
+	must(t, e)
+	driver := &headlessStub{started: make(chan turnStart, 1), fn: func(s turnStart) {
+		s.handle.complete(TurnOutcome{Acknowledged: true, Session: m.Session, ExitCode: ptr(int64(0))})
+	}}
+	r.opts.Headless = driver
+	r.opts.Processes = &fakeProcesses{alive: true, birth: "fake"}
+	sendToWriter(t, b, "first actual task")
+	must(t, r.runTurn(ctx, *m))
+	started := <-driver.started
+	if started.launch.NewSession || !strings.Contains(started.prompt, "Real Lugarn headers end with") {
+		t.Fatal("initialized but unbriefed session was not resumed with its brief", started.launch, started.prompt)
 	}
 }

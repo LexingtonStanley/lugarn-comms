@@ -90,6 +90,19 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	var starting *model.Member
 	var team *store.Team
 	newSession := false
+	if m.Session != nil && *m.Harness == model.HarnessClaude {
+		var assigned bool
+		if e = l.i.b.db.Read(ctx, func(tx *store.Tx) error {
+			session, e := tx.GetMemberSession(m.ID, *m.Session)
+			if e == nil {
+				assigned = session.Source == model.SessionSourceAssigned && session.BriefedAt == nil
+			}
+			return e
+		}); e != nil {
+			return e
+		}
+		newSession = assigned && !l.i.b.sessionStarted(m.ID, *m.Session)
+	}
 	e = l.r.write(ctx, &m, func(tx *store.Tx, t *store.Team) error {
 		if t.State != model.TeamStateRunning || t.HerdrWorkspace == nil {
 			return model.NewError(model.ErrorTeamNotRunning, "team has no running workspace")
@@ -213,6 +226,11 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	agent, e := client.StartAgent(ctx, herdr.StartOptions{Name: herdr.AgentName(m.Team, m.Name), Harness: *m.Harness, Pane: tab.RootPane, Args: args})
 	if e != nil {
 		return e
+	}
+	if *m.Harness == model.HarnessClaude && agent.Activity != model.ActivityBlocked && starting.Session != nil {
+		if e = l.i.b.rememberOrigin(*starting, *starting.Session); e != nil {
+			return e
+		}
 	}
 	e = l.r.write(ctx, starting, func(tx *store.Tx, _ *store.Team) error {
 		if e := l.r.memberState(tx, *starting, model.MemberStateRunning, nil); e != nil {

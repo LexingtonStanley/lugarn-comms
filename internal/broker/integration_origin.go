@@ -11,13 +11,16 @@ import (
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
 )
 
-type sessionOrigin struct{ Workdir string }
+type sessionOrigin struct {
+	Workdir string
+	Started bool
+}
 
 func (b *Broker) originPath(member, session string) string {
 	return filepath.Join(b.opts.StateDir, "sessions", member, model.HashToken(session)+".json")
 }
 func (b *Broker) rememberOrigin(m model.Member, session string) error {
-	if m.Harness == nil || *m.Harness != model.HarnessCodex || session == "" || m.Workdir == nil {
+	if m.Harness == nil || (*m.Harness != model.HarnessCodex && *m.Harness != model.HarnessClaude) || session == "" || m.Workdir == nil {
 		return nil
 	}
 	path := b.originPath(m.ID, session)
@@ -30,7 +33,7 @@ func (b *Broker) rememberOrigin(m model.Member, session string) error {
 	if e != nil {
 		return e
 	}
-	raw, e := json.Marshal(sessionOrigin{Workdir: workdir})
+	raw, e := json.Marshal(sessionOrigin{Workdir: workdir, Started: true})
 	if e != nil {
 		return e
 	}
@@ -69,4 +72,13 @@ func (b *Broker) assertCodexWorkdir(m model.Member) error {
 		return fail()
 	}
 	return nil
+}
+
+func (b *Broker) sessionStarted(member, session string) bool {
+	raw, e := os.ReadFile(b.originPath(member, session))
+	if e != nil {
+		return false
+	}
+	var origin sessionOrigin
+	return json.Unmarshal(raw, &origin) == nil && origin.Started
 }
