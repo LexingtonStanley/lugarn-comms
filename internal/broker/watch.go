@@ -17,6 +17,7 @@ func (b *Broker) Watch(ctx context.Context, r wire.WatchRequest, emit func(wire.
 		}
 		return e
 	}
+	lastContact := b.opts.Clock()
 	var seq int64
 	var replay []store.Event
 	e := b.db.Read(ctx, func(tx *store.Tx) error {
@@ -69,11 +70,15 @@ func (b *Broker) Watch(ctx context.Context, r wire.WatchRequest, emit func(wire.
 		case <-ctx.Done():
 			return nil
 		case <-poll.C:
-			if e = b.contact(ctx, r.Team); e != nil {
-				if ctx.Err() != nil {
-					return nil
+			// Event polling stays read-only between contact/runner checks.
+			if now := b.opts.Clock(); now.Sub(lastContact) >= 5*time.Second {
+				if e = b.contact(ctx, r.Team); e != nil {
+					if ctx.Err() != nil {
+						return nil
+					}
+					return e
 				}
-				return e
+				lastContact = b.opts.Clock()
 			}
 			var events []store.Event
 			var newest int64
