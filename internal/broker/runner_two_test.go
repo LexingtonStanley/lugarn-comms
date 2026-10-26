@@ -19,7 +19,7 @@ func TestTwoRunnersSeparateStores(t *testing.T) {
 	must(t, e)
 	defer db2.Close()
 	b2 := New(db2, Options{StateDir: b.opts.StateDir, Host: fakeHost{}, Probe: fakeProbe{}})
-	opts := RunnerOptions{PID: 101, Files: fakeLaunchFiles{}, Processes: &fakeProcesses{alive: false}, PollInterval: 5 * time.Millisecond, HeartbeatInterval: 10 * time.Millisecond, Binary: func(model.Harness) (string, error) { return "fake", nil }}
+	opts := RunnerOptions{PID: 101, Files: fakeLaunchFiles{}, Processes: &fakeProcesses{alive: false}, PollInterval: 20 * time.Millisecond, HeartbeatInterval: 100 * time.Millisecond, Binary: func(model.Harness) (string, error) { return "fake", nil }}
 	r1 := NewRunner(b, "t", opts)
 	firstCtx, stopFirst := context.WithCancel(ctx)
 	defer stopFirst()
