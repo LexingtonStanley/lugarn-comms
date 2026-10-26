@@ -347,10 +347,12 @@ CREATE TABLE requests (
   status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'succeeded', 'failed')),
   error_code    TEXT CHECK (error_code IN ('internal', 'invalid_request', 'unauthenticated', 'unsupported_version', 'not_found', 'unknown_member', 'denied', 'spawn_disabled', 'spawn_cap_reached', 'harness_not_allowed', 'profile_too_high', 'nesting_not_allowed', 'name_taken', 'team_not_running', 'team_running', 'runner_unavailable', 'herdr_unavailable', 'harness_unavailable', 'launch_failed', 'lease_conflict', 'revision_conflict', 'cursor_invalid', 'timeout')),
   error_message TEXT,
+  error_details TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(error_details) AND json_type(error_details) = 'object'),
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   started_at    TEXT,
   finished_at   TEXT,
   CHECK ((status = 'failed') = (error_code IS NOT NULL)),
+  CHECK ((status = 'failed') = (error_message IS NOT NULL AND length(error_message) > 0)),
   CHECK ((status IN ('succeeded', 'failed')) = (finished_at IS NOT NULL))
 ) STRICT;
 
