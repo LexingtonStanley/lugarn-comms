@@ -1,0 +1,26 @@
+=== RUN   TestLive
+=== RUN   TestLive/codex
+    live_test.go:134: codex first argv=["--model" "gpt-6-luna" "-s" "read-only" "-c" "mcp_servers.lugarn.command=\"/tmp/go-build3556642830/b001/harness.test\"" "-c" "mcp_servers.lugarn.args=[\"mcp\",\"--member\",\"member_1\",\"--token-file\",\"/tmp/TestLivecodex2929927090/001/state/launch/01M5WMXGHMYF4RKH5MV4FFZ26W.token\"]" "-c" "mcp_servers.lugarn.tools.send.approval_mode=\"approve\"" "-c" "mcp_servers.lugarn.tools.reply.approval_mode=\"approve\"" "-c" "mcp_servers.lugarn.tools.inbox.approval_mode=\"approve\"" "-c" "mcp_servers.lugarn.tools.team.approval_mode=\"approve\"" "-c" "mcp_servers.lugarn.tools.spawn.approval_mode=\"approve\"" "-c" "mcp_servers.lugarn.tools.stop.approval_mode=\"approve\"" "exec" "--json" "--skip-git-repo-check" "-"]; stdin="Call the lugarn team MCP tool once with {}. Reply with the word ok."
+    live_test.go:145: codex first pid=3214880 exit=0 acknowledged=true session=01a1794e-c303-78a2-a64f-0fd2bf2d9557 final="ok" status=succeeded error="" usage=&{InputTokens:0x2bd9a34a21d0 OutputTokens:0x2bd9a34a21d8 CachedInputTokens:0x2bd9a34a21e0 ReasoningTokens:0x2bd9a34a21e8 CostUSD:<nil>}
+    live_test.go:147: MCP log:
+        start pid=3215058 member=member_1
+        initialize  pid=3215058 member=member_1
+        tools/list  pid=3215058 member=member_1
+        tools/call team pid=3215058 member=member_1
+    live_test.go:134: codex resumed argv=["--model" "gpt-6-luna" "-s" "read-only" "-c" "mcp_servers.lugarn.command=\"/tmp/go-build3556642830/b001/harness.test\"" "-c" "mcp_servers.lugarn.args=[\"mcp\",\"--member\",\"member_1\",\"--token-file\",\"/tmp/TestLivecodex2929927090/001/state/launch/01M5WMXGHMYF4RKH5MV4FFZ26W.token\"]" "-c" "mcp_servers.lugarn.tools.send.approval_mode=\"approve\"" "-c" "mcp_servers.lugarn.tools.reply.approval_mode=\"approve\"" "-c" "mcp_servers.lugarn.tools.inbox.approval_mode=\"approve\"" "-c" "mcp_servers.lugarn.tools.team.approval_mode=\"approve\"" "-c" "mcp_servers.lugarn.tools.spawn.approval_mode=\"approve\"" "-c" "mcp_servers.lugarn.tools.stop.approval_mode=\"approve\"" "exec" "--json" "resume" "01a1794e-c303-78a2-a64f-0fd2bf2d9557" "--skip-git-repo-check" "-"]; stdin="Call the lugarn team MCP tool once with {}. Reply with the word ok."
+    live_test.go:145: codex resumed pid=3215390 exit=0 acknowledged=true session=01a1794e-c303-78a2-a64f-0fd2bf2d9557 final="ok" status=succeeded error="" usage=&{InputTokens:0x2bd9a36a8000 OutputTokens:0x2bd9a36a8008 CachedInputTokens:0x2bd9a36a8010 ReasoningTokens:0x2bd9a36a8018 CostUSD:<nil>}
+    live_test.go:147: MCP log:
+        start pid=3215058 member=member_1
+        initialize  pid=3215058 member=member_1
+        tools/list  pid=3215058 member=member_1
+        tools/call team pid=3215058 member=member_1
+        start pid=3215491 member=member_1
+        initialize  pid=3215491 member=member_1
+        tools/list  pid=3215491 member=member_1
+        tools/call team pid=3215491 member=member_1
+    live_test.go:189: codex cancelling pid=3215769 tree=[3215769] while team call blocked
+    live_test.go:198: codex cancelled: exit=-1 acknowledged=true session=01a1794e-c303-78a2-a64f-0fd2bf2d9557 status=cancelled; all 1 processes dead
+--- PASS: TestLive (17.25s)
+    --- PASS: TestLive/codex (17.25s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	17.257s

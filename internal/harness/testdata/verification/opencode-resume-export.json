@@ -1,0 +1,213 @@
+{
+  "info": {
+    "id": "ses_e86ae3bb8ffesPO872aCi7aCGL",
+    "projectID": "fe998cd41c60d8a9b8c0a1bfed5091b61d002ec2",
+    "model": {
+      "id": "iceman-contributor-free",
+      "providerID": "opencode-go",
+      "variant": "default"
+    },
+    "cost": 0.0000521,
+    "tokens": {
+      "input": 13981,
+      "output": 60,
+      "reasoning": 269,
+      "cache": {
+        "read": 6877,
+        "write": 0
+      }
+    },
+    "outcome": "succeeded",
+    "time": {
+      "created": 1793036764349,
+      "updated": 1793036776878,
+      "idle": 1793036776881
+    },
+    "title": "Lugarn team MCP call",
+    "location": {
+      "directory": "/tmp/TestLiveopencode2306225479/001"
+    }
+  },
+  "messages": [
+    {
+      "id": "msg_17951c4cd001GLTirn5B2uXPDh",
+      "time": {
+        "created": 1793036765189
+      },
+      "text": "Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the first turn. Reply with the word ok.",
+      "files": [],
+      "type": "user"
+    },
+    {
+      "id": "msg_17951c80d001zhhl1MiCGyk7n5",
+      "time": {
+        "created": 1793036765203,
+        "streamed": 1793036768551,
+        "completed": 1793036768565
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "iceman-contributor-free",
+        "providerID": "opencode-go",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "I'll call the tool."
+        },
+        {
+          "type": "tool",
+          "id": "f631b6fe-8953-4c0f-96e6-c354ea34342f",
+          "name": "execute",
+          "executed": false,
+          "state": {
+            "status": "completed",
+            "input": {
+              "code": "await tools.lugarn.team({});"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "ok"
+              }
+            ],
+            "metadata": {
+              "toolCalls": [
+                {
+                  "tool": "lugarn.team",
+                  "status": "completed"
+                }
+              ],
+              "truncated": false
+            }
+          },
+          "time": {
+            "created": 1793036768535,
+            "ran": 1793036768547,
+            "completed": 1793036768563
+          }
+        }
+      ],
+      "finish": "tool-calls",
+      "rawFinish": "tool_calls",
+      "cost": 0,
+      "tokens": {
+        "input": 6668,
+        "output": 33,
+        "reasoning": 78,
+        "cache": {
+          "read": 70,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_17951d53b0018ApaHPqtHETxMP",
+      "time": {
+        "created": 1793036768576,
+        "streamed": 1793036770005,
+        "completed": 1793036770008
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "iceman-contributor-free",
+        "providerID": "opencode-go",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "ok"
+        }
+      ],
+      "finish": "stop",
+      "rawFinish": "stop",
+      "cost": 0,
+      "tokens": {
+        "input": 37,
+        "output": 8,
+        "reasoning": 16,
+        "cache": {
+          "read": 6737,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_17951dadb001G5tYapEImschC3",
+      "time": {
+        "created": 1793036770011
+      },
+      "type": "idle",
+      "outcome": "succeeded"
+    },
+    {
+      "id": "msg_17951df86001SQpETAknFEE4X6",
+      "metadata": {
+        "notice": "instructions",
+        "instructionSources": [
+          "core/codemode"
+        ]
+      },
+      "time": {
+        "created": 1793036771206
+      },
+      "type": "system",
+      "text": "The Code Mode tool catalog has changed.\n\nThe following tools are no longer available and must not be called: tools.lugarn.inbox, tools.lugarn.reply, tools.lugarn.send, tools.lugarn.spawn, tools.lugarn.stop, tools.lugarn.team.",
+      "description": "Instructions updated: core/codemode"
+    },
+    {
+      "id": "msg_17951dc52001Kk1NmV9VmKJwRp",
+      "time": {
+        "created": 1793036771207
+      },
+      "text": "Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the resumed turn. Reply with the word ok.",
+      "files": [],
+      "type": "user"
+    },
+    {
+      "id": "msg_17951df8c0015MXBVSnkezO0BI",
+      "time": {
+        "created": 1793036771218,
+        "streamed": 1793036776875,
+        "completed": 1793036776878
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "iceman-contributor-free",
+        "providerID": "opencode-go",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "ok"
+        }
+      ],
+      "finish": "stop",
+      "rawFinish": "stop",
+      "cost": 0,
+      "tokens": {
+        "input": 6810,
+        "output": 8,
+        "reasoning": 175,
+        "cache": {
+          "read": 70,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_17951f5b1001O24m6DFoHKgEN6",
+      "time": {
+        "created": 1793036776881
+      },
+      "type": "idle",
+      "outcome": "succeeded"
+    }
+  ]
+}

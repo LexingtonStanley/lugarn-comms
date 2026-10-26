@@ -1,0 +1,189 @@
+Wave C2c report, 2026-10-26, branch c2/harness.
+
+Implemented only internal/harness. No push, PR, other branch, or sibling package
+changes. The implementation commits follow the requested order; this report and
+verification artifacts form the final commit. Every commit includes the supplied
+Co-Authored-By line.
+
+Exported API, one line per type/function group:
+- Launch: trusted harness/profile, paths, launch/member/session identity, Resume,
+  ExtraEnv, and optional Model selector. Validate rejects unsafe ids, nonabsolute
+  paths, NUL/newline paths, invalid sessions, and identity/config env overrides.
+- Launch.TokenPath: caller-owned token path, referenced without writing a token.
+- Launch.OwnedPaths(home): token, delivery directory, generated configs, and Claude
+  pointer, for caller cleanup; only the delivery directory needs recursive removal.
+- WriteFiles: private per-launch Claude MCP/settings and OpenCode MCP/permission
+  files using statedir; Codex and pi require no generated configuration files.
+- ClaudeHookSettings: silent POSIX sh / Windows PowerShell SessionStart hook with
+  no pruning. ReadPointer: last complete valid non-subagent session, or empty.
+- Args / Environment: pure argv and environment builders for first/resumed turns
+  and panes, every harness/profile combination; pi headless returns the shared
+  harness_unavailable error. Codex/OpenCode panes require a reported session first.
+- Event / Parser / NewParser / Parser.Line / Parser.Finish: single acknowledgement,
+  session changes, last assistant text, nullable model.Usage, and failure evidence.
+- Outcome / Status: process result and pure succeeded/failed/cancelled/timed_out
+  mapping using model enums; explicit provider errors count even with exit zero.
+- Resolver / Driver / Driver.Start: injectable executable discovery for tests;
+  default hostprobe Binary plus version/support checks, native .exe only on Windows.
+- Start / Handle: prompt on stdin then EOF, immutable PID and buffered Events;
+  concurrent/repeatable Wait and Cancel, context cancellation/deadlines, bounded
+  stream draining, POSIX groups plus detached-descendant cleanup, Windows jobs.
+
+Unit/process verification:
+- Complete argv tables across four harnesses, three profiles, first/later/new-pane/
+  resumed-pane cases, including unsupported cases; model selectors and quoting.
+- Parsed JSON file contents, private file modes, both platform hook shapes, silent
+  POSIX hook execution with a temporary HOME, pointer partial/subagent/last-line
+  behavior, recorded event fixtures, status/usage/parser edge cases.
+- The executable is the Go test binary in helper mode, with no scripts or installed
+  harness dependency. Success, failure, overflow, literal stdin, repeated Wait,
+  concurrent cancellation, context cancellation/deadline, child/grandchild death,
+  and a grandchild that creates its own POSIX session are tested.
+- Snapshot ancestry uses Linux /proc and macOS kern.proc.all. It selects numeric
+  descendants of the process we launched, never executable names. Windows uses a
+  kill-on-close job, with immediate post-start assignment. The possible spawn
+  before assignment window is documented in process_windows.go.
+
+Live commands and real output:
+The complete command argv, session/ack/final output, fake-MCP initialize/list/call
+records, cancellation pids and test results are preserved in testdata/verification.
+The fixtures in testdata/{claude,codex,opencode}.jsonl are complete, unmodified
+stdout from real runs here; testdata/README.md records their exact commands,
+versions, prompt and configuration. All three fixture runs exited 0, stderr empty,
+final text "ok". Files were inspected for secrets; none were found.
+
+Every model prompt was tiny. Live commands used LUGARN_HARNESS_LIVE=1, isolated
+working/state directories, and read-only profiles. No Herdr was invoked. No
+application code accessed this person's ~/.lugarn, and hook execution tests used
+HOME=t.TempDir(). No global harness configuration was edited. For the MCP live
+Claude and Codex tests, credentials were copied to private disposable config
+folders, without printing them, to keep global hooks/config out of these runs.
+
+Actual commands, with PATH=$HOME/.local/go/bin:$PATH exported:
+
+  LUGARN_HARNESS_LIVE=1 go test -v -run '^TestLive/claude$' -count=1 ./internal/harness
+  LUGARN_HARNESS_LIVE=1 go test -v -run '^TestLive/codex$' -count=1 ./internal/harness
+  LUGARN_HARNESS_LIVE=1 LUGARN_HARNESS_LIVE_CANCEL_ONLY=1 go test -v -run '^TestLive/codex$' -count=1 ./internal/harness
+  LUGARN_HARNESS_LIVE=1 go test -v -run '^TestLive/opencode$' -count=1 ./internal/harness
+  LUGARN_HARNESS_LIVE=1 LUGARN_HARNESS_LIVE_CANCEL_ONLY=1 go test -v -run '^TestLive/opencode$' -count=1 ./internal/harness
+  opencode session export --standalone ses_e86ae3bb8ffesPO872aCi7aCGL
+
+Observed results (raw logs retained, including the failing live assertion):
+- Claude 2.1.310: first/resumed turns both listed and called team, exit 0,
+  acknowledged=true, final="ok", session f6f6c535-3088-4fb4-8d2f-bac6ddadb9e2
+  unchanged on resume. Cancellation after the blocked tool call killed the harness
+  and MCP child: exit=-1, acknowledged=true, status=cancelled, 2 processes dead.
+  TestLive passed in 9.877s. An earlier fake-server attempt lacked readOnlyHint on
+  team; plan mode blocked it. Matching the real server's annotation fixed that.
+- Codex 0.164.0: first/resumed turns both listed and called team under -s read-only
+  with exactly six per-tool approval_mode="approve" overrides, exit 0,
+  acknowledged=true, final="ok", session 01a1794e-c303-78a2-a64f-0fd2bf2d9557
+  unchanged on resume. This proves MCP approval without bypass. The original full
+  log's cancellation assertion checked only the process group and was insufficient:
+  the MCP child detached into another group. The final ancestry-aware cancellation
+  test passed in 6.822s: pid=3224234, MCP pid=3224494, exit=-1,
+  acknowledged=true, session=01a17951-c083-77b0-8241-9aa846eeddd1, status=cancelled;
+  both processes dead. --no-daemon is now included, as in the reference; that flag
+  alone did not prevent the MCP child's separate group. The failed cancellation
+  attempts' own MCP pids were cleaned up by their known pid, or had already exited.
+  C0 already demonstrated sandboxed shell failure from lexbox's AppArmor/userns
+  restriction (Failed RTM_NEWADDR: Operation not permitted). No extra shell/model
+  run was spent reproducing that host issue.
+- OpenCode 2.1.4: the first turn listed and called team, exit 0,
+  acknowledged=true, final="ok", session ses_e86ae3bb8ffesPO872aCi7aCGL.
+  The resumed turn used that same session, exit 0, acknowledged=true, final="ok",
+  but DID NOT call team; initialize/tools/list reached the server. The strict live
+  test failed in 12.948s and remains strict in the committed test. A previous pair
+  showed the same behavior. Exporting the transcript showed a new system notice:
+  "The Code Mode tool catalog has changed." followed by a list saying the six
+  tools were no longer available. Both first and resumed user prompts are present,
+  so stdin was delivered. The complete export is retained as evidence. This is an
+  unresolved resumed MCP availability failure under the specified flags, not a
+  passing end-to-end result. No alternate profile or global-config workaround was
+  attempted. A fresh launch cancelled just after MCP tools/list passed in 1.302s:
+  harness pid=3232543 and MCP pid=3232615 both dead, exit=-1, status=cancelled.
+  That early cancellation occurred before acknowledgement (acknowledged=false).
+  One earlier model-selector placement failed at CLI parsing; the builder now
+  places OpenCode's --model after run, with a regression table check.
+
+No further paid retries were made. The retained Codex first/resume log predates the
+addition of --no-daemon; the final cancellation run includes it. Live tests skip by
+default. LUGARN_HARNESS_LIVE_CANCEL_ONLY=1 permits a tiny independent cancellation
+check without rerunning two completed turns. The normal live test runs first,
+resumed and cancellation in order, and currently fails at OpenCode's resumed call.
+
+Choices where the spec is silent:
+- Optional trusted Model allows cheap test/caller model choices. No free-form argv
+  extension exists. Claude/Codex use lowercase UUID syntax; OpenCode sessions use
+  ses_ plus 1-128 ASCII alphanumerics. ExtraEnv keys use portable identifier syntax.
+- Environment returns overrides; Driver merges with inherited env case-insensitively
+  on Windows. Inherited OPENCODE_CONFIG_CONTENT is removed so it cannot shadow the
+  launch config. Identity and OPENCODE_CONFIG overrides are reserved. C2d must apply
+  the equivalent removal/overrides when it launches panes.
+- Events deliberately contains only one buffered acknowledgement and closes after
+  completion; it cannot stall Wait if the runner is not consuming progress events.
+- Explicit provider/result errors override exit zero. Absent completion/final text
+  is failure even after acknowledgement. Unknown event types are ignored; malformed
+  JSON is mentioned only on otherwise failed turns. Stderr is bounded to 16KB,
+  event lines to 4MiB, total event output to 64MiB, and pipe draining to one second.
+- OpenCode text blocks are combined within a message and reset at a new messageID,
+  so only the last assistant message is returned. Its v2 stream often omits
+  step_finish/usage; final text plus clean exit/ack is completion evidence here.
+  Unlike the reference worker's v2 transcript-export check, this driver does not
+  spawn an auxiliary export command. Fields absent from the stream remain nil.
+- Cancellation uses immediate SIGKILL / job termination for predictable teardown,
+  supplemented on Linux/macOS by an ancestry snapshot for detached descendants.
+  An already orphaned/reparented descendant cannot be rediscovered by ancestry;
+  this is process control, not isolation from a hostile process trying to escape.
+- Pointer parsing ignores malformed records, invalid UUIDs and partial final lines;
+  agent_id present even as null marks a subagent record. A missing file means none.
+- Own paths include the optional delivery directory although this package creates
+  no pane delivery files. The caller owns cleanup, token writes and pointer deletion.
+
+Spec issues, using docs/protocol.md from origin/c0/followups:
+- Lines 748-754 prescribe OpenCode registration and resume flags, with "nothing
+  extra" to call tools. The observed resumed transcript drops all six tools even
+  though the new local server initializes/lists. Full resumed MCP functionality
+  is not verified. See opencode-live.log and opencode-resume-export.json.
+- Line 727 and .brief/BRIEF.md:67 prescribe killing the POSIX process group so
+  grandchildren die too. Codex's MCP child creates a separate group; killing only
+  the harness group leaves it alive. Ancestry-based cleanup is needed here.
+- Lines 739-740 say pane UIs, OpenCode 1.x, macOS and Windows are verified in C2c;
+  .brief/BRIEF.md:79 explicitly defers these to other machines. They were deferred.
+- State-on-host table at lines 94-98 omits the Claude .settings.json that
+  .brief/BRIEF.md:57 requires. OwnedPaths includes it and the runner should delete it.
+
+internal/model gaps: none blocking. All harness/profile/mode/status/error enums and
+Usage are reused unchanged. The package adds the driver-specific launch, process
+outcome, acknowledgement and session validators that the model does not define.
+No internal/model files or sibling packages were edited.
+
+Not verified live: macOS process control and hooks, Windows native resolution/job
+behavior/PowerShell hooks, Herdr pane launches, OpenCode 1.x --standalone, pi panes,
+or workspace/bypass permissions. macOS/Windows code and tests cross-compile under
+vet; the portable helper tests are ready for their native CI runners. OpenCode's
+resumed MCP call remains a known live failure rather than an untested claim.
+
+All required offline checks passed on the final code. Real command output is in
+verification/checks.log. gofmt -l . printed nothing; go vet ./...,
+GOOS=windows GOARCH=amd64 go vet ./..., and GOOS=darwin GOARCH=arm64 go vet ./...
+each exited 0 with no output. The final exact go test -race ./... output follows
+(cached results reflect the successful fresh package/repository runs in this
+session, including the latest harness race tests):
+
+ok  	github.com/LexingtonStanley/lugarn-comms/cmd/lugarn-comms	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/agentops	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/appops	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/cli	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/gitwt	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/hostprobe	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/mcpserver	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/model	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/policy	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/internal/service	[no test files]
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/statedir	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/store	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/internal/version	[no test files]
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/wire	(cached)
+?   	github.com/LexingtonStanley/lugarn-comms/schema	[no test files]
