@@ -37,7 +37,8 @@ func newRepo(t *testing.T) string {
 	if err := os.Mkdir(repo, 0700); err != nil {
 		t.Fatal(err)
 	}
-	testGit(t, repo, "init", "-b", "main")
+	testGit(t, repo, "init")
+	testGit(t, repo, "symbolic-ref", "HEAD", "refs/heads/main")
 	testGit(t, repo, "config", "user.name", "Worktree Test")
 	testGit(t, repo, "config", "user.email", "test@example.invalid")
 	testGit(t, repo, "config", "commit.gpgsign", "false")
@@ -215,7 +216,7 @@ func TestState(t *testing.T) {
 	check(GitStateClean)
 	write(t, filepath.Join(path, "tracked.txt"), "changed\n")
 	check(GitStateDirty)
-	testGit(t, path, "restore", "tracked.txt")
+	testGit(t, path, "checkout", "--", "tracked.txt")
 	check(GitStateClean)
 	write(t, filepath.Join(path, "untracked.txt"), "new\n")
 	check(GitStateDirty)

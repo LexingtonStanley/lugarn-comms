@@ -131,11 +131,15 @@ func RepoInfo(ctx context.Context, folder string) (Info, error) {
 		return Info{}, err
 	}
 	top := strings.TrimSuffix(string(out), "\n")
-	out, err = git(ctx, folder, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	out, err = git(ctx, folder, "rev-parse", "--git-common-dir")
 	if err != nil {
 		return Info{}, err
 	}
-	return Info{InGit: true, TopLevel: filepath.Clean(top), MainWorktree: filepath.Dir(strings.TrimSuffix(string(out), "\n"))}, nil
+	commonDir := filepath.FromSlash(strings.TrimSuffix(string(out), "\n"))
+	if !filepath.IsAbs(commonDir) {
+		commonDir = filepath.Join(folder, commonDir)
+	}
+	return Info{InGit: true, TopLevel: filepath.Clean(top), MainWorktree: filepath.Dir(commonDir)}, nil
 }
 
 // BranchExists checks a local branch, not a tag or remote-tracking ref.
@@ -220,17 +224,24 @@ func remove(ctx context.Context, repo, path, branch string) (BranchOutcome, erro
 	}
 	// Refuse a main tree, an unregistered path, or a mismatched branch before
 	// removing anything. The first porcelain record is the main working tree.
-	out, err := git(ctx, repo, "worktree", "list", "--porcelain", "-z")
+	out, err := git(ctx, repo, "worktree", "list", "--porcelain")
 	if err != nil {
 		return "", err
 	}
 	found := false
-	for i, record := range strings.Split(string(out), "\x00\x00") {
-		fields := strings.Split(record, "\x00")
+	for i, record := range strings.Split(string(out), "\n\n") {
+		fields := strings.Split(record, "\n")
 		if len(fields) == 0 || !strings.HasPrefix(fields[0], "worktree ") {
 			continue
 		}
-		listed := filepath.FromSlash(strings.TrimPrefix(fields[0], "worktree "))
+		listed := strings.TrimPrefix(fields[0], "worktree ")
+		if strings.HasPrefix(listed, "\"") {
+			listed, err = strconv.Unquote(listed)
+			if err != nil {
+				return "", fmt.Errorf("parse worktree path: %w", err)
+			}
+		}
+		listed = filepath.FromSlash(listed)
 		if !samePath(listed, path) {
 			continue
 		}
