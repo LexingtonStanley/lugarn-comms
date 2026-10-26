@@ -19,14 +19,46 @@ type integrationLifecycle struct {
 }
 
 func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause model.LeaseCause) (err error) {
+	// Refusals are read-only. Check them before worktree preparation, lease
+	// rotation, or the optional session-before-pane turn.
+	if m.Lease == nil || m.Harness == nil {
+		return invalid("member has no agent lease")
+	}
+	if m.Lease.Driver == model.DriverPane {
+		return model.NewError(model.ErrorLeaseConflict, "member already has a pane")
+	}
+	if e := l.i.b.db.Read(ctx, func(tx *store.Tx) error {
+		if _, e := tx.GetLiveTurn(m.ID); e == nil {
+			return model.NewError(model.ErrorLeaseConflict, "member has a live turn")
+		} else if !missing(e) {
+			return e
+		}
+		return nil
+	}); e != nil {
+		return e
+	}
+	host := l.i.b.host(ctx)
+	if issue := host.HarnessIssue(*m.Harness); issue != "" {
+		return model.NewError(model.ErrorHarnessUnavailable, "harness unavailable").WithDetail("reason", issue)
+	}
+	binary, e := l.r.opts.Binary(*m.Harness)
+	if e != nil {
+		return unresolvable(e)
+	}
+	if m.Session != nil {
+		if e := l.i.b.assertCodexWorkdir(m); e != nil {
+			return e
+		}
+	}
 	original := m
+	launchStarted := false
 	prepared, e := l.i.prepareWorktree(ctx, l.r, m)
 	if e != nil {
 		return e
 	}
 	m = *prepared
 	defer func() {
-		if err != nil {
+		if err != nil && launchStarted {
 			var current *model.Member
 			_ = l.i.b.db.Read(context.WithoutCancel(ctx), func(tx *store.Tx) error { var e error; current, e = tx.GetMember(original.ID); return e })
 			if current != nil && (current.StopReason == nil || *current.StopReason != model.StopReasonLaunchFailed) {
@@ -35,9 +67,13 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 		}
 	}()
 	if m.Session == nil && (m.Harness != nil && (*m.Harness == model.HarnessCodex || *m.Harness == model.HarnessOpenCode)) {
-		headless, e := l.r.launchHeadless(ctx, m, model.LeaseCauseStart)
-		if e != nil {
-			return e
+		headless := &m
+		if m.Lease == nil || m.Lease.Driver != model.DriverHeadless {
+			var e error
+			headless, e = l.r.launchHeadless(ctx, m, model.LeaseCauseStart)
+			if e != nil {
+				return e
+			}
 		}
 		brief, e := l.r.prepareTurnKind(ctx, *headless, true)
 		if e != nil {
@@ -46,6 +82,7 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 		if brief == nil {
 			return model.NewError(model.ErrorLeaseConflict, "no headless slot for session-before-a-pane")
 		}
+		launchStarted = true
 		if e = l.r.runPreparedTurn(ctx, brief); e != nil {
 			return e
 		}
@@ -70,14 +107,6 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	}
 	if e := l.i.b.assertCodexWorkdir(m); e != nil {
 		return e
-	}
-	host := l.i.b.host(ctx)
-	if issue := host.HarnessIssue(*m.Harness); issue != "" {
-		return model.NewError(model.ErrorHarnessUnavailable, "harness unavailable").WithDetail("reason", issue)
-	}
-	binary, e := l.r.opts.Binary(*m.Harness)
-	if e != nil {
-		return unresolvable(e)
 	}
 	id, e := l.i.b.opts.ID()
 	if e != nil {
@@ -166,6 +195,7 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	if e != nil {
 		return e
 	}
+	launchStarted = true
 	desc := TurnLaunch{Harness: *m.Harness, Profile: *m.Profile, Workdir: *m.Workdir, StateDir: l.i.b.opts.StateDir, LaunchID: id, MemberID: m.ID, Binary: binary, Session: starting.Session, NewSession: newSession}
 	if e = statedir.Ensure(l.i.b.opts.StateDir); e != nil {
 		return e

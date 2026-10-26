@@ -62,7 +62,11 @@ func TestIntegrationPaneLaunchAndSessionBeforePane(t *testing.T) {
 			sendToWriter(t, b, "task must wait for pane")
 			var m *model.Member
 			must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; m, e = tx.GetMember("writer"); return e }))
-			must(t, r.openPane(ctx, *m, model.LeaseCauseStart))
+			if harness == model.HarnessCodex {
+				m, e = r.launchHeadless(ctx, *m, model.LeaseCauseStart)
+				must(t, e)
+			}
+			must(t, r.opts.PaneLifecycle.Open(ctx, *m, model.LeaseCauseStart))
 			must(t, b.db.Read(ctx, func(tx *store.Tx) error {
 				v, e := tx.GetMember(m.ID)
 				if e != nil {
@@ -91,6 +95,15 @@ func TestIntegrationPaneLaunchAndSessionBeforePane(t *testing.T) {
 				}
 				return nil
 			}))
+			var before, after *model.Member
+			must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; before, e = tx.GetMember("writer"); return e }))
+			if e := r.opts.PaneLifecycle.Open(ctx, *before, model.LeaseCauseOpenTerminal); e == nil {
+				t.Fatal("expected refusal")
+			}
+			must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; after, e = tx.GetMember("writer"); return e }))
+			if after.State != before.State || after.Lease.Generation != before.Lease.Generation {
+				t.Fatal("refusal changed healthy member", after)
+			}
 		})
 	}
 }
