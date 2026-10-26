@@ -2,7 +2,6 @@ package broker
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
@@ -115,19 +114,15 @@ func (r *Runner) prepareTurn(ctx context.Context, m model.Member) (*runnerTurn, 
 		if e != nil {
 			return e
 		}
-		texts := []string{}
-		for _, d := range picked {
-			msg, e := tx.GetMessage(d.MessageID)
-			if e != nil {
-				return e
-			}
-			texts = append(texts, msg.Text)
+		prompt, e := r.prompt(tx, t, *current, picked, seal)
+		if e != nil {
+			return e
 		}
 		timeout := r.opts.TurnTimeout
 		if timeout <= 0 {
 			timeout = time.Duration(t.TurnTimeoutSeconds) * time.Second
 		}
-		w = &runnerTurn{turn: turn, member: *current, items: picked, seal: seal, prompt: strings.Join(texts, "\n\n"), seq: seq, timeout: timeout}
+		w = &runnerTurn{turn: turn, member: *current, items: picked, seal: seal, prompt: prompt, seq: seq, timeout: timeout}
 		return nil
 	})
 	return w, e
@@ -281,7 +276,7 @@ func (r *Runner) acknowledgeTx(tx *store.Tx, w *runnerTurn, session *string) err
 	return r.setActivity(tx, w.member, model.ActivityWorking)
 }
 func (r *Runner) finishTurn(ctx context.Context, w *runnerTurn, out TurnOutcome, timedOut bool) error {
-	return r.write(ctx, &w.member, func(tx *store.Tx, _ *store.Team) error {
+	return r.write(ctx, &w.member, func(tx *store.Tx, t *store.Team) error {
 		current, e := tx.GetTurn(w.turn.ID)
 		if e != nil {
 			return e
@@ -315,6 +310,11 @@ func (r *Runner) finishTurn(ctx context.Context, w *runnerTurn, out TurnOutcome,
 						return e
 					}
 				}
+			}
+		}
+		if status == model.TurnStatusSucceeded {
+			if e = r.autoReplies(tx, t, w, out); e != nil {
+				return e
 			}
 		}
 		now := r.b.now()
