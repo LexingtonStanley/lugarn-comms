@@ -43,8 +43,9 @@ type Options struct {
 
 // Broker implements the app, tools and authenticator service contracts.
 type Broker struct {
-	db   *store.Store
-	opts Options
+	integration *Integration
+	db          *store.Store
+	opts        Options
 }
 
 // New constructs a broker over an already opened store. The caller owns Close.

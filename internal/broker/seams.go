@@ -92,7 +92,7 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 		if t.Run, e = tx.BumpTeamRun(t.ID, now); e != nil {
 			return e
 		}
-		if e = tx.UpdateTeam(t.ID, store.TeamPatch{State: ptr(model.TeamStateStarting), StartedAt: ptr(&now), StoppedAt: ptr((*model.Time)(nil)), HerdrWorkspace: ptr(ptr("lugarn-" + t.Name))}, now); e != nil {
+		if e = tx.UpdateTeam(t.ID, store.TeamPatch{State: ptr(model.TeamStateStarting), StartedAt: ptr(&now), StoppedAt: ptr((*model.Time)(nil))}, now); e != nil {
 			return e
 		}
 		if r.Resume == nil || !*r.Resume {

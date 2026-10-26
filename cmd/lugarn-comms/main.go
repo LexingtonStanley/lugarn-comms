@@ -183,5 +183,17 @@ func openService(ctx context.Context) (services, func()) {
 	if err != nil {
 		return errorService{model.AsError(err)}, func() {}
 	}
-	return broker.New(db, broker.Options{StateDir: dir}), func() { _ = db.Close() }
+	b := broker.New(db, broker.Options{StateDir: dir})
+	options, err := integrationOptions()
+	if err != nil {
+		_ = db.Close()
+		return errorService{model.AsError(err)}, func() {}
+	}
+	integration, err := broker.NewIntegration(b, options)
+	if err != nil {
+		_ = db.Close()
+		return errorService{model.AsError(err)}, func() {}
+	}
+	integration.Attach()
+	return b, func() { _ = db.Close() }
 }
