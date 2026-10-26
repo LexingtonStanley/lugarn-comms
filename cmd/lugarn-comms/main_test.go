@@ -41,11 +41,6 @@ func TestRun(t *testing.T) {
 	for _, command := range []string{"help", "-h", "--help"} {
 		tests = append(tests, testCase{name: command + " extra argument", args: []string{command, "extra"}, code: 64, stderr: fmt.Sprintf("lugarn-comms: unexpected arguments for %s\nTry 'lugarn-comms help' for usage.\n", command)})
 	}
-	for _, command := range []string{"run"} {
-		for _, args := range [][]string{{command}, {command, "--help"}} {
-			tests = append(tests, testCase{name: strings.Join(args, " "), args: args, code: 2, stderr: fmt.Sprintf("lugarn-comms: %s is not implemented yet (C2)\n", command)})
-		}
-	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
@@ -159,6 +154,19 @@ func TestStartupErrorsUseFaceFormats(t *testing.T) {
 		}
 		if tt.op != "" && (v["op"] != tt.op || v["request_id"] != "startup") {
 			t.Fatal(v)
+		}
+	}
+}
+
+func TestRunnerCommand(t *testing.T) {
+	t.Setenv("LUGARN_COMMS_HOME", t.TempDir())
+	for _, tt := range []struct {
+		args []string
+		want int
+	}{{[]string{"run"}, 2}, {[]string{"run", "--help"}, 0}, {[]string{"run", "--team", "unknown"}, 10}, {[]string{"run", "--team", "x", "extra"}, 2}} {
+		var out, diag bytes.Buffer
+		if got := runWithInput(context.Background(), tt.args, strings.NewReader(""), &out, &diag); got != tt.want {
+			t.Fatalf("%v: exit %d want %d: %s", tt.args, got, tt.want, &diag)
 		}
 	}
 }

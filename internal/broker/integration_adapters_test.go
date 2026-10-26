@@ -11,6 +11,9 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	if os.Getenv("LUGARN_INTEGRATION_HELPER") == "exit-seven" {
+		os.Exit(7)
+	}
 	if os.Getenv("LUGARN_INTEGRATION_HELPER") == "codex" {
 		_, _ = os.Stdout.WriteString("{\"type\":\"thread.started\",\"thread_id\":\"00000000-0000-4000-8000-000000000001\"}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"ok\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}\n")
 		os.Exit(0)

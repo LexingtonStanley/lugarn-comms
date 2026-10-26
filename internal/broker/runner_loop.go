@@ -55,6 +55,7 @@ func (r *Runner) worker(ctx context.Context, key string, fn func(context.Context
 	}()
 }
 func (r *Runner) pass(ctx context.Context) (bool, error) {
+	reapRunnerOrphans()
 	var team *store.Team
 	var members []model.Member
 	var requests []model.Request

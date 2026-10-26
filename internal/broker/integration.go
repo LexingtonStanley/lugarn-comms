@@ -143,10 +143,13 @@ func (a *harnessAdapter) Start(ctx context.Context, d TurnLaunch, prompt string)
 	}
 	// The harness driver treats ctx as process lifetime. The runner's startup
 	// context must not kill a successfully started turn when it is released.
+	protect := startProtection()
 	h, e := (harness.Driver{Resolver: fixedHarnessBinary(d.Binary)}).Start(context.WithoutCancel(ctx), l, prompt)
 	if e != nil {
+		protect(0)
 		return nil, e
 	}
+	protect(h.PID)
 	adapter := &harnessHandle{handle: h, acks: make(chan TurnAcknowledgement, 1)}
 	go func() {
 		defer close(adapter.acks)
@@ -171,6 +174,7 @@ func (h *harnessHandle) Acknowledgements() <-chan TurnAcknowledgement { return h
 func (h *harnessHandle) Cancel() error                                { h.handle.Cancel(); return nil }
 func (h *harnessHandle) Wait() TurnOutcome {
 	out := h.handle.Wait()
+	releaseProtection(h.handle.PID)
 	var session *string
 	if out.SessionID != "" {
 		session = &out.SessionID

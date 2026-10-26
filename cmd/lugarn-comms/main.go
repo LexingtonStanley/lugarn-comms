@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/agentops"
 	"github.com/LexingtonStanley/lugarn-comms/internal/appops"
@@ -36,19 +37,19 @@ Commands:
   spawn     Spawn a worker
   stop      Stop a worker you spawned
   app       Answer requests from the Lugarn app
-  run       Run a team's runner (not implemented yet)
+  run       Run a team's runner
   version   Print build information (use --json for JSON)
   help      Print this help (also -h or --help)
 
 Exit codes:
   0   Success (including help)
   1   Output error
-  2   Invalid request (or run is not implemented yet)
+  2   Invalid request
   64  Invalid command or arguments
 `
 
 func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	os.Exit(runWithInput(ctx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
@@ -134,8 +135,7 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 		defer closeStore()
 		return cli.Run(ctx, args, stdin, stdout, stderr, svc, svc)
 	case "run":
-		fmt.Fprintf(stderr, "lugarn-comms: %s is not implemented yet (C2)\n", args[0])
-		return 2
+		return runTeam(ctx, args[1:], stderr)
 	default:
 		if len(args) > 0 && (args[0] == "--member" || args[0] == "--token-file" || args[0] == "--format" || strings.HasPrefix(args[0], "--member=") || strings.HasPrefix(args[0], "--token-file=") || strings.HasPrefix(args[0], "--format=")) {
 			svc, closeStore := openService(ctx)
