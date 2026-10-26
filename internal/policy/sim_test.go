@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
 
 // sim plays the store: it keeps the team's members, grid, counters and every
@@ -185,19 +186,19 @@ func causes(events []Event) []string {
 	out := []string{}
 	for _, e := range events {
 		switch d := e.Data.(type) {
-		case BudgetChangedData:
+		case wire.BudgetChangedEventData:
 			s := "hops:" + string(d.Cause)
 			if d.By != nil {
 				s += ":" + d.By.Name
 			}
 			out = append(out, s)
-		case RoundsChangedData:
+		case wire.RoundsChangedEventData:
 			s := "rounds:" + string(d.Cause)
 			if d.By != nil {
 				s += ":" + d.By.Name
 			}
 			out = append(out, s)
-		case PolicyDeniedData:
+		case wire.PolicyDeniedEventData:
 			out = append(out, "denied:"+string(d.Action))
 		}
 	}

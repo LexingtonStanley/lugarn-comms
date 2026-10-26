@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
 
 // MaxLiveAgents caps a team's live agent members, spec plus spawned.
@@ -489,36 +490,28 @@ func osLabel(os model.HostOS) string {
 	return "POSIX"
 }
 
-// Warning is an apply-team warning: a problem that doesn't block the apply.
-type Warning struct {
-	Code model.WarningCode `json:"code"`
-	// Member is the member's id, or nil for a team-wide warning.
-	Member  *string `json:"member"`
-	Message string  `json:"message"`
-}
-
 // specWarnings returns the warnings for a defaulted spec, member by member in
 // spec order: folder_missing, folder_not_git, harness_unavailable. next_launch
 // warnings come from the apply diff.
-func specWarnings(spec model.TeamSpec, host Host) []Warning {
-	var out []Warning
+func specWarnings(spec model.TeamSpec, host Host) []wire.Warning {
+	var out []wire.Warning
 	for _, m := range spec.Members {
 		id := m.ID
 		if !host.FolderExists(m.Folder) {
-			out = append(out, Warning{Code: model.WarningCodeFolderMissing, Member: &id,
+			out = append(out, wire.Warning{Code: model.WarningCodeFolderMissing, Member: &id,
 				Message: fmt.Sprintf("%s's folder %s doesn't exist yet; its launch will fail if it still doesn't", m.Name, m.Folder)})
 		} else if _, inGit := host.RepoRoot(m.Folder); !inGit {
 			switch {
 			case m.Worktree != nil && *m.Worktree:
-				out = append(out, Warning{Code: model.WarningCodeFolderNotGit, Member: &id,
+				out = append(out, wire.Warning{Code: model.WarningCodeFolderNotGit, Member: &id,
 					Message: fmt.Sprintf("%s's folder %s is outside git, so it runs in the folder itself, not a worktree", m.Name, m.Folder)})
 			case m.Spawn != nil && m.Spawn.Enabled && ResolveSpawn(m.Spawn).Folder == model.SpawnFolderWorktree:
-				out = append(out, Warning{Code: model.WarningCodeFolderNotGit, Member: &id,
+				out = append(out, wire.Warning{Code: model.WarningCodeFolderNotGit, Member: &id,
 					Message: fmt.Sprintf("%s's folder %s is outside git, so its workers share it instead of getting worktrees", m.Name, m.Folder)})
 			}
 		}
 		if issue := host.HarnessIssue(m.Harness); issue != "" {
-			out = append(out, Warning{Code: model.WarningCodeHarnessUnavailable, Member: &id,
+			out = append(out, wire.Warning{Code: model.WarningCodeHarnessUnavailable, Member: &id,
 				Message: fmt.Sprintf("%s's harness %s isn't available on this host (%s)", m.Name, m.Harness, issue)})
 		}
 	}

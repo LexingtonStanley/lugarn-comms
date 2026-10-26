@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
 
 func gitHost() *fakeHost { return newHost(model.HostOSLinux).repo(folder, folder) }
@@ -80,7 +81,7 @@ func TestPlanApplyCreate(t *testing.T) {
 	equal(t, "grid", plan.Grid, spec.Grid)
 	equal(t, "limits", plan.Limits, ResolveLimits(nil))
 	equal(t, "spec", plan.Spec, ApplyDefaults(spec))
-	equal(t, "warnings", plan.Warnings, []Warning{})
+	equal(t, "warnings", plan.Warnings, []wire.Warning{})
 }
 
 func TestPlanApplyDiff(t *testing.T) {

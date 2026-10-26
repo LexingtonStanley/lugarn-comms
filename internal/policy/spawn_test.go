@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
 
 // spawnBase passes every check: lead (workspace, spawning on with defaults)
@@ -277,7 +278,7 @@ func TestStop(t *testing.T) {
 		requireCode(t, d.Err, model.ErrorDenied)
 		equal(t, c.name, d.Err.Details, map[string]any{"reason": "not_spawner"})
 		equal(t, c.name+" event", jsonOf(t, d.Events[0].Data)["target"], map[string]any{"id": c.target.ID, "name": c.target.Name})
-		equal(t, c.name+" action", d.Events[0].Data.(PolicyDeniedData).Action, model.PolicyActionStop)
+		equal(t, c.name+" action", d.Events[0].Data.(wire.PolicyDeniedEventData).Action, model.PolicyActionStop)
 	}
 }
 

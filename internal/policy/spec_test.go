@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
 
 const folder = "/home/lex/code/flare"
@@ -361,14 +362,14 @@ func TestSpecWarnings(t *testing.T) {
 	// In git: no folder_not_git. A spawner with folder shared: none either.
 	host = newHost(model.HostOSLinux).repo(folder, folder)
 	spec.Members = spec.Members[:2]
-	equal(t, "in git", specWarnings(ApplyDefaults(spec), host), []Warning(nil))
+	equal(t, "in git", specWarnings(ApplyDefaults(spec), host), []wire.Warning(nil))
 	host = newHost(model.HostOSLinux).dir(folder)
 	spec.Members[0].Worktree = nil
 	spec.Members[1].Spawn.Folder = ptr(model.SpawnFolderShared)
-	equal(t, "shared spawner", specWarnings(ApplyDefaults(spec), host), []Warning(nil))
+	equal(t, "shared spawner", specWarnings(ApplyDefaults(spec), host), []wire.Warning(nil))
 	spec.Members[1].Spawn = &model.SpawnSettings{Enabled: false, Folder: ptr(model.SpawnFolderWorktree)}
-	equal(t, "spawning off", specWarnings(ApplyDefaults(spec), host), []Warning(nil))
-	if slices.ContainsFunc(ws, func(w Warning) bool { return w.Code == model.WarningCodeNextLaunch }) {
+	equal(t, "spawning off", specWarnings(ApplyDefaults(spec), host), []wire.Warning(nil))
+	if slices.ContainsFunc(ws, func(w wire.Warning) bool { return w.Code == model.WarningCodeNextLaunch }) {
 		t.Fatal("next_launch comes from the apply diff, not the spec alone")
 	}
 }

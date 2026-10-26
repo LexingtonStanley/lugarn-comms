@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
 
 // ApplyInput is apply-team's request with the store facts it needs.
@@ -44,7 +45,7 @@ type ApplyPlan struct {
 	// TeamFields are the team-level fields that change, as JSON pointers:
 	// /name, /pattern, /herdr/server, /limits.
 	TeamFields []string
-	Warnings   []Warning
+	Warnings   []wire.Warning
 }
 
 // MemberChange is a live spec member whose settings an apply changes. Every
@@ -156,7 +157,7 @@ func PlanApply(in ApplyInput, host Host) (ApplyPlan, *model.Error) {
 					msg += " and its " + moved[1]
 				}
 				id := m.ID
-				plan.Warnings = append(plan.Warnings, Warning{Code: model.WarningCodeNextLaunch, Member: &id,
+				plan.Warnings = append(plan.Warnings, wire.Warning{Code: model.WarningCodeNextLaunch, Member: &id,
 					Message: msg + " apply from its next launch"})
 			}
 		}
@@ -259,8 +260,8 @@ func spawnOf(s *model.SpawnSettings) spawnView {
 // orderWarnings sorts warnings by member in spec order, keeping each
 // member's warnings in the order they were raised. Every v1 warning names
 // a member.
-func orderWarnings(spec model.TeamSpec, ws []Warning) []Warning {
-	out := make([]Warning, 0, len(ws))
+func orderWarnings(spec model.TeamSpec, ws []wire.Warning) []wire.Warning {
+	out := make([]wire.Warning, 0, len(ws))
 	for _, m := range spec.Members {
 		for _, w := range ws {
 			if w.Member != nil && *w.Member == m.ID {

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
 
 const (
@@ -311,7 +312,7 @@ func TestBudgetEventData(t *testing.T) {
 		t.Fatal("budget events name no member or message")
 	}
 	first := s.send("writer", "reviewer", msg).Events[0]
-	equal(t, "used is not on the timeline", [2]any{first.Data.(BudgetChangedData).Cause, first.Timeline},
+	equal(t, "used is not on the timeline", [2]any{first.Data.(wire.BudgetChangedEventData).Cause, first.Timeline},
 		[2]any{model.BudgetCauseUsed, false})
 	reset := s.send("human", "writer", msg).Events[0]
 	equal(t, "reset by human", jsonOf(t, reset.Data)["by"], map[string]any{"id": "H", "name": "human"})
