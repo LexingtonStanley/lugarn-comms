@@ -96,7 +96,10 @@ func (b *Broker) wireEvent(e store.Event) (wire.Event, error) {
 	}
 	var v wire.Event
 	err = json.Unmarshal(raw, &v)
-	return v, model.AsError(err)
+	if err != nil {
+		return v, model.AsError(err)
+	}
+	return v, nil
 }
 func (b *Broker) Timeline(ctx context.Context, r wire.TimelineRequest) (wire.TimelineResult, error) {
 	out := wire.TimelineResult{Events: []wire.Event{}}
