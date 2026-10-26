@@ -42,11 +42,12 @@ type HerdrStartMethod string
 
 const (
 	HerdrStartMethodDetached HerdrStartMethod = "detached"
+	HerdrStartMethodSystemd  HerdrStartMethod = "systemd"
 	HerdrStartMethodWmi      HerdrStartMethod = "wmi"
 )
 
 func (HerdrStartMethod) Values() []HerdrStartMethod {
-	return []HerdrStartMethod{HerdrStartMethodDetached, HerdrStartMethodWmi}
+	return []HerdrStartMethod{HerdrStartMethodDetached, HerdrStartMethodSystemd, HerdrStartMethodWmi}
 }
 func (v HerdrStartMethod) Valid() bool {
 	for _, item := range v.Values() {
