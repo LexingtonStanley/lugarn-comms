@@ -149,15 +149,18 @@ func (c *Client) ClosePane(ctx context.Context, id string) error {
 // Herdr types `pane run` text into the pane's shell, so RunCommand only takes
 // words no shell (sh, bash, zsh, fish, PowerShell, cmd) treats specially, and
 // needs no quoting: not zsh's =word, cmd's %VAR%, PowerShell's @ and ','. On
-// Windows a backslash is a path separator, not an escape.
+// Windows a backslash is a path separator, not an escape, and a ~ after a letter
+// or digit is literal to PowerShell and cmd, as in an 8.3 short name (RUNNER~1).
+// A leading ~ stays refused everywhere; so does ~ on POSIX, where zsh's
+// EXTENDED_GLOB makes it a pattern operator.
 var (
 	plainWord   = regexp.MustCompile(`^[A-Za-z0-9_./:-]+$`)
-	plainWordNT = regexp.MustCompile(`^[A-Za-z0-9_./:\\-]+$`)
+	plainWordNT = regexp.MustCompile(`^(?:[A-Za-z0-9]~|[A-Za-z0-9_./:\\-])+$`)
 )
 
 // RunCommand types argv into the shell of a pane, then Enter: for the runner
 // pane (`lugarn-comms run --team <id>`), never for agent-written text. Each
-// word must be plain (letters, digits and _./:-, plus \ on Windows) since it
+// word must be plain (letters, digits and _./:-, plus \ and an inner ~ on Windows) since it
 // reaches a shell unquoted, and the first can't start with '-'. A path with a
 // space is refused, and so is --flag=value: pass --flag value.
 func (c *Client) RunCommand(ctx context.Context, pane string, argv ...string) error {

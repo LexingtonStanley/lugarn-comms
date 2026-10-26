@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -54,8 +53,6 @@ func (i *Integration) savePlacement(team string, p runnerPlacement) error {
 	}
 	return statedir.WriteSecret(path, raw)
 }
-
-var plainLaunchPath = regexp.MustCompile(`^[A-Za-z0-9._/:\\-]+$`)
 
 func (i *Integration) runnerBridge() (string, string, error) {
 	if plainLaunchPath.MatchString(i.opts.Binary) {
