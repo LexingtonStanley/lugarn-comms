@@ -802,7 +802,7 @@ What the C2c drivers pass. **Verified headless only**, on lexbox on 2026-10-26, 
 
 |                     | Claude                                                                                          | Codex                                                                                          | OpenCode                                                                                          |
 | ------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Comms MCP           | `--mcp-config=<state>/launch/<launch id>.json`, registering `lugarn` as `<binary> <mcp args>`; added to the user's own servers | `-c mcp_servers.lugarn.command="<binary>"` and `-c mcp_servers.lugarn.args=[<mcp args>]`        | `OPENCODE_CONFIG=<state>/launch/<launch id>.opencode.json` (`mcp.lugarn`: `type: local`, `command: [<binary>, <mcp args>]`) **and** `--standalone` |
+| Comms MCP           | `--mcp-config=<state>/launch/<launch id>.json`, registering `lugarn` as `<binary> <mcp args>`; added to the user's own servers | `-c mcp_servers.lugarn.command="<binary>"` and `-c mcp_servers.lugarn.args=[<mcp args>]`        | `OPENCODE_CONFIG=<state>/launch/<launch id>.opencode.json` (`mcp.lugarn`: `type: local`, `command: [<binary>, <mcp args>]`) **and**, on 2.x, `--standalone` |
 | Calling comms tools | `--allowedTools=<comms tools>`; headless Claude refuses MCP calls not listed                   | one `-c mcp_servers.lugarn.tools.<tool>.approval_mode="approve"` per comms tool; headless Codex otherwise refuses ("approval policy is never"). Works under the read-only sandbox. | nothing extra                                                                                     |
 | `read-only`         | `--permission-mode plan`                                                                        | `-s read-only`                                                                                 | config `"permission": {"edit": "deny", "bash": "deny"}`                                           |
 | `workspace`         | `--permission-mode acceptEdits`, and `Edit,Write,Bash` added to the same `--allowedTools=` list | `-s workspace-write`                                                                           | config `{"edit": "allow", "bash": "allow", "external_directory": "deny"}`, plus `--auto`          |
@@ -826,8 +826,9 @@ Notes:
   restrict unprivileged user namespaces (Ubuntu 24.04, lexbox), Codex's sandbox can't run
   shell commands under `read-only` or `workspace`; that's a host fix the plan covers.
 - **OpenCode 2.x**'s background service ignores per-launch config, so every OpenCode headless
-  turn and pane launch carries `--standalone`. Whether 1.x accepts the flag (it may have no
-  background service) is a C2d check on ufo. OpenCode 2's full-screen TUI does not
+  turn and pane launch carries `--standalone`. 1.x has no background service, and its `run`
+  and TUI reject the flag: 1.19.4 prints its help and exits 1 (checked on ufo). So 1.x
+  launches go without it. OpenCode 2's full-screen TUI does not
   accept `--model` (2.1.4 prints help and exits), so a trusted model selector goes
   in the per-launch config's `model` field. Headless `run` and 1.x retain their
   model flag. `--session <reported id>` resumes the same conversation in the pane.
