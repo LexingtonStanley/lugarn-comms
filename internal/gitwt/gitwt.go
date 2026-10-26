@@ -10,9 +10,63 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
+
+// ErrGitTooOld reports that the installed git cannot safely remove a missing
+// worktree without force.
+var ErrGitTooOld = errors.New("git 2.20 or later is required")
+
+// CheckVersion verifies that the git on PATH supports broker worktrees.
+func CheckVersion(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", "--version")
+	cmd.WaitDelay = time.Second
+	cmd.Env = append(os.Environ(), "LC_ALL=C", "GIT_TERMINAL_PROMPT=0")
+	out, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if err != nil {
+		return fmt.Errorf("git --version: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return checkGitVersion(string(out))
+}
+
+func checkGitVersion(output string) error {
+	version, err := parseGitVersion(output)
+	if err != nil {
+		return err
+	}
+	if version.major < 2 || version.major == 2 && version.minor < 20 {
+		return fmt.Errorf("%w: git --version reported %q", ErrGitTooOld, strings.TrimSpace(output))
+	}
+	return nil
+}
+
+type gitVersion struct {
+	major, minor int
+}
+
+func parseGitVersion(output string) (gitVersion, error) {
+	fields := strings.Fields(output)
+	if len(fields) < 3 || fields[0] != "git" || fields[1] != "version" {
+		return gitVersion{}, fmt.Errorf("unrecognized git version output: %q", strings.TrimSpace(output))
+	}
+	parts := strings.Split(fields[2], ".")
+	if len(parts) < 2 {
+		return gitVersion{}, fmt.Errorf("unrecognized git version output: %q", strings.TrimSpace(output))
+	}
+	major, majorErr := strconv.Atoi(parts[0])
+	minor, minorErr := strconv.Atoi(parts[1])
+	if majorErr != nil || minorErr != nil || major < 0 || minor < 0 {
+		return gitVersion{}, fmt.Errorf("unrecognized git version output: %q", strings.TrimSpace(output))
+	}
+	return gitVersion{major: major, minor: minor}, nil
+}
 
 // GitState is the protocol enum, currently absent from internal/model.
 type GitState string
@@ -77,11 +131,15 @@ func RepoInfo(ctx context.Context, folder string) (Info, error) {
 		return Info{}, err
 	}
 	top := strings.TrimSuffix(string(out), "\n")
-	out, err = git(ctx, folder, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	out, err = git(ctx, folder, "rev-parse", "--git-common-dir")
 	if err != nil {
 		return Info{}, err
 	}
-	return Info{InGit: true, TopLevel: filepath.Clean(top), MainWorktree: filepath.Dir(strings.TrimSuffix(string(out), "\n"))}, nil
+	commonDir := filepath.FromSlash(strings.TrimSuffix(string(out), "\n"))
+	if !filepath.IsAbs(commonDir) {
+		commonDir = filepath.Join(folder, commonDir)
+	}
+	return Info{InGit: true, TopLevel: filepath.Clean(top), MainWorktree: filepath.Dir(commonDir)}, nil
 }
 
 // BranchExists checks a local branch, not a tag or remote-tracking ref.
@@ -166,17 +224,24 @@ func remove(ctx context.Context, repo, path, branch string) (BranchOutcome, erro
 	}
 	// Refuse a main tree, an unregistered path, or a mismatched branch before
 	// removing anything. The first porcelain record is the main working tree.
-	out, err := git(ctx, repo, "worktree", "list", "--porcelain", "-z")
+	out, err := git(ctx, repo, "worktree", "list", "--porcelain")
 	if err != nil {
 		return "", err
 	}
 	found := false
-	for i, record := range strings.Split(string(out), "\x00\x00") {
-		fields := strings.Split(record, "\x00")
+	for i, record := range strings.Split(string(out), "\n\n") {
+		fields := strings.Split(record, "\n")
 		if len(fields) == 0 || !strings.HasPrefix(fields[0], "worktree ") {
 			continue
 		}
-		listed := filepath.FromSlash(strings.TrimPrefix(fields[0], "worktree "))
+		listed := strings.TrimPrefix(fields[0], "worktree ")
+		if strings.HasPrefix(listed, "\"") {
+			listed, err = strconv.Unquote(listed)
+			if err != nil {
+				return "", fmt.Errorf("parse worktree path: %w", err)
+			}
+		}
+		listed = filepath.FromSlash(listed)
 		if !samePath(listed, path) {
 			continue
 		}

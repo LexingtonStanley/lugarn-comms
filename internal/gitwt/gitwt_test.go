@@ -37,7 +37,8 @@ func newRepo(t *testing.T) string {
 	if err := os.Mkdir(repo, 0700); err != nil {
 		t.Fatal(err)
 	}
-	testGit(t, repo, "init", "-b", "main")
+	testGit(t, repo, "init")
+	testGit(t, repo, "symbolic-ref", "HEAD", "refs/heads/main")
 	testGit(t, repo, "config", "user.name", "Worktree Test")
 	testGit(t, repo, "config", "user.email", "test@example.invalid")
 	testGit(t, repo, "config", "commit.gpgsign", "false")
@@ -61,6 +62,51 @@ func add(t *testing.T, repo, name string) string {
 		t.Fatal(err)
 	}
 	return path
+}
+
+func TestParseGitVersion(t *testing.T) {
+	for _, tc := range []struct {
+		output string
+		want   gitVersion
+	}{
+		{output: "git version 2.20.1\n", want: gitVersion{major: 2, minor: 20}},
+		{output: "git version 2.39.3 (Apple Git-145)\n", want: gitVersion{major: 2, minor: 39}},
+		{output: "git version 2.45.1.windows.1\n", want: gitVersion{major: 2, minor: 45}},
+		{output: "git version 3.0\n", want: gitVersion{major: 3, minor: 0}},
+	} {
+		t.Run(strings.TrimSpace(tc.output), func(t *testing.T) {
+			got, err := parseGitVersion(tc.output)
+			if err != nil || got != tc.want {
+				t.Fatalf("parseGitVersion(%q) = %+v, %v; want %+v", tc.output, got, err, tc.want)
+			}
+		})
+	}
+	for _, output := range []string{"", "git version", "git version 2", "git version two.twenty", "not git version 2.20.1", "git version -2.20.1"} {
+		t.Run("invalid_"+strings.ReplaceAll(output, " ", "_"), func(t *testing.T) {
+			if _, err := parseGitVersion(output); err == nil {
+				t.Fatalf("parseGitVersion(%q) accepted invalid output", output)
+			}
+		})
+	}
+}
+
+func TestCheckGitVersion(t *testing.T) {
+	for _, output := range []string{"git version 2.20", "git version 2.20.1", "git version 2.39.3 (Apple Git-145)", "git version 2.45.1.windows.1", "git version 3.0.0"} {
+		if err := checkGitVersion(output); err != nil {
+			t.Errorf("checkGitVersion(%q): %v", output, err)
+		}
+	}
+	for _, output := range []string{"git version 1.9.5", "git version 2.19.3"} {
+		if err := checkGitVersion(output); !errors.Is(err, ErrGitTooOld) {
+			t.Errorf("checkGitVersion(%q) = %v; want ErrGitTooOld", output, err)
+		}
+	}
+}
+
+func TestCheckVersion(t *testing.T) {
+	if err := CheckVersion(context.Background()); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestRepoInfo(t *testing.T) {
@@ -170,7 +216,7 @@ func TestState(t *testing.T) {
 	check(GitStateClean)
 	write(t, filepath.Join(path, "tracked.txt"), "changed\n")
 	check(GitStateDirty)
-	testGit(t, path, "restore", "tracked.txt")
+	testGit(t, path, "checkout", "--", "tracked.txt")
 	check(GitStateClean)
 	write(t, filepath.Join(path, "untracked.txt"), "new\n")
 	check(GitStateDirty)
