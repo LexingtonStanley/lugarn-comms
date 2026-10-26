@@ -129,7 +129,7 @@ func unresolvable(cause error) *model.Error {
 }
 func (i *Integration) waitShell(ctx context.Context, id string) error {
 	path := filepath.Join(i.b.opts.StateDir, "launch", id, "shell-ready")
-	until := time.NewTimer(5 * time.Second)
+	until := time.NewTimer(20 * time.Second)
 	defer until.Stop()
 	tick := time.NewTicker(20 * time.Millisecond)
 	defer tick.Stop()
