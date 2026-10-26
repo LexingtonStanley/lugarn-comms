@@ -221,3 +221,64 @@ func TestRunnerStoppingMakesPaneSubmissionUncertain(t *testing.T) {
 		return e
 	}))
 }
+
+type countingPanes struct {
+	panesStub
+	observations int
+}
+
+func (p *countingPanes) State(ctx context.Context, m model.Member) (PaneObservation, error) {
+	p.observations++
+	return p.panesStub.State(ctx, m)
+}
+
+func TestRunnerPaneObservationThrottle(t *testing.T) {
+	p := &countingPanes{panesStub: panesStub{activity: model.ActivityIdle, active: true}}
+	b, r, m := paneFixture(t, p)
+	ctx := context.Background()
+	now := b.now().Time
+	start := now
+	b.opts.Clock = func() time.Time { return now }
+	observe := func(want int) {
+		t.Helper()
+		must(t, r.runPane(ctx, m))
+		if p.observations != want {
+			t.Fatalf("pane observations=%d, want %d", p.observations, want)
+		}
+	}
+	observe(1)
+	for i := 1; i < 5; i++ {
+		now = start.Add(time.Duration(i) * 250 * time.Millisecond)
+		observe(1)
+	}
+	now = start.Add(5 * time.Second)
+	observe(2)
+	sendToWriter(t, b, "queued work")
+	observe(3)
+	observe(3)
+	held := sendToWriter(t, b, "pane-held work")
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		return tx.UpdateDelivery(held.ID, m.ID, model.DeliveryStateQueued, store.DeliveryPatch{State: model.DeliveryStateHeld, Reason: ptr(ptr(model.DeliveryReasonRecipientBlocked)), UpdatedAt: b.now()})
+	}))
+	p.activity = model.ActivityBlocked
+	observe(4)
+	observe(5)
+	p.activity = model.ActivityIdle
+	observe(6)
+	now = now.Add(4 * time.Second)
+	observe(6)
+	now = now.Add(time.Second)
+	observe(7)
+}
+
+func TestRunnerReconcilePaneObservationCountsTowardThrottle(t *testing.T) {
+	p := &countingPanes{panesStub: panesStub{activity: model.ActivityIdle}}
+	b, r, m := paneFixture(t, p)
+	now := b.now().Time
+	b.opts.Clock = func() time.Time { return now }
+	must(t, r.reconcile(context.Background()))
+	must(t, r.runPane(context.Background(), m))
+	if p.observations != 1 {
+		t.Fatalf("idle pane was observed again immediately after reconcile: %d", p.observations)
+	}
+}

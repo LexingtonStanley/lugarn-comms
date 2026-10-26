@@ -19,6 +19,7 @@ var errRunnerGeneration = model.NewError(model.ErrorLeaseConflict, "runner membe
 // Runner drives one team. Construct a new value for every run; Run is single-use.
 // Cancelling its context detaches live turns; a team stop cancels them instead.
 type Runner struct {
+	paneObserved map[string]runnerPanePoll
 	freshStart   bool
 	startMembers map[string]bool
 	workers      sync.WaitGroup
@@ -72,7 +73,7 @@ func NewRunner(b *Broker, team string, opts RunnerOptions) *Runner {
 	if opts.Binary == nil {
 		opts.Binary = b.opts.Probe.Binary
 	}
-	return &Runner{b: b, team: team, opts: opts, busy: map[string]bool{}, startMembers: map[string]bool{}, orphans: map[string]runnerOrphan{}, workerErrors: make(chan error, 64), handles: map[string]TurnHandle{}}
+	return &Runner{b: b, team: team, opts: opts, busy: map[string]bool{}, paneObserved: map[string]runnerPanePoll{}, startMembers: map[string]bool{}, orphans: map[string]runnerOrphan{}, workerErrors: make(chan error, 64), handles: map[string]TurnHandle{}}
 }
 func (r *Runner) owns(t *store.Team) bool {
 	return t.Runner.PID != nil && r.owner.PID != nil && *t.Runner.PID == *r.owner.PID && t.Runner.StartedAt != nil && r.owner.StartedAt != nil && t.Runner.StartedAt.Equal(r.owner.StartedAt.Time)

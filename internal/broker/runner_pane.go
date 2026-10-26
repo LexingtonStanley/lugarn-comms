@@ -83,7 +83,56 @@ func (r *Runner) pointerSession(m model.Member) (string, error) {
 	}
 	return last, scan.Err()
 }
+
+type runnerPanePoll struct {
+	at         time.Time
+	generation int64
+}
+
+// Pending work needs prompt observation. Otherwise keep idle activity/gone
+// detection current without starting a Herdr process on every store poll.
+func (r *Runner) observePane(ctx context.Context, m model.Member) (observe, work bool, err error) {
+	err = r.b.db.Read(ctx, func(tx *store.Tx) error {
+		queued, e := tx.NextDeliveries(m.ID, 1)
+		if e != nil {
+			return e
+		}
+		if len(queued) > 0 {
+			work = true
+			return nil
+		}
+		held, e := tx.ListTeamDeliveries(r.team, model.DeliveryStateHeld)
+		if e != nil {
+			return e
+		}
+		for _, item := range held {
+			d := item.Delivery
+			if d.To.ID == m.ID && d.Reason != nil && (*d.Reason == model.DeliveryReasonRecipientBlocked || *d.Reason == model.DeliveryReasonRecipientUnknown) {
+				work = true
+				break
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return false, false, err
+	}
+	now := r.b.opts.Clock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	previous, ok := r.paneObserved[m.ID]
+	if !work && ok && previous.generation == m.Lease.Generation && now.Sub(previous.at) < 5*time.Second {
+		return false, false, nil
+	}
+	r.paneObserved[m.ID] = runnerPanePoll{at: now, generation: m.Lease.Generation}
+	return true, work, nil
+}
+
 func (r *Runner) runPane(ctx context.Context, m model.Member) error {
+	observe, work, e := r.observePane(ctx, m)
+	if e != nil || !observe {
+		return e
+	}
 	observation, e := r.opts.Panes.State(ctx, m)
 	if e != nil {
 		return e
@@ -91,7 +140,7 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 	if observation.Gone {
 		return r.opts.PaneLifecycle.Exited(ctx, m)
 	}
-	if observation.Activity == model.ActivityWorking {
+	if work && observation.Activity == model.ActivityWorking {
 		observation, e = r.opts.Panes.WaitSettled(ctx, m, r.opts.PaneTimeout)
 		if e != nil {
 			if ctx.Err() != nil {
@@ -111,6 +160,9 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 	}
 	if e = r.write(ctx, &m, func(tx *store.Tx, _ *store.Team) error { return r.setActivity(tx, m, observation.Activity) }); e != nil {
 		return e
+	}
+	if !work {
+		return nil
 	}
 	switch observation.Activity {
 	case model.ActivityBlocked:

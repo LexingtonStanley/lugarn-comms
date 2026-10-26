@@ -87,6 +87,9 @@ func (r *Runner) reconcile(ctx context.Context) error {
 		if e != nil {
 			return e
 		}
+		r.mu.Lock()
+		r.paneObserved[m.ID] = runnerPanePoll{at: r.b.opts.Clock(), generation: m.Lease.Generation}
+		r.mu.Unlock()
 		if obs.Gone {
 			if e = r.opts.PaneLifecycle.Exited(ctx, m); e != nil {
 				return e
