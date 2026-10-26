@@ -363,3 +363,14 @@ func (tx *Tx) PickUpDeliveries(recipientID string, limit int, via *model.Deliver
 	}
 	return items, nil
 }
+
+// RenumberMessage writes the current hop and review round after a policy reset.
+// The caller must hold the write transaction that decided the reset. Recorded
+// message.created events remain immutable; timeline refreshes current messages.
+func (tx *Tx) RenumberMessage(id string, hop, round *int64) error {
+	result, err := tx.exec("UPDATE messages SET hop = ?, round = ? WHERE id = ?", dbPtr(hop), dbPtr(round), id)
+	if err != nil {
+		return err
+	}
+	return requireRows(result, notFound("message"))
+}
