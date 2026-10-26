@@ -124,7 +124,7 @@ type fixedHarnessBinary string
 
 func (b fixedHarnessBinary) Binary(model.Harness) (string, error) { return string(b), nil }
 func (a *harnessAdapter) launch(ctx context.Context, d TurnLaunch) (harness.Launch, error) {
-	l := harness.Launch{Harness: d.Harness, Profile: d.Profile, WorkDir: d.Workdir, StateDir: d.StateDir, LaunchID: d.LaunchID, MemberID: d.MemberID, Binary: a.binary, Model: a.models[d.Harness], ExtraEnv: map[string]string{"LUGARN_COMMS_HOME": a.state}}
+	l := harness.Launch{Pane: d.Mode == model.ModePane, PointerHome: a.home, Harness: d.Harness, Profile: d.Profile, WorkDir: d.Workdir, StateDir: d.StateDir, LaunchID: d.LaunchID, MemberID: d.MemberID, Binary: a.binary, Model: a.models[d.Harness], ExtraEnv: map[string]string{"LUGARN_COMMS_HOME": a.state}}
 	for k, v := range a.extra {
 		l.ExtraEnv[k] = v
 	}
@@ -147,10 +147,7 @@ func (a *harnessAdapter) Write(ctx context.Context, d TurnLaunch) error {
 	if e != nil {
 		return e
 	}
-	if e := harness.WriteFiles(l); e != nil {
-		return e
-	}
-	return a.writePointerHook(l)
+	return harness.WriteFiles(l)
 }
 func (a *harnessAdapter) Delete(_ context.Context, id string) error {
 	if model.ValidateULID(id) != nil {

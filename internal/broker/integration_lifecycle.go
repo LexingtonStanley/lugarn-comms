@@ -197,7 +197,7 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 		return e
 	}
 	launchStarted = true
-	desc := TurnLaunch{Harness: *m.Harness, Profile: *m.Profile, Workdir: *m.Workdir, StateDir: l.i.b.opts.StateDir, LaunchID: id, MemberID: m.ID, Binary: binary, Session: starting.Session, NewSession: newSession}
+	desc := TurnLaunch{Mode: model.ModePane, Harness: *m.Harness, Profile: *m.Profile, Workdir: *m.Workdir, StateDir: l.i.b.opts.StateDir, LaunchID: id, MemberID: m.ID, Binary: binary, Session: starting.Session, NewSession: newSession}
 	if e = statedir.Ensure(l.i.b.opts.StateDir); e != nil {
 		return e
 	}

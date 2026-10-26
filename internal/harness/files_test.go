@@ -32,6 +32,8 @@ func TestFiles(t *testing.T) {
 			t.Run(string(h)+"/"+string(p), func(t *testing.T) {
 				l := testLaunch(t, h)
 				l.Profile = p
+				l.Pane = true
+				l.PointerHome = t.TempDir()
 				if err := WriteFiles(l); err != nil {
 					t.Fatal(err)
 				}
@@ -97,7 +99,8 @@ func TestFiles(t *testing.T) {
 
 func TestHookAndPointer(t *testing.T) {
 	for _, platform := range []string{"linux", "windows"} {
-		b, err := ClaudeHookSettings(testLaunchID, platform)
+		home := t.TempDir()
+		b, err := ClaudeHookSettings(testLaunchID, platform, home)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -127,14 +130,22 @@ func TestHookAndPointer(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			continue
 		}
-		home := t.TempDir()
-		t.Setenv("HOME", home)
-		input := `{"session_id":"` + testSessionID + `"}` + "\n"
+		t.Setenv("HOME", t.TempDir()) // explicit pointer root must win
+		input := `{"session_id":"` + testSessionID + `"}`
 		c := exec.Command("sh", "-c", hook.Command)
 		c.Stdin = strings.NewReader(input)
 		out, err := c.CombinedOutput()
 		if err != nil || len(out) != 0 {
 			t.Fatalf("hook: %s %v", out, err)
+		}
+		c = exec.Command("sh", "-c", hook.Command)
+		c.Stdin = strings.NewReader(input)
+		if out, e := c.CombinedOutput(); e != nil || len(out) != 0 {
+			t.Fatal(string(out), e)
+		}
+		id, e := ReadPointer(home, testLaunchID)
+		if e != nil || id != testSessionID {
+			t.Fatal("two newline-free hooks lost sessions", id, e)
 		}
 		path := filepath.Join(home, ".lugarn", "conversations", testLaunchID)
 		f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
@@ -146,12 +157,12 @@ func TestHookAndPointer(t *testing.T) {
 			t.Fatal(err)
 		}
 		f.Close()
-		id, err := ReadPointer(home, testLaunchID)
+		id, err = ReadPointer(home, testLaunchID)
 		if err != nil || id != "dddddddd-dddd-4ddd-8ddd-dddddddddddd" {
 			t.Fatalf("%s %v", id, err)
 		}
 	}
-	if _, err := ClaudeHookSettings("../bad", "linux"); err == nil {
+	if _, err := ClaudeHookSettings("../bad", "linux", t.TempDir()); err == nil {
 		t.Fatal("accepted traversal")
 	}
 	home := t.TempDir()
@@ -252,5 +263,15 @@ func TestOpenCodeConfigByVersion(t *testing.T) {
 	l.Version = "1.0\n--evil"
 	if l.Validate() == nil {
 		t.Fatal("accepted a version with a newline")
+	}
+}
+
+func TestHeadlessClaudeHasNoPointerSettings(t *testing.T) {
+	l := testLaunch(t, model.HarnessClaude)
+	if e := WriteFiles(l); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := os.Lstat(l.path(".settings.json")); !os.IsNotExist(e) {
+		t.Fatal("headless wrote pane hook", e)
 	}
 }
