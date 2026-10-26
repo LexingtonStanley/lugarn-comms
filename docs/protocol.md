@@ -48,7 +48,7 @@ mechanical cases: enum lists, example validity, SQL enum checks.
 | Thing          | Format                                        | Made by                     | Notes                                                                                                   |
 | -------------- | --------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Team id        | `OpaqueId`: `[A-Za-z0-9_-]{1,64}`             | the app                     | Stable for the team's life.                                                                             |
-| Team name      | `TeamName`: `[a-z0-9][a-z0-9-]{0,47}`         | the app                     | Unique on the host. Shown in the provenance header; names Herdr workspaces, agents and worktrees.       |
+| Team name      | `TeamName`: `[a-z0-9][a-z0-9-]{0,47}`         | the app                     | Unique on the host. Shown in the provenance header; labels the Herdr workspace; names worktrees.        |
 | Member id      | `OpaqueId`                                    | the app (spec members); the broker, as a ULID (spawned members, `human`) | Stable and never reused. App ops address members by id.                     |
 | Member name    | `MemberName`: `[a-z][a-z0-9-]{0,31}`          | the app, or the spawner     | Unique among the team's live members. What agents address. `human` and `all` are reserved.             |
 | Message id     | ULID                                          | the broker                  | Public id. Order comes from the store's sequence, not the ULID.                                         |
@@ -76,8 +76,16 @@ alone ([A session before a pane](#a-session-before-a-pane)).
 reserves `host` on the member (record, spec and store) and requires it to be `null`. Nothing
 else about it is designed here.
 
-**Herdr names.** A team's workspace is `lugarn-<team name>`. A member's Herdr agent is
-`<team name>-<member name>`. Both are recorded on the member.
+**Herdr names.** Herdr agent names must match `[a-z][a-z0-9_-]{0,31}` and be unique on their
+server, so `<team name>-<member name>` doesn't fit (C2b, decision 49). A member's Herdr agent
+is `<member name, cut to 25 characters>-<tag>`, where the tag is the first 6 characters of
+the lower-case Crockford base32 of SHA-256(`<team id>/<member name>`): `writer-k2m9xa`. It's
+stable across launches and unique in practice; Herdr refuses a duplicate name, which fails
+that launch (`launch_failed`). A team's workspace is labelled `lugarn-<team name>`, but
+labels are free text and not unique, so the team records the workspace **id** Herdr returns
+and finds it by that id. If that workspace is gone, the next start creates a new one; the
+broker never adopts a workspace by its label. The agent name and the workspace id are
+recorded on the member.
 
 ## State on the host
 
@@ -466,9 +474,10 @@ needs nothing special: its ordinary first turn carries the brief and whatever is
 
 Claude picks its id up front (`--session-id`), so it launches straight into its pane.
 
-**C2b note.** If Herdr's agent records expose the harness's session id through its
-integrations (`agent_session` fields), the runner can read the id there and drop the headless
-first turn. Until C2b confirms that, the first turn runs headless.
+**Why not Herdr's `agent_session`.** Herdr's agent records carry the harness's session id
+(`agent_session`) only through the hooks `herdr integration install` writes into the person's
+global harness config, which Lugarn doesn't touch; and Codex reports it only after its first
+turn even then (C2b). So the headless first turn stays.
 
 ### Open in terminal
 
@@ -477,8 +486,8 @@ first turn. Until C2b confirms that, the first turn runs headless.
 1. If a headless turn is running: by default wait for it to end; with `cancel_turn: true`,
    cancel it. While the request is open the runner starts no new turn for this member, and
    new messages queue.
-2. Move the lease to `pane` (new generation, new launch), open a pane in the team's workspace
-   and run `herdr agent start <agent> --kind <harness> --pane <id> -- <fixed args>`: the
+2. Move the lease to `pane` (new generation, new launch), open the member's own tab in the
+   team's workspace (`herdr tab create`, with its workdir and `--env`) and run `herdr agent start <agent> --kind <harness> --pane <id> -- <fixed args>`: the
    harness's resume, registration and profile flags ([Launch flags](#launch-flags)), never
    any agent-written text ([Untrusted text](#untrusted-text)). Claude's launch also carries
    #136's per-launch hook settings, so a `/clear` is followed.
@@ -784,7 +793,16 @@ Drivers add the event-output flags the reference MCPs in `claude_sdk_term` use. 
   shell commands under `read-only` or `workspace`; that's a host fix the plan covers.
 - **OpenCode 2.x**'s background service ignores per-launch config, so every OpenCode headless
   turn and pane launch carries `--standalone`. Whether 1.x accepts the flag (it may have no
-  background service) is a C2c check.
+  background service) is a C2d check on ufo.
+- **OpenCode's Code Mode** (2.x) wraps MCP tools in a catalog, and on a resumed turn it
+  declared the lugarn tools gone even though the server had listed them (C2c). The per-launch
+  config turns it off for `lugarn` (`codemode: false`), so they're ordinary tools
+  (`lugarn_send`, …). 2.1.4 drops `codemode` from a flat `mcp.lugarn` entry, so 2.x also gets
+  the same server under its native `mcp.servers.lugarn`, which wins. 1.x gets only the flat
+  entry, since it would read `servers` as a server's name.
+- **Codex panes:** the Codex TUI left a `codex app-server --managed-daemon` running after its
+  pane closed (C2b). The pane launch stops it doing that, as `--no-daemon` does for `exec`; C2d
+  pins the flag.
 - **pi** gets no MCP registration; the brief points it at the CLI, and its identity travels in
   the environment.
 
@@ -808,8 +826,8 @@ re-parses:
    `/proc/<pid>/cmdline` (unless `/proc` has `hidepid`). That's fine on a single-user host.
 3. **Pane launches** pass fixed arguments only: harness flags, broker-made paths and session
    ids that match their pattern. The brief and the task arrive afterwards as the first
-   delivery, never in `herdr agent start … -- <args>`, which Herdr re-wraps in PowerShell on
-   Windows.
+   delivery, never in `herdr agent start … -- <args>`: Herdr types that command line into the
+   pane's shell, on Linux and macOS as well as in PowerShell on Windows (C2b).
 4. **On Windows**, every harness the broker execs must resolve to a native `.exe`: Claude's
    native install, and the native binaries that Codex's and OpenCode's npm packages ship
    behind their `.cmd` and `.ps1` shims. The broker never execs a `.cmd` or `.bat`:
@@ -960,8 +978,12 @@ ends, the token is revoked and the file deleted.
 ([Launch flags](#launch-flags)). The MCP server name is `lugarn`, and it reads its identity
 from those arguments only, because Codex strips the environment from MCP servers. The member
 id and token file also travel as `LUGARN_COMMS_MEMBER` and `LUGARN_COMMS_TOKEN_FILE` in the
-launch's environment (through `herdr workspace create --env` or `herdr pane split --env` for
-panes), which is how pi and the CLI find them. Flags win over the environment.
+launch's environment (through `herdr tab create --env` for a member's pane: a workspace's
+`--env` reaches only its root pane, which is the runner's), which is how pi and the CLI find
+them. Flags win over the environment.
+
+**Panes.** The runner runs in the workspace's root pane. Each member with a pane gets a tab of
+its own, so 24 members don't split one screen into slivers (C2b).
 
 **Every call** (each MCP tool call, each CLI command) reads the token file, hashes it and looks
 the hash up:
@@ -1198,7 +1220,10 @@ Request: `server` (default `default`). Result: `herdr`, `started`, `method` (`de
   `systemd-run --user --unit=lugarn-herdr-<server> --collect -- <herdr> --session <server> server`
   (`systemd`). It then belongs to `user@.service`, not the SSH session's scope, and survives
   the session ending, but only with linger on; without it, the user manager stops when the
-  person's last session ends. The runner and every pane are the server's children, so they
+  person's last session ends. `systemd-run` refuses a unit name that still exists (a failed or
+  dead unit `--collect` hasn't cleaned up yet), so the broker checks `systemctl --user
+  is-active lugarn-herdr-<server>` first and runs `systemctl --user reset-failed` on it before
+  starting (Flare). The runner and every pane are the server's children, so they
   live and die with it.
 - Otherwise, on Linux and macOS, the broker starts `herdr server` itself, detached: in its
   own session (`setsid`), with stdin, stdout and stderr on the null device (`detached`). C2b
@@ -1519,7 +1544,7 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 4. Enum values are `snake_case` except where the plan fixed kebab-case (op names, `read-only`).
    Error codes follow the brief's `snake_case`, so the plan's `unsupported-version` became
    `unsupported_version`.
-5. Herdr names: workspace `lugarn-<team>`, agent `<team>-<member>`.
+5. Herdr names: workspace labelled `lugarn-<team>` and found by its recorded id; agent `<member, ≤ 25>-<6-char tag>` ([Herdr names](#identifiers)).
 6. The host id is random, made by the first migration, and prefixes cursors.
 
 **Grid and policy**
@@ -1615,7 +1640,7 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     `hold` (decision 54).
 48. **Resolved:** OpenCode registers through `OPENCODE_CONFIG=<file>` with `--standalone`
     ([Launch flags](#launch-flags)).
-49. **Open:** what characters and length Herdr accepts in agent and workspace names.
+49. **Herdr's names** (C2b, Herdr 0.9.5): agent names `[a-z][a-z0-9_-]{0,31}`, unique per server; workspace labels free text and not unique. Hence the derived agent name and the recorded workspace id (decision 5).
 50. **Open:** Codex review mode's headless flags.
 51. **Open:** the spawn defaults (3, 8, a worktree per writing worker) are still the plan's
     guesses.
@@ -1627,8 +1652,8 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     member on either first runs one headless turn with the brief alone, then opens in its
     pane, where the task arrives as the first delivery. That way the person sees the work
     happen in the pane. The headless turn's brief ends with that wait-for-your-task line.
-    Claude picks its id up front. A C2b check may replace the headless first turn with
-    Herdr's `agent_session` fields.
+    Claude picks its id up front. Herdr's `agent_session` can't replace the headless first
+    turn: it needs Herdr's global integrations (C2b).
 54. **Holds.** `hold` with a 10–120 s TTL that the app renews, or `release: true`. It holds
     deliveries (`person_control`) whatever the member's driver, lapses on its own, and ends
     when the member or team stops. Renewals emit no events; the held deliveries'
