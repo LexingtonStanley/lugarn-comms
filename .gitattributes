@@ -1,0 +1,2 @@
+# LF everywhere: tests read docs, schemas and migrations byte for byte on Windows too.
+* text=auto eol=lf
