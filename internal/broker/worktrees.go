@@ -92,49 +92,73 @@ func (b *Broker) RemoveWorktrees(ctx context.Context, r wire.RemoveWorktreesRequ
 		return out, invalid("paths must contain 1–64 paths")
 	}
 	for _, path := range r.Paths {
+		refuse := func(reason wire.WorktreeRefusal, msg string) {
+			out.Refused = append(out.Refused, wire.RemoveWorktreesResultRefusedItem{Path: path, Reason: reason, Message: msg})
+		}
+		var owned *store.WorktreeRecord
 		e := b.db.Write(ctx, func(tx *store.Tx) error {
-			refuse := func(reason wire.WorktreeRefusal, msg string) error {
-				out.Refused = append(out.Refused, wire.RemoveWorktreesResultRefusedItem{Path: path, Reason: reason, Message: msg})
-				return nil
-			}
 			w, e := tx.GetWorktreeByPath(path)
 			if e != nil && !missing(e) {
 				return e
 			}
 			if e != nil || w.TeamID != r.Team || w.RemovedAt != nil {
-				return refuse(wire.WorktreeRefusalUnknownPath, "no live broker worktree at this path for this team")
+				refuse(wire.WorktreeRefusalUnknownPath, "no live broker worktree at this path for this team")
+				return nil
 			}
 			m, e := tx.GetMember(w.MemberID)
 			if e != nil {
 				return e
 			}
 			if m.State != model.MemberStateStopped {
-				return refuse(wire.WorktreeRefusalMemberNotStopped, "stop the member before removing its worktree")
+				refuse(wire.WorktreeRefusalMemberNotStopped, "stop the member before removing its worktree")
+				return nil
 			}
-			// Hold BEGIN IMMEDIATE across git so no concurrent broker can launch or
-			// claim the member while its stopped worktree is being removed.
-			outcome, e := b.opts.Git.Remove(ctx, w.Repo, w.Path, w.Branch)
-			if e != nil {
-				reason := wire.WorktreeRefusalGitFailed
-				var refusal *gitwt.Refusal
-				if errors.As(e, &refusal) {
-					reason = wire.WorktreeRefusal(refusal.Reason)
-				}
-				return refuse(reason, e.Error())
-			}
-			if e = tx.RemoveWorktree(w.ID, b.now()); e != nil {
-				return e
-			}
-			item := wire.RemoveWorktreesResultRemovedItem{Path: w.Path, Branch: w.Branch, BranchOutcome: wire.BranchOutcome(outcome)}
-			if e = b.event(tx, &r.Team, model.EventWorktreeRemoved, true, &m.ID, nil, wire.WorktreeRemovedEventData{Path: w.Path, Branch: w.Branch, Member: ref(*m), BranchOutcome: item.BranchOutcome}); e != nil {
-				return e
-			}
-			out.Removed = append(out.Removed, item)
+			owned = w
 			return nil
 		})
 		if e != nil {
 			return out, e
 		}
+		if owned == nil {
+			continue
+		}
+
+		// Git runs without a store transaction. A member can be woken in this
+		// window; C2's runner must check the worktree path exists before launching.
+		outcome, e := b.opts.Git.Remove(ctx, owned.Repo, owned.Path, owned.Branch)
+		if e != nil {
+			reason := wire.WorktreeRefusalGitFailed
+			var refusal *gitwt.Refusal
+			if errors.As(e, &refusal) {
+				reason = wire.WorktreeRefusal(refusal.Reason)
+			}
+			refuse(reason, e.Error())
+			continue
+		}
+		item := wire.RemoveWorktreesResultRemovedItem{Path: owned.Path, Branch: owned.Branch, BranchOutcome: wire.BranchOutcome(outcome)}
+		e = b.db.Write(ctx, func(tx *store.Tx) error {
+			// Check this identity rather than the path, which may already have
+			// been reused by a new registration. Concurrent completion is success.
+			current, e := tx.GetWorktree(owned.ID)
+			if e != nil {
+				return e
+			}
+			if current.RemovedAt != nil {
+				return nil
+			}
+			m, e := tx.GetMember(current.MemberID)
+			if e != nil {
+				return e
+			}
+			if e = tx.RemoveWorktree(current.ID, b.now()); e != nil {
+				return e
+			}
+			return b.event(tx, &r.Team, model.EventWorktreeRemoved, true, &m.ID, nil, wire.WorktreeRemovedEventData{Path: current.Path, Branch: current.Branch, Member: ref(*m), BranchOutcome: item.BranchOutcome})
+		})
+		if e != nil {
+			return out, e
+		}
+		out.Removed = append(out.Removed, item)
 	}
 	return out, nil
 }
