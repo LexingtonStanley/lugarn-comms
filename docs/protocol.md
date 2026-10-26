@@ -1149,9 +1149,11 @@ after v1 (decision 63).
 
 ## App ops
 
-The app runs `lugarn-comms app <op>` over SSH exec, writes one JSON request to stdin, closes
-it, and reads one JSON response from stdout. `watch` instead writes NDJSON lines until its
-stdin closes. Schema: `app-ops.v1.schema.json`. Examples: `schema/examples/app-ops/`.
+The app runs `lugarn-comms app <op>` over SSH exec, writes one JSON request to stdin, and
+reads one JSON response from stdout. The broker reads exactly one JSON object and answers
+without waiting for stdin to close, since the app's SSH channel can't half-close it. Data
+that has already arrived after the object is `invalid_request`. `watch` instead writes
+NDJSON lines until its stdin closes. Schema: `app-ops.v1.schema.json`. Examples: `schema/examples/app-ops/`.
 
 **Request envelope:** `protocol` (integer, required), `op` (required; must equal the argv op,
 else `invalid_request`), `request_id` (optional string, echoed back), then the op's fields.

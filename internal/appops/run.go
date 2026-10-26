@@ -30,12 +30,15 @@ func Run(ctx context.Context, op string, stdin io.Reader, stdout io.Writer, svc 
 // RunWithOptions is Run with injectable watch timing for tests.
 func RunWithOptions(ctx context.Context, op string, stdin io.Reader, stdout io.Writer, svc service.App, opts Options) int {
 	reader := bufio.NewReader(stdin)
-	var b []byte
-	var err error
-	if op == "watch" {
-		b, err = readWatchRequest(reader)
-	} else {
-		b, err = io.ReadAll(io.LimitReader(reader, MaxRequestBytes+1))
+	// One JSON object, read without waiting for stdin to close: the app's SSH
+	// channel can't half-close it, and watch keeps it open to signal the end.
+	b, err := readRequest(reader)
+	if err == nil && op != "watch" {
+		// Reject what already arrived after the object, without blocking for more.
+		rest, _ := reader.Peek(reader.Buffered())
+		if len(bytes.TrimSpace(rest)) > 0 {
+			err = model.NewError(model.ErrorInvalidRequest, "data after the JSON request")
+		}
 	}
 	var env struct {
 		Protocol  *int64  `json:"protocol"`
@@ -113,7 +116,7 @@ func unsupported() *model.Error {
 
 // A watch request is one JSON object. Scan just through its closing brace, so
 // the rest of stdin can stay open without needing a newline delimiter.
-func readWatchRequest(r *bufio.Reader) ([]byte, error) {
+func readRequest(r *bufio.Reader) ([]byte, error) {
 	var b bytes.Buffer
 	depth := 0
 	quoted := false

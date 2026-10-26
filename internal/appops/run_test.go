@@ -108,6 +108,28 @@ func TestRequestSizeLimit(t *testing.T) {
 	}
 }
 
+// The app's SSH channel can't half-close stdin, so a request must be answered
+// while stdin is still open.
+func TestRequestAnsweredWithStdinOpen(t *testing.T) {
+	r, w := io.Pipe()
+	defer w.Close()
+	var out bytes.Buffer
+	done := make(chan int, 1)
+	go func() { done <- Run(context.Background(), "hello", r, &out, &service.Fake{}) }()
+	if _, err := io.WriteString(w, `{"protocol":1,"op":"hello","request_id":"h","protocols":[1],"app":{"version":"1"}}`+"\n"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case code := <-done:
+		// The fake service doesn't implement hello; an answer is what counts.
+		if !strings.Contains(out.String(), `"request_id":"h"`) {
+			t.Fatalf("exit %d: %s", code, out.String())
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("request waited for stdin to close")
+	}
+}
+
 type brokenWriter struct{}
 
 func (brokenWriter) Write([]byte) (int, error) { return 0, errors.New("broken") }
