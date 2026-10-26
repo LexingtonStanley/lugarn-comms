@@ -3,6 +3,7 @@
 package broker
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -87,4 +88,52 @@ func reapRunnerOrphans() {
 		var status unix.WaitStatus
 		_, _ = unix.Wait4(pid, &status, unix.WNOHANG, nil)
 	}
+}
+
+func cleanupAdoptedDescendants(ctx context.Context) error {
+	runnerReaper.Lock()
+	defer runnerReaper.Unlock()
+	if !runnerReaper.enabled {
+		return nil
+	}
+	entries, e := os.ReadDir("/proc")
+	if e != nil {
+		return e
+	}
+	ourPID, ourGroup := os.Getpid(), unix.Getpgrp()
+	for _, entry := range entries {
+		pid, e := strconv.Atoi(entry.Name())
+		if e != nil || runnerReaper.protected[pid] > 0 {
+			continue
+		}
+		raw, e := os.ReadFile(filepath.Join("/proc", entry.Name(), "stat"))
+		if e != nil {
+			continue
+		}
+		end := strings.LastIndexByte(string(raw), ')')
+		if end < 0 {
+			continue
+		}
+		fields := strings.Fields(string(raw[end+1:]))
+		if len(fields) < 3 {
+			continue
+		}
+		parent, _ := strconv.Atoi(fields[1])
+		group, _ := strconv.Atoi(fields[2])
+		if parent != ourPID || group == ourGroup {
+			continue
+		}
+		state, e := (nativeProcesses{}).Inspect(ctx, int64(pid))
+		if e != nil {
+			return e
+		}
+		if state.Alive {
+			if e = cancelOwnedTree(ctx, int64(pid), state.Birth); e != nil {
+				return e
+			}
+		}
+		var status unix.WaitStatus
+		_, _ = unix.Wait4(pid, &status, unix.WNOHANG, nil)
+	}
+	return nil
 }

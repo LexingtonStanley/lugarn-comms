@@ -105,3 +105,40 @@ func TestIntegrationSpawnAndSpawnerStopRequests(t *testing.T) {
 		t.Fatal(stopped)
 	}
 }
+
+func TestIntegrationPaneExitRestoresHeadlessWithoutWaitingOnItself(t *testing.T) {
+	b, _ := setup(t)
+	ctx := context.Background()
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		if e := tx.UpdateTeam("t", store.TeamPatch{HerdrWorkspace: ptr(ptr("workspace-owned"))}, b.now()); e != nil {
+			return e
+		}
+		return tx.UpdateMember("writer", store.MemberPatch{Harness: ptr(ptr(model.HarnessClaude))}, b.now())
+	}))
+	runnerReady(t, b)
+	client := &lifecycleHerdr{}
+	bin, e := os.Executable()
+	must(t, e)
+	i, e := NewIntegration(b, IntegrationOptions{Binary: bin, HomeDir: t.TempDir(), Herdr: func(string) HerdrAPI { return client }})
+	must(t, e)
+	r := i.Runner("t", RunnerOptions{Binary: func(model.Harness) (string, error) { return bin, nil }})
+	must(t, r.acquire(ctx))
+	l := r.opts.PaneLifecycle.(*integrationLifecycle)
+	m, e := l.current(ctx, "writer")
+	must(t, e)
+	must(t, l.Open(ctx, *m, model.LeaseCauseOpenTerminal))
+	m, e = l.current(ctx, "writer")
+	must(t, e)
+	r.mu.Lock()
+	r.busy[m.ID] = true
+	r.mu.Unlock()
+	defer func() { r.mu.Lock(); delete(r.busy, m.ID); r.mu.Unlock() }()
+	bounded, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	must(t, l.Exited(bounded, *m))
+	m, e = l.current(ctx, "writer")
+	must(t, e)
+	if m.Lease.Driver != model.DriverHeadless || m.Lease.Generation != 2 {
+		t.Fatal(m)
+	}
+}

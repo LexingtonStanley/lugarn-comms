@@ -176,7 +176,7 @@ func (b *Broker) worktreeOwner(tx *store.Tx, w store.WorktreeRecord) (*model.Mem
 		if m.Worktree == nil || !sameNativePath(m.Worktree.Path, w.Path) {
 			continue
 		}
-		if current == nil || m.State != model.MemberStateStopped || m.CreatedAt.After(current.CreatedAt.Time) {
+		if current == nil || current.State == model.MemberStateStopped && m.State != model.MemberStateStopped || (current.State == model.MemberStateStopped) == (m.State == model.MemberStateStopped) && m.CreatedAt.After(current.CreatedAt.Time) {
 			copy := m
 			current = &copy
 		}

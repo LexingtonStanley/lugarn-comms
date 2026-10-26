@@ -84,7 +84,11 @@ func (i *Integration) Runner(team string, opts RunnerOptions) *Runner {
 	opts.Files = i.adapter
 	opts.Panes = i.panes
 	opts.HomeDir = i.opts.HomeDir
+	if opts.Processes == nil {
+		opts.Processes = integrationProcesses{}
+	}
 	r := NewRunner(i.b, team, opts)
+	r.onStop = cleanupAdoptedDescendants
 	lifecycle := &integrationLifecycle{i: i, r: r}
 	r.opts.PaneLifecycle = lifecycle
 	r.opts.Requests = lifecycle
@@ -296,4 +300,10 @@ func (p *paneAdapter) WaitActivity(ctx context.Context, m model.Member, timeout 
 		return false, nil
 	}
 	return e == nil, e
+}
+
+type integrationProcesses struct{ nativeProcesses }
+
+func (integrationProcesses) Cancel(ctx context.Context, pid int64, birth string) error {
+	return cancelOwnedTree(ctx, pid, birth)
 }

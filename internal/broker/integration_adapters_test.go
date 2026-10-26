@@ -12,7 +12,12 @@ import (
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 )
 
+var integrationHelpers = map[string]func() int{}
+
 func TestMain(m *testing.M) {
+	if helper := integrationHelpers[os.Getenv("LUGARN_INTEGRATION_HELPER")]; helper != nil {
+		os.Exit(helper())
+	}
 	if os.Getenv("LUGARN_INTEGRATION_HELPER") == "argv-agent" {
 		binary, _ := os.Executable()
 		data, _ := json.Marshal(struct {

@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/store"
@@ -69,4 +70,18 @@ func TestIntegrationWorktreeCreationAndReuse(t *testing.T) {
 	if len(result.Refused) != 1 || result.Refused[0].Reason != wire.WorktreeRefusalMemberNotStopped {
 		t.Fatal(result)
 	}
+	b.opts.Git = &fakeGit{}
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		old, e := tx.GetStoredMember("new-user")
+		if e != nil {
+			return e
+		}
+		return tx.InsertMember(store.MemberParams{ID: "newer-stopped", TeamID: "t", Name: "newer-stopped", Kind: model.MemberKindAgent, Origin: model.MemberOriginSpec, Role: ptr(model.RoleWorker), Harness: ptr(model.HarnessCodex), Profile: ptr(model.ProfileReadOnly), Mode: ptr(model.ModeHeadless), Folder: &repo, Brief: ptr("brief"), State: model.MemberStateStopped, WorktreeID: old.WorktreeID, CreatedAt: ptr(model.Time{Time: b.now().Add(time.Second)})})
+	}))
+	result, e = b.RemoveWorktrees(ctx, wire.RemoveWorktreesRequest{Team: "t", Paths: []string{first.Worktree.Path}})
+	must(t, e)
+	if len(result.Refused) != 1 || result.Refused[0].Reason != wire.WorktreeRefusalMemberNotStopped {
+		t.Fatal("a newer stopped link hid an active worktree user", result)
+	}
+
 }

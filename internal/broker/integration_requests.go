@@ -236,8 +236,10 @@ func (l *integrationLifecycle) toHeadless(ctx context.Context, m model.Member, c
 			return e
 		}
 	}
-	if e := l.waitRecipient(ctx, m, false); e != nil {
-		return e
+	if wait {
+		if e := l.waitRecipient(ctx, m, false); e != nil {
+			return e
+		}
 	}
 	current, e := l.current(ctx, m.ID)
 	if e != nil {

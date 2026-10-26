@@ -259,6 +259,11 @@ func (r *Runner) stop(ctx context.Context) error {
 	case <-ctx.Done():
 		return model.NewError(model.ErrorTimeout, "runner workers did not stop")
 	}
+	if r.onStop != nil {
+		if e := r.onStop(ctx); e != nil {
+			return e
+		}
+	}
 	if e := r.checkOrphans(ctx, true); e != nil {
 		return e
 	}
