@@ -84,7 +84,24 @@ func (i *Integration) Runner(team string, opts RunnerOptions) *Runner {
 	opts.Files = i.adapter
 	opts.Panes = i.panes
 	opts.HomeDir = i.opts.HomeDir
-	return NewRunner(i.b, team, opts)
+	r := NewRunner(i.b, team, opts)
+	r.onAcquire = func(ctx context.Context) error {
+		placement, e := i.placement(team)
+		if e != nil {
+			return e
+		}
+		if placement.Pane == "" {
+			return nil
+		}
+		state, e := (nativeProcesses{}).Inspect(ctx, r.opts.PID)
+		if e != nil {
+			return e
+		}
+		placement.PID = r.opts.PID
+		placement.Birth = state.Birth
+		return i.savePlacement(team, placement)
+	}
+	return r
 }
 
 type harnessAdapter struct {

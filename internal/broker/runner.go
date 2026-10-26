@@ -19,6 +19,7 @@ var errRunnerGeneration = model.NewError(model.ErrorLeaseConflict, "runner membe
 // Runner drives one team. Construct a new value for every run; Run is single-use.
 // Cancelling its context detaches live turns; a team stop cancels them instead.
 type Runner struct {
+	onAcquire    func(context.Context) error
 	paneObserved map[string]runnerPanePoll
 	freshStart   bool
 	startMembers map[string]bool
@@ -175,6 +176,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	if e := r.acquire(ctx); e != nil {
 		return e
+	}
+	if r.onAcquire != nil {
+		if e := r.onAcquire(ctx); e != nil {
+			return e
+		}
 	}
 	workCtx, cancel := context.WithCancel(ctx)
 	defer cancel()

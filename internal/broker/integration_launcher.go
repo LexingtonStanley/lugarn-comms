@@ -19,9 +19,13 @@ import (
 
 // Attach enables real app lifecycle operations for this broker. Configure it
 // before serving any concurrent call. Bare broker.New retains injectable defaults.
-func (i *Integration) Attach() { i.b.integration = i; i.b.opts.Launcher = i }
+func (i *Integration) Attach() { i.b.integration = i; i.b.opts.Launcher = i; i.b.opts.Teardown = i }
 
-type runnerPlacement struct{ Workspace, Pane, BridgeDir, Binary string }
+type runnerPlacement struct {
+	Workspace, Pane, BridgeDir, Binary string
+	PID                                int64
+	Birth                              string
+}
 
 func (i *Integration) placementPath(team string) string {
 	return filepath.Join(i.b.opts.StateDir, "runner", team+".json")
