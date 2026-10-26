@@ -85,3 +85,25 @@ func TestIntegrationWorktreeCreationAndReuse(t *testing.T) {
 	}
 
 }
+
+func TestIntegrationWorktreeProbeFailureDoesNotSilentlyShare(t *testing.T) {
+	if _, e := exec.LookPath("git"); e != nil {
+		t.Skip("git not installed")
+	}
+	b, _ := setup(t)
+	b.opts.Host = nil
+	b.opts.Git = &brokenGit{}
+	ctx := context.Background()
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		return tx.UpdateMember("writer", store.MemberPatch{Worktree: ptr(true)}, b.now())
+	}))
+	runnerReady(t, b)
+	i, e := NewIntegration(b, IntegrationOptions{HomeDir: t.TempDir()})
+	must(t, e)
+	r := i.Runner("t", RunnerOptions{})
+	must(t, r.acquire(ctx))
+	var m *model.Member
+	must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; m, e = tx.GetMember("writer"); return e }))
+	_, e = i.prepareWorktree(ctx, r, *m)
+	code(t, e, model.ErrorInternal)
+}

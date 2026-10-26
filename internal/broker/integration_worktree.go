@@ -70,7 +70,11 @@ func (i *Integration) prepareWorktree(ctx context.Context, r *Runner, m model.Me
 	} else if e != nil {
 		return nil, e
 	}
-	plan, pe := policy.PlanWorktree(policy.WorktreeInput{Base: *m.Folder, TeamID: m.Team, TeamName: team.Name, Member: m.Name, Recorded: recorded}, i.b.host(ctx))
+	host := i.b.host(ctx)
+	plan, pe := policy.PlanWorktree(policy.WorktreeInput{Base: *m.Folder, TeamID: m.Team, TeamName: team.Name, Member: m.Name, Recorded: recorded}, host)
+	if e := hostError(host); e != nil {
+		return nil, e
+	}
 	if pe != nil {
 		return nil, pe
 	}
