@@ -231,7 +231,7 @@ func TestIntegrationLiveFlows(t *testing.T) {
 	if status.Running {
 		t.Fatal("fresh session already exists; refusing to touch it")
 	}
-	integration, e := NewIntegration(b, IntegrationOptions{Binary: binary, HerdrBinary: herdrBin, HomeDir: pointerHome, Models: map[model.Harness]string{model.HarnessClaude: "haiku", model.HarnessCodex: "gpt-6-luna", model.HarnessOpenCode: "opencode-go/iceman-contributor-free"}})
+	integration, e := NewIntegration(b, IntegrationOptions{Binary: binary, HerdrBinary: herdrBin, HomeDir: pointerHome, Models: map[model.Harness]string{model.HarnessClaude: "haiku", model.HarnessCodex: "gpt-6-luna", model.HarnessOpenCode: "opencode-go/kimi-k3.1-pro"}})
 	must(t, e)
 	integration.Attach()
 	started, e := b.StartHerdr(ctx, wire.StartHerdrRequest{Server: &session})
@@ -304,7 +304,7 @@ func TestIntegrationLiveFlows(t *testing.T) {
 		var member model.Member
 		f.wait(t, "OpenCode session-before-pane", 100*time.Second, func() bool {
 			member = f.member(t, "live-b", "worker")
-			return member.State == model.MemberStateStopped || member.State == model.MemberStateRunning && member.Lease.Driver == model.DriverPane
+			return member.State == model.MemberStateStopped && member.StopReason != nil || member.State == model.MemberStateRunning && member.Lease.Driver == model.DriverPane
 		})
 		f.reportTurns(t, "live-b")
 		if member.State != model.MemberStateRunning {
@@ -324,6 +324,7 @@ func TestIntegrationLiveFlows(t *testing.T) {
 			}))
 			return done
 		})
+		t.Log("OpenCode kimi-k3.1-pro: session-before-pane succeeded; pane delivery delivered")
 		f.stopAndCheck(t, "live-b")
 	})
 	t.Run("c-claude-conversion", func(t *testing.T) {

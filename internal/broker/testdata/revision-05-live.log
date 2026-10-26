@@ -1,0 +1,14 @@
+=== RUN   TestIntegrationLiveFlows
+    integration_live_linux_test.go:239: app start-herdr server=lugarn-test-729f2f99b95ef534 started=true method=0x7abc8c2a200
+=== RUN   TestIntegrationLiveFlows/b-opencode-pane
+    integration_live_linux_test.go:303: app start-team live-b: state=running runner=0x7abc8f8ba20 pane=0x7abc8f51a40
+    integration_live_linux_test.go:311: OpenCode pane launch stopped: <nil>
+=== NAME  TestIntegrationLiveFlows
+    integration_live_linux_test.go:395: herdr --session lugarn-test-729f2f99b95ef534 server stop:  (<nil>)
+    integration_live_linux_test.go:395: delete own stopped session lugarn-test-729f2f99b95ef534: deleted session lugarn-test-729f2f99b95ef534
+         (<nil>)
+--- FAIL: TestIntegrationLiveFlows (12.32s)
+    --- FAIL: TestIntegrationLiveFlows/b-opencode-pane (11.04s)
+FAIL
+FAIL	github.com/LexingtonStanley/lugarn-comms/internal/broker	12.329s
+FAIL
