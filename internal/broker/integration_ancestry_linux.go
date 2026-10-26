@@ -4,77 +4,90 @@ package broker
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"golang.org/x/sys/unix"
 )
 
-func cancelOwnedTree(ctx context.Context, pid int64, birth string) error {
-	p := nativeProcesses{}
-	root, e := p.Inspect(ctx, pid)
-	if e != nil || !root.Alive {
+func linuxTreeProcess(_ context.Context, pid int64) (treeProcess, error) {
+	raw, e := os.ReadFile(filepath.Join("/proc", strconv.FormatInt(pid, 10), "stat"))
+	if os.IsNotExist(e) {
+		return treeProcess{}, nil
+	}
+	if e != nil {
+		return treeProcess{}, e
+	}
+	end := strings.LastIndexByte(string(raw), ')')
+	if end < 0 {
+		return treeProcess{}, fmt.Errorf("invalid process stat")
+	}
+	fields := strings.Fields(string(raw[end+1:]))
+	if len(fields) < 20 {
+		return treeProcess{}, fmt.Errorf("short process stat")
+	}
+	if fields[0] == "Z" || fields[0] == "X" {
+		return treeProcess{}, nil
+	}
+	parent, e := strconv.ParseInt(fields[1], 10, 64)
+	if e != nil {
+		return treeProcess{}, e
+	}
+	boot, e := os.ReadFile("/proc/sys/kernel/random/boot_id")
+	if e != nil {
+		return treeProcess{}, e
+	}
+	return treeProcess{PID: pid, Parent: parent, Birth: strings.TrimSpace(string(boot)) + ":" + fields[19]}, nil
+}
+func signalLinuxProcess(ctx context.Context, node treeProcess) error {
+	// Open before verification: even immediate PID reuse after verification cannot
+	// redirect this signal. Kernels without pidfds fail closed, never kill by name.
+	fd, e := unix.PidfdOpen(int(node.PID), 0)
+	if e == unix.ESRCH {
+		return nil
+	}
+	if e != nil {
 		return e
 	}
-	if birth == "" || root.Birth != birth {
+	defer unix.Close(fd)
+	current, e := linuxTreeProcess(ctx, node.PID)
+	if e != nil {
+		return e
+	}
+	if current != node {
 		return nil
-	} // Reused PID: never signal it.
+	}
+	e = unix.PidfdSendSignal(fd, unix.SIGKILL, nil, 0)
+	if e == unix.ESRCH {
+		return nil
+	}
+	return e
+}
+func cancelOwnedTree(ctx context.Context, pid int64, birth string) error {
+	root, e := linuxTreeProcess(ctx, pid)
+	if e != nil {
+		return e
+	}
+	if root.Birth == "" || root.Birth != birth {
+		return nil
+	}
 	entries, e := os.ReadDir("/proc")
 	if e != nil {
 		return e
 	}
-	parents := map[int64]int64{}
+	nodes := map[int64]treeProcess{}
 	for _, entry := range entries {
-		child, e := strconv.ParseInt(entry.Name(), 10, 64)
+		id, e := strconv.ParseInt(entry.Name(), 10, 64)
 		if e != nil {
 			continue
 		}
-		raw, e := os.ReadFile(filepath.Join("/proc", entry.Name(), "stat"))
-		if e != nil {
-			continue
-		}
-		end := strings.LastIndexByte(string(raw), ')')
-		if end < 0 {
-			continue
-		}
-		fields := strings.Fields(string(raw[end+1:]))
-		if len(fields) < 2 {
-			continue
-		}
-		parent, e := strconv.ParseInt(fields[1], 10, 64)
-		if e == nil {
-			parents[child] = parent
+		node, e := linuxTreeProcess(ctx, id)
+		if e == nil && node.Birth != "" {
+			nodes[id] = node
 		}
 	}
-	var visit func(int64) error
-	seen := map[int64]bool{}
-	visit = func(parent int64) error {
-		if seen[parent] {
-			return nil
-		}
-		seen[parent] = true
-		for child, ancestor := range parents {
-			if ancestor != parent {
-				continue
-			}
-			state, e := p.Inspect(ctx, child)
-			if e != nil {
-				return e
-			}
-			if !state.Alive {
-				continue
-			}
-			if e = visit(child); e != nil {
-				return e
-			}
-			if e = p.Cancel(ctx, child, state.Birth); e != nil {
-				return e
-			}
-		}
-		return nil
-	}
-	if e = visit(pid); e != nil {
-		return e
-	}
-	return p.Cancel(ctx, pid, birth)
+	return walkOwnedTree(ctx, root, nodes, linuxTreeProcess, signalLinuxProcess)
 }
