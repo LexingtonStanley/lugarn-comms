@@ -1,25 +1,15 @@
 === RUN   TestLive
 === RUN   TestLive/opencode
-    live_test.go:140: opencode first argv=["run" "--format" "json" "--standalone" "--model" "opencode-go/iceman-contributor-free"]; stdin="Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the first turn. Reply with the word ok."
-    live_test.go:151: opencode first pid=3224435 exit=0 acknowledged=true session=ses_e86ae3bb8ffesPO872aCi7aCGL final="ok" status=succeeded error="" usage=&{InputTokens:0x308130ae2778 OutputTokens:0x308130ae2780 CachedInputTokens:0x308130ae2788 ReasoningTokens:0x308130ae2790 CostUSD:0x308130ae2798}
-    live_test.go:153: MCP log:
-        start pid=3224563 member=member_1
-        initialize  pid=3224563 member=member_1
-        tools/list  pid=3224563 member=member_1
-        tools/call team pid=3224563 member=member_1
-    live_test.go:140: opencode resumed argv=["run" "--format" "json" "--standalone" "--model" "opencode-go/iceman-contributor-free" "--session" "ses_e86ae3bb8ffesPO872aCi7aCGL"]; stdin="Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the resumed turn. Reply with the word ok."
-    live_test.go:151: opencode resumed pid=3224728 exit=0 acknowledged=true session=ses_e86ae3bb8ffesPO872aCi7aCGL final="ok" status=succeeded error="" usage=<nil>
-    live_test.go:153: MCP log:
-        start pid=3224563 member=member_1
-        initialize  pid=3224563 member=member_1
-        tools/list  pid=3224563 member=member_1
-        tools/call team pid=3224563 member=member_1
-        start pid=3224842 member=member_1
-        initialize  pid=3224842 member=member_1
-        tools/list  pid=3224842 member=member_1
-    live_test.go:155: turn failed or team tool not called: {ExitCode:0 Acknowledged:true SessionID:ses_e86ae3bb8ffesPO872aCi7aCGL FinalText:ok Usage:<nil> Error: Cancelled:false TimedOut:false}
---- FAIL: TestLive (12.94s)
-    --- FAIL: TestLive/opencode (12.94s)
-FAIL
-FAIL	github.com/LexingtonStanley/lugarn-comms/internal/harness	12.948s
-FAIL
+    live_test.go:148: opencode resumed argv=["run" "--format" "json" "--standalone" "--model" "opencode-go/iceman-contributor-free" "--session" "ses_e869cf1c3ffescBYWP1Z0X7SI7"]; stdin="Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the resumed turn. Reply with the word ok."
+    live_test.go:160: opencode resumed pid=3286590 exit=0 acknowledged=true session=ses_e869cf1c3ffescBYWP1Z0X7SI7 final="ok" status=succeeded error="" usage={"input_tokens":107,"output_tokens":19,"cached_input_tokens":6727,"reasoning_tokens":11,"cost_usd":0}
+    live_test.go:162: MCP log:
+        start pid=3286654 member=member_1
+        initialize  pid=3286654 member=member_1
+        tools/list  pid=3286654 member=member_1
+        tools/call team pid=3286654 member=member_1
+    live_test.go:235: opencode cancelling pid=3289788 tree=[3289788 3286654 3289830] after MCP tools/list (before turn completion)
+    live_test.go:244: opencode cancelled: exit=-1 acknowledged=false session=ses_e869cf1c3ffescBYWP1Z0X7SI7 status=cancelled; all 3 processes dead
+--- PASS: TestLive (55.52s)
+    --- PASS: TestLive/opencode (55.52s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	55.520s

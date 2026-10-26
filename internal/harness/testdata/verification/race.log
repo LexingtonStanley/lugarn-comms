@@ -3,7 +3,7 @@ ok  	github.com/LexingtonStanley/lugarn-comms/internal/agentops	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/appops	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/cli	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/gitwt	(cached)
-ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	4.849s
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/hostprobe	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/mcpserver	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/model	(cached)

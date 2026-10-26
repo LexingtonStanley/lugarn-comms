@@ -125,6 +125,17 @@ func TestLive(t *testing.T) {
 			}
 			logPath := l.path(".mcp.log")
 			turns := []string{"first", "resumed"}
+			// Resume a known OpenCode test session after a provider failure,
+			// without spending another first turn. All call/result assertions
+			// remain identical to the normal resumed-turn check below.
+			if session := os.Getenv("LUGARN_HARNESS_LIVE_RESUME_SESSION"); session != "" && harness == model.HarnessOpenCode {
+				workdir := os.Getenv("LUGARN_HARNESS_LIVE_RESUME_WORKDIR")
+				if info, err := os.Stat(workdir); err != nil || !info.IsDir() {
+					t.Fatal("LUGARN_HARNESS_LIVE_RESUME_WORKDIR must name the original existing test folder")
+				}
+				l.SessionID, l.Resume, l.WorkDir = session, true, workdir
+				turns = []string{"resumed"}
+			}
 			if os.Getenv("LUGARN_HARNESS_LIVE_CANCEL_ONLY") == "1" {
 				turns = nil
 			}

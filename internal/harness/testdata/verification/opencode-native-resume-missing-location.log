@@ -1,0 +1,11 @@
+=== RUN   TestLive
+=== RUN   TestLive/opencode
+    live_test.go:144: opencode resumed argv=["run" "--format" "json" "--standalone" "--model" "opencode-go/iceman-contributor-free" "--session" "ses_e869cf1c3ffescBYWP1Z0X7SI7"]; stdin="Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the resumed turn. Reply with the word ok."
+    live_test.go:156: opencode resumed pid=3284837 exit=1 acknowledged=false session=ses_e869cf1c3ffescBYWP1Z0X7SI7 final="" status=failed error="OpenCode: {\"message\":\"Location not found: /tmp/TestLiveopencode3270588694/001\",\"type\":\"unknown\"}" usage=null
+    live_test.go:158: MCP log:
+    live_test.go:160: turn failed or team tool not called: {ExitCode:1 Acknowledged:false SessionID:ses_e869cf1c3ffescBYWP1Z0X7SI7 FinalText: Usage:<nil> Error:OpenCode: {"message":"Location not found: /tmp/TestLiveopencode3270588694/001","type":"unknown"} Cancelled:false TimedOut:false}
+--- FAIL: TestLive (0.47s)
+    --- FAIL: TestLive/opencode (0.47s)
+FAIL
+FAIL	github.com/LexingtonStanley/lugarn-comms/internal/harness	0.472s
+FAIL

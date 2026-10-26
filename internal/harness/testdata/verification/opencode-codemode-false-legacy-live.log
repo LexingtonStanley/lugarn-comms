@@ -1,0 +1,25 @@
+=== RUN   TestLive
+=== RUN   TestLive/opencode
+    live_test.go:137: opencode first argv=["run" "--format" "json" "--standalone" "--model" "opencode-go/iceman-contributor-free"]; stdin="Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the first turn. Reply with the word ok."
+    live_test.go:149: opencode first pid=3266515 exit=0 acknowledged=true session=ses_e869f8529ffeTHido37O0ZxLl3 final="ok" status=succeeded error="" usage={"input_tokens":6668,"output_tokens":27,"cached_input_tokens":70,"reasoning_tokens":56,"cost_usd":0}
+    live_test.go:151: MCP log:
+        start pid=3266578 member=member_1
+        initialize  pid=3266578 member=member_1
+        tools/list  pid=3266578 member=member_1
+        tools/call team pid=3266578 member=member_1
+    live_test.go:137: opencode resumed argv=["run" "--format" "json" "--standalone" "--model" "opencode-go/iceman-contributor-free" "--session" "ses_e869f8529ffeTHido37O0ZxLl3"]; stdin="Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the resumed turn. Reply with the word ok."
+    live_test.go:149: opencode resumed pid=3266823 exit=1 acknowledged=true session=ses_e869f8529ffeTHido37O0ZxLl3 final="" status=failed error="OpenCode: {\"message\":\"Upstream request failed: Endpoint is unavailable.\",\"response\":{\"body\":\"{\\\"error\\\":{\\\"type\\\":\\\"server_error\\\",\\\"message\\\":\\\"Upstream request failed: Endpoint is unavailable.\\\"}}\"},\"status\":503,\"type\":\"provider.internal\"}" usage=null
+    live_test.go:151: MCP log:
+        start pid=3266578 member=member_1
+        initialize  pid=3266578 member=member_1
+        tools/list  pid=3266578 member=member_1
+        tools/call team pid=3266578 member=member_1
+        start pid=3266881 member=member_1
+        initialize  pid=3266881 member=member_1
+        tools/list  pid=3266881 member=member_1
+    live_test.go:153: turn failed or team tool not called: {ExitCode:1 Acknowledged:true SessionID:ses_e869f8529ffeTHido37O0ZxLl3 FinalText: Usage:<nil> Error:OpenCode: {"message":"Upstream request failed: Endpoint is unavailable.","response":{"body":"{\"error\":{\"type\":\"server_error\",\"message\":\"Upstream request failed: Endpoint is unavailable.\"}}"},"status":503,"type":"provider.internal"} Cancelled:false TimedOut:false}
+--- FAIL: TestLive (96.40s)
+    --- FAIL: TestLive/opencode (96.40s)
+FAIL
+FAIL	github.com/LexingtonStanley/lugarn-comms/internal/harness	96.400s
+FAIL

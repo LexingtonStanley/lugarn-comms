@@ -1,0 +1,19 @@
+Read-only excerpts from the embedded JavaScript in the installed executable
+/home/lexde/.opencode/bin/opencode, version opencode v2.1.4.
+No credential/configuration file was inspected to obtain these excerpts.
+
+Native timeout schema (byte offset 160423222):
+class cj extends xe("Mcp.TimeoutConfig")({startup:en.pipe(y).annotate({description:"Maximum time in milliseconds to establish and initialize the MCP server."}),catalog:en.pipe(y).annotate({description:"Maximum time in milliseconds to wait for MCP discovery requests such as tools/list and prompts/list."}),execution:en.pipe(y).annotate({description:"Maximum time in milliseconds to wait for MCP tool and prompt execution."})}){}var VG=K(["legacy","auto","2026-07-28"]).annotate({identifier:"Mcp.Protocol",description:'MCP protocol negotiation. "legacy" (default) opens with the initialize handshake and speaks protocol revisions up to 2025-11-25. "auto" probes for the 2026-07-28 revision and falls b
+
+Native local server schema (byte offset 160424033):
+class cB extends xe("Mcp.LocalConfig")({type:b("local"),command:t.pipe(E),cwd:t.pipe(y).annotate({description:"Working directory for the MCP server process. Relative paths resolve from the workspace directory."}),environment:W(t,t).pipe(y),disabled:B.pipe(y),codemode:B.pipe(y).annotate({description:"Expose this server's tools through Code Mode. Defaults to true."}),timeout:cj.pipe(y),protocol:VG.pipe(y)}){}class XG extends xe("Mcp.OAuthConfig")({client_id:t.pipe(y),client_secret:t.pipe(y),scope:t.pipe(y),callback_port:he.check(LH({minimum:1,maximum:65535})).pipe(y),redirect_uri:t.pipe(y),auth_server_metadata_url:t.pipe(y).annotate({descriptio
+
+Flat-entry legacy converter (byte offset 167361896):
+function bC(H){let e=H.enabled===void 0?void 0:!H.enabled;if(H.type==="local")return{type:H.type,command:H.command,cwd:H.cwd,environment:H.environment,disabled:e,timeout:H.timeout===void 0?void 0:$f(H.timeout)};return{type:H.type,url:H.url,headers:H.headers,oauth:H.oauth&&{client_id:H.oauth.clientId,client_secret:H.oauth.clientSecret,scope:H.oauth.scope,callback_port:H.oauth.callbackPort,redirect_uri:H.oauth.redirectUri},disabled:e,timeout:H.timeout===void 0?void 0:$f(H.timeout)}}function wC(H,e){if(H==="azure-cognitive-services")return GC(e);if(H==="google-vertex-anthropic")return NC(e);return PE(e)}function PE(H){let{setCacheKey:e,...A}=H.options??{},r=SC(A);return{name:H.name,env:H.env,pa
+
+Native servers selection (byte offset 167369217):
+if(_==="servers"&&!Jd(h)){Object.entries(oA(qC(h),bZ,S,A,Dt)).forEach(([F,C])=>nf(i,F,C));return}if(_==="timeout"&&!Jd(h)){ZC(typeof h==="number"?$f(h):h,a,S,A);return}let l=Se(lC,h,S,A);if(l!==void 0)nf(r,_,wI(bZ,bC(l)))})}let D=xE(r,i,["mcp","servers"],A);if(!Object.keys(D).length&&!Object.keys(a).length){if(Fe(H.mcp)&&!Object.keys(H.mcp).length)e.mcp={};return}e.mcp={...Object.keys(a).length?{timeout:a}:{},...Object.keys(D).length?{servers:D}:{}}}function qC(H){if(!Fe(H))return H;return Object.fromEntries(Object.entries(H).map(([e,A])=>[e,Fe(A)&&typeof A.timeout==="number"?{...A,timeout:$f(A.timeout)}:A]))}function ZC(H,e,A,r){if(!Fe(H)){Vt(A,r);return}let i=Object.ent
+
+Direct model-visible tool naming (byte offset 168176379):
+function F(O){return O.options?.namespace===void 0?O.name:`${O.options.namespace.replaceAll(".","_")}_${O.name}`}e.exposedToolName=F,e.ToolProgress=W(t,jo),e.ToolOutput=o({structured:jo,content:E(e.ToolContent)}),e.ToolUpdateParams=o({id:t,
+

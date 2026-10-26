@@ -1,0 +1,32 @@
+PATH=$HOME/.local/go/bin:$PATH was exported. All live runs used read-only and opencode-go/iceman-contributor-free.
+
+Credential-copying removal check
+$ go test ./internal/harness
+Output: credentials-removal-check.log
+
+Flat codemode:false; provider 503 before first response
+$ LUGARN_HARNESS_LIVE=1 go test -v -run '^TestLive/opencode$' -count=1 ./internal/harness
+Output: opencode-codemode-false-provider-503.log
+
+Same flat config retry; first called team, resumed provider 503
+$ LUGARN_HARNESS_LIVE=1 go test -v -run '^TestLive/opencode$' -count=1 ./internal/harness
+Output: opencode-codemode-false-legacy-live.log
+
+Native entry and startup/catalog limits; first tool succeeded, final response timed out
+$ LUGARN_HARNESS_LIVE=1 go test -v -run '^TestLive/opencode$' -count=1 ./internal/harness
+Output: opencode-native-first-timeout.log
+
+Targeted resume; original test folder was already deleted, exited before model call
+$ LUGARN_HARNESS_LIVE=1 LUGARN_HARNESS_LIVE_RESUME_SESSION=ses_e869cf1c3ffescBYWP1Z0X7SI7 go test -v -run '^TestLive/opencode$' -count=1 ./internal/harness
+Output: opencode-native-resume-missing-location.log
+
+Same session and restored original scratch working folder; strict resume and cancellation pass
+$ LUGARN_HARNESS_LIVE=1 LUGARN_HARNESS_LIVE_RESUME_SESSION=ses_e869cf1c3ffescBYWP1Z0X7SI7 LUGARN_HARNESS_LIVE_RESUME_WORKDIR=/tmp/TestLiveopencode3270588694/001 go test -v -run '^TestLive/opencode$' -count=1 ./internal/harness
+Output: opencode-live.log
+
+Read-only transcript inspection:
+$ opencode session export --standalone ses_e869f8529ffeTHido37O0ZxLl3
+Output: opencode-codemode-false-legacy-resume-export.json
+
+$ opencode session export --standalone ses_e869cf1c3ffescBYWP1Z0X7SI7
+Output: opencode-native-first-export.json (after first attempt), opencode-resume-export.json (after resumed turn)

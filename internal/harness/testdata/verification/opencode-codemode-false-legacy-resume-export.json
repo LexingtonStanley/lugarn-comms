@@ -1,0 +1,223 @@
+{
+  "info": {
+    "id": "ses_e869f8529ffeTHido37O0ZxLl3",
+    "projectID": "3303d78034f08359cc22ff5141ed17435837eb40",
+    "model": {
+      "id": "iceman-contributor-free",
+      "providerID": "opencode-go",
+      "variant": "default"
+    },
+    "cost": 0.0000521,
+    "tokens": {
+      "input": 7162,
+      "output": 46,
+      "reasoning": 245,
+      "cache": {
+        "read": 6810,
+        "write": 0
+      }
+    },
+    "outcome": "failed",
+    "time": {
+      "created": 1793037728575,
+      "updated": 1793037824367,
+      "idle": 1793037824369
+    },
+    "title": "Lugarn team MCP tool call",
+    "location": {
+      "directory": "/tmp/TestLiveopencode2240106453/001"
+    }
+  },
+  "messages": [
+    {
+      "id": "msg_179607b59001JJK398eGfUnTHd",
+      "time": {
+        "created": 1793037729374
+      },
+      "text": "Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the first turn. Reply with the word ok.",
+      "files": [],
+      "type": "user"
+    },
+    {
+      "id": "msg_179607e66001w2wmKr0INCYzVY",
+      "time": {
+        "created": 1793037729388,
+        "streamed": 1793037731711,
+        "completed": 1793037731722
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "iceman-contributor-free",
+        "providerID": "opencode-go",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "tool",
+          "id": "fb0182db-9716-498e-bf61-6fa4beeffe57",
+          "name": "execute",
+          "executed": false,
+          "state": {
+            "status": "completed",
+            "input": {
+              "code": "await tools.lugarn.team({});"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "ok"
+              }
+            ],
+            "metadata": {
+              "toolCalls": [
+                {
+                  "tool": "lugarn.team",
+                  "status": "completed"
+                }
+              ],
+              "truncated": false
+            }
+          },
+          "time": {
+            "created": 1793037731703,
+            "ran": 1793037731710,
+            "completed": 1793037731721
+          }
+        }
+      ],
+      "finish": "tool-calls",
+      "rawFinish": "tool_calls",
+      "cost": 0,
+      "tokens": {
+        "input": 6668,
+        "output": 27,
+        "reasoning": 56,
+        "cache": {
+          "read": 70,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_179608790001zg0BfHsPOXvNSS",
+      "time": {
+        "created": 1793037731733,
+        "streamed": 1793037735960,
+        "completed": 1793037735961
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "iceman-contributor-free",
+        "providerID": "opencode-go",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "ok"
+        }
+      ],
+      "finish": "stop",
+      "rawFinish": "stop",
+      "cost": 0,
+      "tokens": {
+        "input": 28,
+        "output": 8,
+        "reasoning": 189,
+        "cache": {
+          "read": 6740,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_17960981b001VPqHq4CmUJvCLE",
+      "time": {
+        "created": 1793037735963
+      },
+      "type": "idle",
+      "outcome": "succeeded"
+    },
+    {
+      "id": "msg_179609c530011SZ2VD0EExr61N",
+      "metadata": {
+        "notice": "instructions",
+        "instructionSources": [
+          "core/codemode"
+        ]
+      },
+      "time": {
+        "created": 1793037737043
+      },
+      "type": "system",
+      "text": "The Code Mode tool catalog has changed.\n\nThe following tools are no longer available and must not be called: tools.lugarn.inbox, tools.lugarn.reply, tools.lugarn.send, tools.lugarn.spawn, tools.lugarn.stop, tools.lugarn.team.",
+      "description": "Instructions updated: core/codemode"
+    },
+    {
+      "id": "msg_179609970001Oxh08RLIn0qTDM",
+      "time": {
+        "created": 1793037737045
+      },
+      "text": "Call the lugarn team MCP tool once with {} now, even if you called it earlier. This is the resumed turn. Reply with the word ok.",
+      "files": [],
+      "type": "user"
+    },
+    {
+      "id": "msg_179609c59001vyjr2g5msj3jBD",
+      "time": {
+        "created": 1793037824028,
+        "completed": 1793037824367
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "iceman-contributor-free",
+        "providerID": "opencode-go",
+        "variant": "default"
+      },
+      "content": [],
+      "finish": "error",
+      "error": {
+        "type": "provider.internal",
+        "message": "Upstream request failed: Endpoint is unavailable.",
+        "status": 503,
+        "response": {
+          "body": "{\"error\":{\"type\":\"server_error\",\"message\":\"Upstream request failed: Endpoint is unavailable.\"}}"
+        }
+      }
+    },
+    {
+      "id": "msg_17960a574001yPDaKTz1C0oWZ2",
+      "metadata": {
+        "notice": "instructions",
+        "instructionSources": [
+          "core/codemode"
+        ]
+      },
+      "time": {
+        "created": 1793037739380
+      },
+      "type": "system",
+      "text": "The Code Mode tool catalog has changed.\n\nNew tools are available in addition to those previously listed:\n  - tools.lugarn.inbox(): Promise<unknown> // Lugarn inbox. Call with an empty object for this test.\n  - tools.lugarn.reply(): Promise<unknown> // Lugarn reply. Call with an empty object for this test.\n  - tools.lugarn.send(): Promise<unknown> // Lugarn send. Call with an empty object for this test.\n  - tools.lugarn.spawn(): Promise<unknown> // Lugarn spawn. Call with an empty object for this test.\n  - tools.lugarn.stop(): Promise<unknown> // Lugarn stop. Call with an empty object for this test.\n  - tools.lugarn.team(): Promise<unknown> // Lugarn team. Call with an empty object for this test.",
+      "description": "Instructions updated: core/codemode"
+    },
+    {
+      "id": "msg_17961f1710013lg0iBps0kRjkw",
+      "time": {
+        "created": 1793037824369
+      },
+      "type": "idle",
+      "outcome": "failed",
+      "error": {
+        "type": "provider.internal",
+        "message": "Upstream request failed: Endpoint is unavailable.",
+        "status": 503,
+        "response": {
+          "body": "{\"error\":{\"type\":\"server_error\",\"message\":\"Upstream request failed: Endpoint is unavailable.\"}}"
+        }
+      }
+    }
+  ]
+}

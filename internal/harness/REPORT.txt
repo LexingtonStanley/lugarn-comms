@@ -1,9 +1,17 @@
 Wave C2c report, 2026-10-26, branch c2/harness.
 
 Implemented only internal/harness. No push, PR, other branch, or sibling package
-changes. The implementation commits follow the requested order; this report and
-verification artifacts form the final commit. Every commit includes the supplied
+changes. The original implementation commits follow the requested order. The review
+follow-up has two commits: remove credential copying, then correct OpenCode config
+and refresh this report/verification artifacts. Every commit includes the supplied
 Co-Authored-By line.
+
+Review outcome: credential copying/config-home overrides are removed. With the
+native OpenCode server entry, first and resumed turns both made ordinary
+lugarn_team calls. The targeted resumed turn and cancellation passed the strict
+live assertions. The native first turn's tool succeeded but its final response
+timed out; a single uninterrupted first+resumed success is not claimed. Provider
+503s and the timeout are retained alongside the successful resumed evidence.
 
 Exported API, one line per type/function group:
 - Launch: trusted harness/profile, paths, launch/member/session identity, Resume,
@@ -55,7 +63,8 @@ final text "ok". Files were inspected for secrets; none were found.
 Every model prompt was tiny. Live commands used LUGARN_HARNESS_LIVE=1, isolated
 working/state directories, and read-only profiles. No Herdr was invoked. No
 application code accessed this person's ~/.lugarn, and hook execution tests used
-HOME=t.TempDir(). No global harness configuration was edited. The original retained Claude/Codex logs used temporary config folders with
+HOME=t.TempDir(). No global harness configuration was edited. The original retained
+Claude/Codex logs used temporary config folders with
 credential copies. Review identified that as unsafe: rotating refresh tokens in
 a copy can invalidate the person's login. Those helpers and all CLAUDE_CONFIG_DIR/
 CODEX_HOME overrides have been deleted. The live tests now inherit the person's
@@ -73,7 +82,7 @@ Actual commands, with PATH=$HOME/.local/go/bin:$PATH exported:
   LUGARN_HARNESS_LIVE=1 LUGARN_HARNESS_LIVE_CANCEL_ONLY=1 go test -v -run '^TestLive/opencode$' -count=1 ./internal/harness
   opencode session export --standalone ses_e86ae3bb8ffesPO872aCi7aCGL
 
-Observed results (raw logs retained, including the failing live assertion):
+Original implementation results (historical logs retained):
 - Claude 2.1.310: first/resumed turns both listed and called team, exit 0,
   acknowledged=true, final="ok", session f6f6c535-3088-4fb4-8d2f-bac6ddadb9e2
   unchanged on resume. Cancellation after the blocked tool call killed the harness
@@ -94,16 +103,17 @@ Observed results (raw logs retained, including the failing live assertion):
   C0 already demonstrated sandboxed shell failure from lexbox's AppArmor/userns
   restriction (Failed RTM_NEWADDR: Operation not permitted). No extra shell/model
   run was spent reproducing that host issue.
-- OpenCode 2.1.4: the first turn listed and called team, exit 0,
+- OpenCode 2.1.4 with the default Code Mode catalog: the first turn listed and
+  called team, exit 0,
   acknowledged=true, final="ok", session ses_e86ae3bb8ffesPO872aCi7aCGL.
   The resumed turn used that same session, exit 0, acknowledged=true, final="ok",
   but DID NOT call team; initialize/tools/list reached the server. The strict live
-  test failed in 12.948s and remains strict in the committed test. A previous pair
+  test failed in 12.948s. The test remains strict. A previous pair
   showed the same behavior. Exporting the transcript showed a new system notice:
   "The Code Mode tool catalog has changed." followed by a list saying the six
   tools were no longer available. Both first and resumed user prompts are present,
   so stdin was delivered. The complete export is retained as evidence. This is an
-  unresolved resumed MCP availability failure under the specified flags, not a
+  observed resumed MCP availability failure under the original flags, not a
   passing end-to-end result. No alternate profile or global-config workaround was
   attempted. A fresh launch cancelled just after MCP tools/list passed in 1.302s:
   harness pid=3232543 and MCP pid=3232615 both dead, exit=-1, status=cancelled.
@@ -111,11 +121,12 @@ Observed results (raw logs retained, including the failing live assertion):
   One earlier model-selector placement failed at CLI parsing; the builder now
   places OpenCode's --model after run, with a regression table check.
 
-No further paid retries were made. The retained Codex first/resume log predates the
+The original work stopped after those attempts. The retained Codex first/resume log predates the
 addition of --no-daemon; the final cancellation run includes it. Live tests skip by
 default. LUGARN_HARNESS_LIVE_CANCEL_ONLY=1 permits a tiny independent cancellation
 check without rerunning two completed turns. The normal live test runs first,
-resumed and cancellation in order, and currently fails at OpenCode's resumed call.
+resumed and cancellation in order; its original Code Mode configuration failed
+at OpenCode's resumed call. Review reruns are described below.
 
 Choices where the spec is silent:
 - Optional trusted Model allows cheap test/caller model choices. No free-form argv
@@ -148,8 +159,12 @@ Choices where the spec is silent:
 Spec issues, using docs/protocol.md from origin/c0/followups:
 - Lines 748-754 prescribe OpenCode registration and resume flags, with "nothing
   extra" to call tools. The observed resumed transcript drops all six tools even
-  though the new local server initializes/lists. Full resumed MCP functionality
-  is not verified. See opencode-live.log and opencode-resume-export.json.
+  though the new local server initializes/lists. The review found that OpenCode
+  2.1.4's legacy flat-entry converter drops codemode. The config now retains the
+  flat mcp.lugarn entry and adds a native mcp.servers.lugarn entry to preserve
+  codemode:false and startup/catalog limits. Historical evidence is in
+  opencode-codemode-default-live.log and
+  opencode-codemode-default-resume-export.json; review results are below.
 - Line 727 and .brief/BRIEF.md:67 prescribe killing the POSIX process group so
   grandchildren die too. Codex's MCP child creates a separate group; killing only
   the harness group leaves it alive. Ancestry-based cleanup is needed here.
@@ -166,22 +181,123 @@ No internal/model files or sibling packages were edited.
 Not verified live: macOS process control and hooks, Windows native resolution/job
 behavior/PowerShell hooks, Herdr pane launches, OpenCode 1.x --standalone, pi panes,
 or workspace/bypass permissions. macOS/Windows code and tests cross-compile under
-vet; the portable helper tests are ready for their native CI runners. OpenCode's
-resumed MCP call remains a known live failure rather than an untested claim.
+vet; the portable helper tests are ready for their native CI runners. See the
+review results below for the current OpenCode live verification status.
 
-All required offline checks passed on the final code. Real command output is in
-verification/checks.log. gofmt -l . printed nothing; go vet ./...,
+Review changes and current OpenCode verification:
+- Commit c0a3dbd removes isolatedClaude, isolatedCodex, copyCredential and all
+  CLAUDE_CONFIG_DIR/CODEX_HOME overrides. The test now uses the normal inherited
+  configuration. Claude's configured hooks are accepted, with no setting-sources
+  flag. No real credential file was read, copied or opened during this review.
+- The per-launch flat mcp.lugarn entry now includes codemode:false, checked for all
+  three profiles. That alone was ineffective on the installed OpenCode 2.1.4:
+  its flat-entry legacy converter rebuilds the entry without copying codemode.
+  The original field was therefore ignored, leaving Code Mode execute in use.
+- The installed native schema places current server configs at mcp.servers.lugarn.
+  We retain the flat entry required by the protocol and add the equivalent native
+  entry with codemode:false, disabled:false and timeout.startup/catalog of 30000ms.
+  Native values take precedence over legacy values for the same server name. This
+  is one named MCP server, not two separately named registrations. File-content
+  tests check both command arrays, both codemode flags, and native timeout values.
+  The extra native entry and timeout attempt were explained before running them.
+- Mcp.TimeoutConfig.startup bounds connection/initialize time; catalog bounds
+  discovery such as tools/list. They are time limits, not proof that generation
+  waits for an MCP startup barrier. No profile/model/global-config workaround was
+  tried. There is no auxiliary export in the production driver: exports below
+  were explicit, read-only verification commands.
+- Version-specific evidence is in verification/opencode-2.1.4-config-source.txt:
+  short embedded-JavaScript excerpts from the installed binary document the
+  native schema, legacy conversion, native precedence and exposed-name rule.
+  No credential or global configuration file was inspected for this evidence.
+  OpenCode 1.x acceptance of the native servers extension remains unverified;
+  retaining the flat entry is not a claim of 1.x compatibility.
+
+Review live commands (PATH=$HOME/.local/go/bin:$PATH exported):
+
+  LUGARN_HARNESS_LIVE=1 go test -v -run '^TestLive/opencode$' -count=1 ./internal/harness
+
+This command was run with flat codemode:false, retried after a provider 503, then
+run once with the native entry and startup/catalog timeouts. All runs kept
+read-only, opencode-go/iceman-contributor-free and the same tiny team/ok prompts.
+Raw chronological commands/log names are in verification/review-commands.log.
+
+The first flat-entry attempt failed before a model response with provider HTTP
+503, "Upstream request failed: Endpoint is unavailable." MCP initialize and
+list succeeded (94.171s; opencode-codemode-false-provider-503.log). On the retry,
+the first turn called team and returned ok, but the resumed provider call failed
+with the same 503 (96.400s; opencode-codemode-false-legacy-live.log). The saved
+legacy export confirms the flag had not reached tool registration: the model
+called execute with code "await tools.lugarn.team({});". Catalog removal/addition
+notices still appeared on resume. That motivated the native entry.
+
+With the native entry/timeouts, first session ses_e869cf1c3ffescBYWP1Z0X7SI7
+acknowledged and called team. Its transcript first shows an incorrect execute
+attempt using "tools.lugarn_team", then a successful ordinary tool invocation:
+
+  {"type":"tool","name":"lugarn_team","state":{"status":"completed","input":{},"content":[{"type":"text","text":"ok"}]}}
+
+The first run then reached the existing 150-second turn deadline waiting for a
+final response: exit=-1, acknowledged=true, final="I'll call it directly.\n",
+status=timed_out. This failed the strict test (150.055s) and did not automatically
+advance to resume. See opencode-native-first-timeout.log and
+opencode-native-first-export.json. The deadline and success assertions were not
+relaxed. The timeout is not being presented as a successful completed first turn.
+
+To verify resume without repeating an already successful first tool call, the
+live test now accepts an existing test session and its original working folder:
+
+  LUGARN_HARNESS_LIVE=1 LUGARN_HARNESS_LIVE_RESUME_SESSION=ses_e869cf1c3ffescBYWP1Z0X7SI7 LUGARN_HARNESS_LIVE_RESUME_WORKDIR=/tmp/TestLiveopencode3270588694/001 go test -v -run '^TestLive/opencode$' -count=1 ./internal/harness
+
+A preliminary targeted resume exited before any model call because t.TempDir had
+already removed the original folder; that raw output is retained separately. Only
+that run's own scratch folder was restored for the command above, using the same
+working directory the session names; it was removed again afterward. The normal
+live test still runs first/resumed/cancellation in order; the targeted mode uses
+the same strict resumed call/session/result checks and then cancellation.
+
+Actual final targeted resumed output (complete log: verification/opencode-live.log):
+
+  opencode resumed pid=3286590 exit=0 acknowledged=true session=ses_e869cf1c3ffescBYWP1Z0X7SI7 final="ok" status=succeeded error="" usage={"input_tokens":107,"output_tokens":19,"cached_input_tokens":6727,"reasoning_tokens":11,"cost_usd":0}
+  start pid=3286654 member=member_1
+  initialize  pid=3286654 member=member_1
+  tools/list  pid=3286654 member=member_1
+  tools/call team pid=3286654 member=member_1
+  opencode cancelled: exit=-1 acknowledged=false session=ses_e869cf1c3ffescBYWP1Z0X7SI7 status=cancelled; all 3 processes dead
+  --- PASS: TestLive (55.52s)
+      --- PASS: TestLive/opencode (55.52s)
+  PASS
+  ok  github.com/LexingtonStanley/lugarn-comms/internal/harness 55.520s
+
+The cancellation pid checks included the new harness/MCP pids 3289788/3289830 and
+the already completed resumed MCP pid 3286654; all were dead. The final session
+export records a successful direct lugarn_team invocation after the resumed user
+prompt, followed by final text ok. Both user turns and their successful ordinary
+team calls are in verification/opencode-resume-export.json. This establishes that
+the resumed turn now calls team with the native setting.
+
+Model-visible naming: lugarn_team is directly observed in both native turns. The
+installed exposedToolName rule is namespace + "_" + tool name, so the six advertised
+ordinary names are lugarn_send, lugarn_reply, lugarn_inbox, lugarn_team,
+lugarn_spawn, lugarn_stop. The other five names follow that rule and the fake
+server's six-name list; they were not each called. This replaces the old Code Mode
+execute -> tools.lugarn.team({}) path for comms tools.
+
+No further paid retries were made. No global harness configuration was edited,
+no Herdr session was invoked, and no credential-copying code was reintroduced.
+Claude/Codex live runs were not repeated; their original logs remain historical.
+
+All required offline checks passed on the revised final code. Real command output
+is in verification/checks.log. gofmt -l . printed nothing; go vet ./...,
 GOOS=windows GOARCH=amd64 go vet ./..., and GOOS=darwin GOARCH=arm64 go vet ./...
 each exited 0 with no output. The final exact go test -race ./... output follows
-(cached results reflect the successful fresh package/repository runs in this
-session, including the latest harness race tests):
+(the latest harness run is fresh; unchanged packages may be cached):
 
 ok  	github.com/LexingtonStanley/lugarn-comms/cmd/lugarn-comms	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/agentops	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/appops	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/cli	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/gitwt	(cached)
-ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/harness	4.849s
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/hostprobe	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/mcpserver	(cached)
 ok  	github.com/LexingtonStanley/lugarn-comms/internal/model	(cached)

@@ -58,8 +58,15 @@ func TestFiles(t *testing.T) {
 					got := readJSON(t, l.path(".opencode.json"))
 					reg := got["mcp"].(map[string]any)["lugarn"].(map[string]any)
 					command := reg["command"].([]any)
-					if command[0] != l.Binary || len(command) != 6 || reg["type"] != "local" || reg["enabled"] != true {
+					if command[0] != l.Binary || len(command) != 6 || reg["type"] != "local" || reg["enabled"] != true || reg["codemode"] != false {
 						t.Fatal(reg)
+					}
+					native := got["mcp"].(map[string]any)["servers"].(map[string]any)["lugarn"].(map[string]any)
+					if native["type"] != "local" || native["disabled"] != false || native["codemode"] != false || !reflect.DeepEqual(native["command"], reg["command"]) {
+						t.Fatal(native)
+					}
+					if !reflect.DeepEqual(native["timeout"], map[string]any{"startup": float64(30000), "catalog": float64(30000)}) {
+						t.Fatal(native["timeout"])
 					}
 					expected := map[string]any{"edit": "deny", "bash": "deny"}
 					if p != model.ProfileReadOnly {

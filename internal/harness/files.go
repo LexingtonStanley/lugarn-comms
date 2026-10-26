@@ -76,7 +76,20 @@ func writeFiles(l Launch, platform string) error {
 				permission["external_directory"] = "allow"
 			}
 		}
-		return write(l.path(".opencode.json"), map[string]any{"mcp": map[string]any{"lugarn": map[string]any{"type": "local", "command": append([]string{l.Binary}, l.mcpArgs()...), "enabled": true}}, "permission": permission})
+		command := append([]string{l.Binary}, l.mcpArgs()...)
+		// OpenCode 2.1.4 translates flat entries through its legacy adapter,
+		// which drops codemode. Its native servers map preserves that setting
+		// and takes precedence for the same server name. Keep the flat entry
+		// required by protocol v1, with an equivalent native entry for 2.x.
+		legacy := map[string]any{"type": "local", "command": command, "enabled": true, "codemode": false}
+		native := map[string]any{
+			"type": "local", "command": command, "disabled": false, "codemode": false,
+			"timeout": map[string]int{"startup": 30000, "catalog": 30000},
+		}
+		return write(l.path(".opencode.json"), map[string]any{
+			"mcp":        map[string]any{"lugarn": legacy, "servers": map[string]any{"lugarn": native}},
+			"permission": permission,
+		})
 	}
 	return nil
 }
