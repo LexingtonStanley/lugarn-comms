@@ -318,3 +318,48 @@ func TestHold(t *testing.T) {
 	_, err = Hold(now, model.TeamStateRunning, lead, nil, false)
 	requireCode(t, err, model.ErrorInvalidRequest)
 }
+
+func TestSpawnHeadlessHarness(t *testing.T) {
+	cases := []struct {
+		name     string
+		settings model.Mode
+		mode     *model.Mode
+		harness  model.Harness
+		msg      string // "" passes
+	}{
+		{"pi, mode omitted, default headless", model.ModeHeadless, nil, model.HarnessPi,
+			"pi can't run headless, and lead's workers default to headless: pass mode: pane"},
+		{"pi, mode headless", model.ModePane, ptr(model.ModeHeadless), model.HarnessPi, "pi can't run headless: pass mode: pane"},
+		{"pi, mode pane", model.ModeHeadless, ptr(model.ModePane), model.HarnessPi, ""},
+		{"pi, mode omitted, default pane", model.ModePane, nil, model.HarnessPi, ""},
+		{"codex headless", model.ModeHeadless, nil, model.HarnessCodex, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			in, host := spawnBase()
+			in.Settings.Mode, in.Mode, in.Harness = c.settings, c.mode, c.harness
+			d := Spawn(in, host)
+			if c.msg == "" {
+				requireNoError(t, d.Err)
+				return
+			}
+			requireCode(t, d.Err, model.ErrorInvalidRequest)
+			equal(t, "message", d.Err.Message, "mode: "+c.msg)
+			equal(t, "paths", fieldErrorPaths(t, d.Err), []string{"/mode"})
+			equal(t, "no policy.denied", d.Events, []Event{})
+		})
+	}
+
+	// It is check 5: it wins over a taken name (6) and a disallowed harness (7).
+	in, host := spawnBase()
+	in.Harness, in.Name, in.Settings.Harnesses = model.HarnessPi, "api", []model.Harness{model.HarnessCodex}
+	requireCode(t, Spawn(in, host).Err, model.ErrorInvalidRequest)
+	// The host decides which harnesses can run headless.
+	in, host = spawnBase()
+	host.headless[model.HarnessCodex] = false
+	requireCode(t, Spawn(in, host).Err, model.ErrorInvalidRequest)
+	// An invalid mode is reported as such, not as headless.
+	in, host = spawnBase()
+	in.Harness, in.Mode = model.HarnessPi, ptr(model.Mode("tab"))
+	equal(t, "invalid mode", Spawn(in, host).Err.Details["errors"].([]FieldError)[0].Message, "must be one of [headless pane]")
+}

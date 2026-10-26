@@ -16,17 +16,21 @@ type fakeHost struct {
 	issues   map[model.Harness]model.HarnessIssue
 	paths    map[string]bool
 	branches map[string]bool // root + "|" + branch
+	headless map[model.Harness]bool
 }
 
 func newHost(os model.HostOS) *fakeHost {
 	return &fakeHost{os: os, folders: map[string]bool{}, repos: map[string]string{},
-		issues: map[model.Harness]model.HarnessIssue{}, paths: map[string]bool{}, branches: map[string]bool{}}
+		issues: map[model.Harness]model.HarnessIssue{}, paths: map[string]bool{}, branches: map[string]bool{},
+		// As in v1: pi is CLI-only.
+		headless: map[model.Harness]bool{model.HarnessClaude: true, model.HarnessCodex: true, model.HarnessOpenCode: true}}
 }
 
 func (h *fakeHost) OS() model.HostOS                                { return h.os }
 func (h *fakeHost) FolderExists(p string) bool                      { return h.folders[p] }
 func (h *fakeHost) HarnessIssue(x model.Harness) model.HarnessIssue { return h.issues[x] }
 func (h *fakeHost) PathExists(p string) bool                        { return h.paths[p] || h.folders[p] }
+func (h *fakeHost) CanRunHeadless(x model.Harness) bool             { return h.headless[x] }
 func (h *fakeHost) BranchExists(root, b string) bool                { return h.branches[root+"|"+b] }
 func (h *fakeHost) RepoRoot(p string) (string, bool) {
 	r, ok := h.repos[p]

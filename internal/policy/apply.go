@@ -80,7 +80,7 @@ func PlanApply(in ApplyInput, host Host) (ApplyPlan, *model.Error) {
 	if err := checkRevision(in.Spec, in.IfRevision, cur); err != nil {
 		return ApplyPlan{}, err
 	}
-	if err := ValidateSpec(in.Spec, in.Facts, host.OS()); err != nil {
+	if err := ValidateSpec(in.Spec, in.Facts, host); err != nil {
 		return ApplyPlan{}, err
 	}
 	spec := ApplyDefaults(in.Spec)

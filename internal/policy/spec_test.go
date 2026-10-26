@@ -159,7 +159,7 @@ func TestValidateSpecValueRules(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			spec := baseSpec()
 			c.edit(&spec)
-			err := ValidateSpec(spec, SpecFacts{}, model.HostOSLinux)
+			err := ValidateSpec(spec, SpecFacts{}, newHost(model.HostOSLinux))
 			if c.paths == nil {
 				requireNoError(t, err)
 				return
@@ -173,7 +173,7 @@ func TestValidateSpecValueRules(t *testing.T) {
 func TestValidateSpecUnsupportedVersion(t *testing.T) {
 	spec := baseSpec()
 	spec.Version = 2
-	err := ValidateSpec(spec, SpecFacts{}, model.HostOSLinux)
+	err := ValidateSpec(spec, SpecFacts{}, newHost(model.HostOSLinux))
 	requireCode(t, err, model.ErrorUnsupportedVersion)
 	equal(t, "supported", err.Details["supported"], []int{1})
 }
@@ -264,7 +264,7 @@ func TestValidateSpecRules(t *testing.T) {
 			if os == "" {
 				os = model.HostOSLinux
 			}
-			err := ValidateSpec(spec, facts, os)
+			err := ValidateSpec(spec, facts, newHost(os))
 			if c.paths == nil {
 				requireNoError(t, err)
 				return
@@ -286,22 +286,22 @@ func addMembers(s *model.TeamSpec, n int) {
 func TestValidateSpecNameTaken(t *testing.T) {
 	spec := baseSpec()
 	facts := SpecFacts{OtherTeamNames: []string{"auth-rewrite", "login-fix"}}
-	err := ValidateSpec(spec, facts, model.HostOSLinux)
+	err := ValidateSpec(spec, facts, newHost(model.HostOSLinux))
 	requireCode(t, err, model.ErrorNameTaken)
 	equal(t, "details", err.Details, map[string]any{"name": "login-fix"})
 
 	// invalid_request comes first, so the app sees every field problem at once.
 	spec.Members[0].Folder = "relative"
-	requireCode(t, ValidateSpec(spec, facts, model.HostOSLinux), model.ErrorInvalidRequest)
+	requireCode(t, ValidateSpec(spec, facts, newHost(model.HostOSLinux)), model.ErrorInvalidRequest)
 
 	// The team keeping its own name is fine: only other teams' names count.
-	requireNoError(t, ValidateSpec(baseSpec(), SpecFacts{OtherTeamNames: []string{"auth-rewrite"}}, model.HostOSLinux))
+	requireNoError(t, ValidateSpec(baseSpec(), SpecFacts{OtherTeamNames: []string{"auth-rewrite"}}, newHost(model.HostOSLinux)))
 }
 
 func TestValidateSpecErrorShape(t *testing.T) {
 	spec := baseSpec()
 	spec.Name, spec.Members[0].Folder = "Bad", "rel"
-	err := ValidateSpec(spec, SpecFacts{}, model.HostOSLinux)
+	err := ValidateSpec(spec, SpecFacts{}, newHost(model.HostOSLinux))
 	requireCode(t, err, model.ErrorInvalidRequest)
 	got := jsonOf(t, err)
 	errs := got["details"].(map[string]any)["errors"].([]any)
@@ -327,7 +327,7 @@ func TestSpecExamplesValidate(t *testing.T) {
 		if err := model.DecodeStrict(data, &spec); err != nil {
 			t.Fatalf("%s: %v", f, err)
 		}
-		if err := ValidateSpec(spec, SpecFacts{}, model.HostOSLinux); err != nil {
+		if err := ValidateSpec(spec, SpecFacts{}, newHost(model.HostOSLinux)); err != nil {
 			t.Errorf("%s: %s %v", filepath.Base(f), err.Message, err.Details)
 		}
 	}
@@ -372,4 +372,48 @@ func TestSpecWarnings(t *testing.T) {
 	if slices.ContainsFunc(ws, func(w wire.Warning) bool { return w.Code == model.WarningCodeNextLaunch }) {
 		t.Fatal("next_launch comes from the apply diff, not the spec alone")
 	}
+}
+
+func TestValidateSpecHeadlessHarness(t *testing.T) {
+	cases := []struct {
+		name  string
+		edit  func(*model.TeamSpec, *fakeHost)
+		paths []string
+		msg   string
+	}{
+		{name: "pi in a pane", edit: func(s *model.TeamSpec, _ *fakeHost) {
+			s.Members[1].Harness, s.Members[1].Mode = model.HarnessPi, model.ModePane
+		}},
+		{name: "pi headless", edit: func(s *model.TeamSpec, _ *fakeHost) { s.Members[1].Harness = model.HarnessPi },
+			paths: []string{"/members/1/mode"}, msg: "pi can't run headless: use mode pane"},
+		{name: "the host decides, not the harness name", edit: func(s *model.TeamSpec, h *fakeHost) {
+			h.headless[model.HarnessCodex] = false
+		}, paths: []string{"/members/1/mode"}, msg: "codex can't run headless: use mode pane"},
+		{name: "a pi that can run headless", edit: func(s *model.TeamSpec, h *fakeHost) {
+			s.Members[1].Harness, h.headless[model.HarnessPi] = model.HarnessPi, true
+		}},
+		{name: "an unknown harness is reported once", edit: func(s *model.TeamSpec, _ *fakeHost) { s.Members[1].Harness = "gpt" },
+			paths: []string{"/members/1/harness"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			spec, host := baseSpec(), newHost(model.HostOSLinux)
+			c.edit(&spec, host)
+			err := ValidateSpec(spec, SpecFacts{}, host)
+			if c.paths == nil {
+				requireNoError(t, err)
+				return
+			}
+			requireCode(t, err, model.ErrorInvalidRequest)
+			equal(t, "paths", fieldErrorPaths(t, err), c.paths)
+			if c.msg != "" {
+				equal(t, "message", err.Details["errors"].([]FieldError)[0].Message, c.msg)
+			}
+		})
+	}
+	// PlanApply goes through the same check.
+	spec := baseSpec()
+	spec.Members[1].Harness = model.HarnessPi
+	_, err := PlanApply(ApplyInput{Spec: spec}, gitHost())
+	requireCode(t, err, model.ErrorInvalidRequest)
 }

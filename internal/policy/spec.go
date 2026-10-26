@@ -222,13 +222,14 @@ var herdrServerPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 //   - unsupported_version (details.supported) for a version other than 1;
 //   - invalid_request with details.errors [{path, message}] for every value
 //     rule of team-spec.v1 that model.DecodeStrict doesn't check (required
-//     fields, patterns, ranges, enums, wake without message), and for
-//     checks 1–4 and 6 of Validating a spec;
+//     fields, patterns, ranges, enums, wake without message), for checks
+//     1–4 and 6 of Validating a spec, and for a member in headless mode on a
+//     harness the broker can't run headless (/members/<i>/mode);
 //   - name_taken when another team has the name (check 5), only once the
 //     spec is otherwise valid.
 //
-// os decides what an absolute folder is (check 4).
-func ValidateSpec(spec model.TeamSpec, facts SpecFacts, os model.HostOS) *model.Error {
+// host's OS decides what an absolute folder is (check 4).
+func ValidateSpec(spec model.TeamSpec, facts SpecFacts, host Host) *model.Error {
 	if spec.Version != 0 && !slices.Contains(SupportedSpecVersions, spec.Version) {
 		return model.NewError(model.ErrorUnsupportedVersion,
 			fmt.Sprintf("team spec version %d isn't supported", spec.Version)).
@@ -236,7 +237,7 @@ func ValidateSpec(spec model.TeamSpec, facts SpecFacts, os model.HostOS) *model.
 	}
 	var errs fieldErrors
 	checkSpecValues(&errs, spec)
-	checkSpecRules(&errs, spec, facts, os)
+	checkSpecRules(&errs, spec, facts, host)
 	if len(errs) > 0 {
 		msg := "invalid team spec: " + errs[0].Path + ": " + errs[0].Message
 		if len(errs) > 1 {
@@ -385,7 +386,8 @@ func checkSpecValues(errs *fieldErrors, spec model.TeamSpec) {
 }
 
 // checkSpecRules applies checks 1–4 and 6 of Validating a spec.
-func checkSpecRules(errs *fieldErrors, spec model.TeamSpec, facts SpecFacts, os model.HostOS) {
+func checkSpecRules(errs *fieldErrors, spec model.TeamSpec, facts SpecFacts, host Host) {
+	os := host.OS()
 	cur := facts.Current
 	spawned := cur.liveSpawned()
 	spawnedNames := map[string]bool{}
@@ -464,6 +466,14 @@ func checkSpecRules(errs *fieldErrors, spec model.TeamSpec, facts SpecFacts, os 
 	for i, m := range spec.Members {
 		if m.Folder != "" && !IsAbsPath(os, m.Folder) {
 			errs.add(fmt.Sprintf("/members/%d/folder", i), "must be an absolute %s path", osLabel(os))
+		}
+	}
+
+	// A harness the broker can't run headless (pi in v1) can't be given
+	// headless mode.
+	for i, m := range spec.Members {
+		if m.Mode == model.ModeHeadless && m.Harness.Valid() && !host.CanRunHeadless(m.Harness) {
+			errs.add(fmt.Sprintf("/members/%d/mode", i), "%s can't run headless: use mode pane", m.Harness)
 		}
 	}
 

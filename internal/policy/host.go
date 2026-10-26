@@ -13,14 +13,21 @@ type Host interface {
 	OS() model.HostOS
 	// FolderExists reports whether path is an existing directory.
 	FolderExists(path string) bool
-	// RepoRoot returns the top level of the git repository that contains path
-	// (what `git rev-parse --show-toplevel` prints), and false when path is
+	// RepoRoot returns the top level of the main working tree of the git
+	// repository that contains path: the parent of `git rev-parse
+	// --git-common-dir`, not `--show-toplevel`, so that a base inside a linked
+	// worktree (a spawner that runs in one) still places its workers' worktrees
+	// beside the repository and they don't nest. ok is false when path is
 	// outside git or doesn't exist.
 	RepoRoot(path string) (root string, ok bool)
 	// HarnessIssue returns why harness h can't run on this host:
 	// not_installed, unsupported_version or shim_only. It returns "" when h is
 	// installed at a supported version.
 	HarnessIssue(h model.Harness) model.HarnessIssue
+	// CanRunHeadless reports whether the broker can drive harness h in
+	// headless mode (hello's harnesses[].headless), whether or not h is
+	// installed. In v1 it is false for pi, which is CLI-only (decision 46).
+	CanRunHeadless(h model.Harness) bool
 	// PathExists reports whether anything (file, directory, link) is at path.
 	PathExists(path string) bool
 	// BranchExists reports whether the repository whose top level is root has

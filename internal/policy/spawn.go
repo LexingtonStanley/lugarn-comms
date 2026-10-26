@@ -122,8 +122,9 @@ type SpawnDecision struct {
 //  3. The caller wasn't spawned: nesting_not_allowed.
 //  4. The caller's spawn.enabled: spawn_disabled.
 //  5. The call is well formed (name a valid agent name; harness, profile and
-//     mode valid; task 1 to 65,536 code points): invalid_request with
-//     details.errors.
+//     mode valid; task 1 to 65,536 code points), and the worker's mode,
+//     given or spawn.mode's default, isn't headless on a harness the broker
+//     can't run headless: invalid_request with details.errors.
 //  6. name isn't a live member's: name_taken.
 //  7. harness is in spawn.harnesses, or that's null: harness_not_allowed.
 //  8. The host has harness at a supported version: harness_unavailable with
@@ -170,6 +171,13 @@ func Spawn(in SpawnInput, host Host) SpawnDecision {
 	}
 	if in.Mode != nil && !in.Mode.Valid() {
 		errs.add("/mode", "must be one of %v", model.Mode("").Values())
+	} else if in.Harness.Valid() && !host.CanRunHeadless(in.Harness) {
+		switch {
+		case in.Mode != nil && *in.Mode == model.ModeHeadless:
+			errs.add("/mode", "%s can't run headless: pass mode: pane", in.Harness)
+		case in.Mode == nil && in.Settings.Mode == model.ModeHeadless:
+			errs.add("/mode", "%s can't run headless, and %s's workers default to headless: pass mode: pane", in.Harness, caller)
+		}
 	}
 	if len(errs) > 0 {
 		return refuse(model.NewError(model.ErrorInvalidRequest, errs[0].Path[1:]+": "+errs[0].Message).

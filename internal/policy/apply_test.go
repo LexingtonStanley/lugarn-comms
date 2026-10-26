@@ -59,7 +59,7 @@ func TestPlanApplyCheckOrder(t *testing.T) {
 	requireCode(t, err, model.ErrorRevisionConflict)
 	// An invalid spec wins over a taken name and a running team.
 	bad.Members = append(bad.Members, model.MemberSpec{ID: "m-new", Name: "new", Role: model.RoleCustom,
-		Harness: model.HarnessPi, Folder: folder, Profile: model.ProfileReadOnly, Mode: model.ModeHeadless, Brief: "b"})
+		Harness: model.HarnessPi, Folder: folder, Profile: model.ProfileReadOnly, Mode: model.ModePane, Brief: "b"})
 	_, err = PlanApply(ApplyInput{Spec: bad, IfRevision: 4, Facts: SpecFacts{Current: cur, OtherTeamNames: []string{"login-fix"}}}, gitHost())
 	requireCode(t, err, model.ErrorInvalidRequest)
 	// A taken name wins over a running team.
@@ -183,7 +183,7 @@ func TestPlanApplyTeamRunning(t *testing.T) {
 		{"worktree flag", func(s *model.TeamSpec) { s.Members[1].Worktree = ptr(true) }, []string{"/members/1/worktree"}},
 		{"add", func(s *model.TeamSpec) {
 			s.Members = append(s.Members, model.MemberSpec{ID: "m-3", Name: "third", Role: model.RoleCustom, Harness: model.HarnessPi,
-				Folder: folder, Profile: model.ProfileReadOnly, Mode: model.ModeHeadless, Brief: "b"})
+				Folder: folder, Profile: model.ProfileReadOnly, Mode: model.ModePane, Brief: "b"})
 		}, []string{"/members/2"}},
 		{"remove", func(s *model.TeamSpec) { s.Members = s.Members[:1]; s.Grid = []model.GridEdge{} }, []string{"/members"}},
 		{"several", func(s *model.TeamSpec) {
