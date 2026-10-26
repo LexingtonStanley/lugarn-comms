@@ -2,11 +2,8 @@ package broker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
@@ -16,10 +13,10 @@ import (
 // Close waits for cooperative runner shutdown, then removes only this team's
 // recorded processes/panes and ended launch artifacts. No process name is used.
 func (i *Integration) Close(ctx context.Context, t store.Team, members []model.Member) error {
-	var failures []error
+	var failures teardownFailures
 	record := func(step string, e error) {
 		if e != nil {
-			failures = append(failures, fmt.Errorf("%s: %w", step, e))
+			failures = append(failures, teardownStep{step, e})
 		}
 	}
 	placement, e := i.placement(t.ID)
@@ -99,28 +96,22 @@ func (i *Integration) Close(ctx context.Context, t store.Team, members []model.M
 		return nil
 	}))
 	record("remove launch and pointer files team "+t.ID+" state "+i.b.opts.StateDir, helper.cleanLaunchFiles(ctx))
-	if placement.BridgeDir != "" {
-		// A sidecar never authorizes removing an arbitrary host directory.
-		if (filepath.Clean(filepath.Dir(placement.BridgeDir)) != filepath.Clean(os.TempDir()) && filepath.Clean(filepath.Dir(placement.BridgeDir)) != filepath.Clean(i.b.opts.StateDir)) || !strings.HasPrefix(filepath.Base(placement.BridgeDir), "lugarn-runner-") {
-			record("validate bridge "+placement.BridgeDir, model.NewError(model.ErrorInternal, "invalid native runner bridge directory"))
-		} else {
-			for until := time.Now().Add(3 * time.Second); ; {
-				e = os.RemoveAll(placement.BridgeDir)
-				if e == nil || time.Now().After(until) {
-					break
-				}
-				if waitErr := i.b.opts.Wait(ctx, 50*time.Millisecond); waitErr != nil {
-					record("wait to remove bridge "+placement.BridgeDir, waitErr)
-					break
-				}
-			}
-			record("remove bridge "+placement.BridgeDir, e)
-		}
-	}
+
 	if e = os.Remove(i.placementPath(t.ID)); e != nil && !os.IsNotExist(e) {
 		record("remove runner placement "+i.placementPath(t.ID), e)
+	} else if placement.BridgeDir != "" && i.ownsBridge(placement.BridgeDir) {
+		recorded, err := i.recordedBridges()
+		record("read runner placements", err)
+		if err == nil && !bridgeRecorded(recorded, placement.BridgeDir) {
+			// A running Windows executable is retried quietly by a later sweep.
+			_ = removeBridge(placement.BridgeDir)
+		}
 	}
-	return errors.Join(failures...)
+	i.sweepRunnerBridges()
+	if len(failures) == 0 {
+		return nil
+	}
+	return failures
 }
 func (i *Integration) capturePointer(ctx context.Context, m model.Member) error {
 	if i.opts.HomeDir == "" || m.Harness == nil || *m.Harness != model.HarnessClaude || m.Lease == nil || m.Lease.Launch == nil {
@@ -151,4 +142,26 @@ func (i *Integration) capturePointer(ctx context.Context, m model.Member) error 
 		}
 		return helper.session(tx, *current, id, seal, model.SessionSourcePointer, *m.Lease.Launch, false)
 	})
+}
+
+type teardownStep struct {
+	step string
+	err  error
+}
+type teardownFailures []teardownStep
+
+func (f teardownFailures) Protocol() *model.Error {
+	details := make([]map[string]any, 0, len(f))
+	for _, failure := range f {
+		details = append(details, map[string]any{"step": failure.step, "error": model.AsError(failure.err)})
+	}
+	return model.NewError(model.ErrorInternal, "team teardown failed").WithDetail("failures", details)
+}
+func (f teardownFailures) Error() string { return f.Protocol().Error() }
+func (f teardownFailures) Unwrap() []error {
+	result := make([]error, 0, len(f))
+	for _, failure := range f {
+		result = append(result, failure.err)
+	}
+	return result
 }

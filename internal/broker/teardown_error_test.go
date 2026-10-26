@@ -2,8 +2,9 @@ package broker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -15,7 +16,10 @@ import (
 type failingStepTeardown struct{}
 
 func (failingStepTeardown) Close(context.Context, store.Team, []model.Member) error {
-	return errors.Join(fmt.Errorf("kill runner tree pid 20304: %w", model.NewError(model.ErrorInternal, "Access is denied.")), fmt.Errorf("remove bridge example-dir: %w", errors.New("sharing violation")))
+	return teardownFailures{
+		{"kill runner tree pid 20304", model.NewError(model.ErrorInternal, "cannot terminate process")},
+		{"remove bridge example-dir", &os.PathError{Op: "remove", Path: "example-dir", Err: errors.New("private stderr sentinel")}},
+	}
 }
 func TestStopTeamPreservesTeardownStepAndTarget(t *testing.T) {
 	b, _ := setup(t)
@@ -25,7 +29,12 @@ func TestStopTeamPreservesTeardownStepAndTarget(t *testing.T) {
 	if failure == nil || failure.Code != model.ErrorInternal {
 		t.Fatal(failure)
 	}
-	cause, _ := failure.Details["cause"].(string)
+	raw, err := json.Marshal(failure)
+	must(t, err)
+	cause := string(raw)
+	if strings.Contains(cause, "private stderr sentinel") {
+		t.Fatal("teardown payload leaked")
+	}
 	for _, target := range []string{"kill runner tree pid 20304", "remove bridge example-dir"} {
 		if !strings.Contains(cause, target) {
 			t.Fatal("lost teardown context at app boundary", failure)

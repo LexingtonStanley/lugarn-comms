@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
@@ -119,9 +120,8 @@ func TestPaneFailurePrivacyAcrossLaunchSteps(t *testing.T) {
 			log.SetOutput(&output)
 			defer log.SetOutput(old)
 			err := r.opts.PaneLifecycle.Open(ctx, *m, model.LeaseCauseStart)
-			if err != nil {
-				log.Print(err)
-			}
+			b.opts.Wait = func(context.Context, time.Duration) error { return nil }
+			r.paneRetry(ctx, *m, errors.New("pane diagnostics "+launchSecret))
 			assertPrivateFailure(t, b, err, output.String())
 		})
 	}

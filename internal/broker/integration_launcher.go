@@ -3,7 +3,6 @@ package broker
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -55,6 +54,7 @@ func (i *Integration) savePlacement(team string, p runnerPlacement) error {
 }
 
 func (i *Integration) runnerBridge() (string, string, error) {
+	i.sweepRunnerBridges()
 	if plainLaunchPath.MatchString(i.opts.Binary) {
 		return i.opts.Binary, "", nil
 	}
@@ -73,6 +73,13 @@ func (i *Integration) runnerBridge() (string, string, error) {
 		return "", "", e
 	}
 	if e = statedir.Ensure(dir); e != nil {
+		return fail(e)
+	}
+	// Ensure also creates an unused launch subdirectory; bridges hold only the binary and marker.
+	if e = os.Remove(filepath.Join(dir, "launch")); e != nil {
+		return fail(e)
+	}
+	if e = i.markBridge(dir); e != nil {
 		return fail(e)
 	}
 	safe, e := plainNativePath(dir)
@@ -237,10 +244,9 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		_ = i.closeOwnedPane(cleanup, t.HerdrServer, workspace, pane)
-		if dir != "" {
-			_ = os.RemoveAll(dir)
-		}
-		return model.NewError(model.ErrorRunnerUnavailable, "runner could not start").WithDetail("cause", fmt.Sprint(e))
+		// The placement still records this bridge. Stop-team removes that record
+		// before deleting the bridge; a timed-out runner may still hold its binary.
+		return model.NewError(model.ErrorRunnerUnavailable, "runner could not start").WithDetail("failure", model.AsError(e))
 	}
 	return nil
 }
