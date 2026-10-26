@@ -86,7 +86,7 @@ func Validate(document, definition string, b []byte) error {
 		return model.NewError(model.ErrorInvalidRequest, "invalid JSON")
 	}
 	if err = s.Validate(v); err != nil {
-		return model.NewError(model.ErrorInvalidRequest, "schema violation").WithDetail("cause", err.Error())
+		return model.NewError(model.ErrorInvalidRequest, "schema violation")
 	}
 	return nil
 }

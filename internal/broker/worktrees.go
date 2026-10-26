@@ -132,7 +132,7 @@ func (b *Broker) RemoveWorktrees(ctx context.Context, r wire.RemoveWorktreesRequ
 			if errors.As(e, &refusal) {
 				reason = wire.WorktreeRefusal(refusal.Reason)
 			}
-			refuse(reason, e.Error())
+			refuse(reason, "cannot remove worktree")
 			continue
 		}
 		item := wire.RemoveWorktreesResultRemovedItem{Path: owned.Path, Branch: owned.Branch, BranchOutcome: wire.BranchOutcome(outcome)}

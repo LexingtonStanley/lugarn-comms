@@ -21,6 +21,11 @@ type integrationLifecycle struct {
 }
 
 func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause model.LeaseCause) (err error) {
+	defer func() {
+		if err != nil {
+			err = model.AsError(err)
+		}
+	}()
 	// Refusals are read-only. Check them before worktree preparation, lease
 	// rotation, or the optional session-before-pane turn.
 	if m.Lease == nil || m.Harness == nil {

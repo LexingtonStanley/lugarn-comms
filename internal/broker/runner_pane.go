@@ -311,7 +311,7 @@ func (r *Runner) cancelledPane(ctx context.Context, m model.Member, items []stor
 
 // Observation failures are recipient-local; they never surrender the team lease.
 func (r *Runner) paneRetry(ctx context.Context, m model.Member, err error) error {
-	log.Printf("pane observation for %s: %v; retrying", m.ID, err)
+	log.Printf("pane observation for %s: %v; retrying", m.ID, model.AsError(err))
 	_ = r.b.opts.Wait(ctx, time.Second)
 	return nil
 }

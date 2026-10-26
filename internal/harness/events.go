@@ -153,12 +153,7 @@ func (p *Parser) Line(line []byte) *Event {
 				p.outcome.FinalText = text
 			}
 			if e["is_error"] == true {
-				reason := str(e["result"])
-				if reason == "" {
-					b, _ := json.Marshal(e["errors"])
-					reason = string(b)
-				}
-				p.fail("Claude result: " + reason)
+				p.fail("Claude reported a failed result")
 			}
 			u := object(e["usage"])
 			p.setUsage(u, "cache_read_input_tokens", "reasoning_tokens")
@@ -192,14 +187,7 @@ func (p *Parser) Line(line []byte) *Event {
 			p.setUsage(object(e["usage"]), "cached_input_tokens", "reasoning_output_tokens")
 		}
 		if typ == "turn.failed" || typ == "error" {
-			reason := str(object(e["error"])["message"])
-			if reason == "" {
-				reason = str(e["message"])
-			}
-			if reason == "" {
-				reason = string(line)
-			}
-			p.fail(reason)
+			p.fail("Codex reported a failed turn")
 		}
 	case model.HarnessOpenCode:
 		if typ != "step_start" && typ != "text" && typ != "step_finish" && typ != "error" {
@@ -226,8 +214,7 @@ func (p *Parser) Line(line []byte) *Event {
 			p.addOpenCodeUsage(part)
 		}
 		if typ == "error" || e["error"] != nil {
-			b, _ := json.Marshal(e["error"])
-			p.fail("OpenCode: " + string(b))
+			p.fail("OpenCode reported a failed turn")
 		}
 	}
 	if ack && !p.outcome.Acknowledged {
@@ -297,9 +284,6 @@ func (p *Parser) Finish(exitCode int, cancelled, timedOut bool, stderr string) O
 		}
 		if o.Error == "" && exitCode != 0 {
 			o.Error = fmt.Sprintf("harness exited %d", exitCode)
-			if s := oneLine(stderr); s != "" {
-				o.Error += ": " + s
-			}
 		}
 		if o.Error != "" && p.malformed != "" {
 			o.Error += "; " + p.malformed

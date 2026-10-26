@@ -99,7 +99,7 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 		if strings.Contains(err.Error(), "shim_only") {
 			reason = "shim_only"
 		}
-		return nil, model.NewError(model.ErrorHarnessUnavailable, "cannot resolve harness executable").WithDetail("reason", reason).WithDetail("cause", err.Error())
+		return nil, model.NewError(model.ErrorHarnessUnavailable, "cannot resolve harness executable").WithDetails(model.ErrorLocation(err)).WithDetail("reason", reason)
 	}
 	if !filepath.IsAbs(binary) {
 		binary, err = filepath.Abs(binary)
@@ -111,7 +111,7 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 		return nil, model.NewError(model.ErrorHarnessUnavailable, "harness must be a native executable").WithDetail("reason", "shim_only")
 	}
 	if err = WriteFiles(l); err != nil {
-		return nil, model.NewError(model.ErrorLaunchFailed, "cannot write launch files").WithDetail("cause", err.Error())
+		return nil, model.NewError(model.ErrorLaunchFailed, "cannot write launch files").WithDetails(model.ErrorLocation(err))
 	}
 	overrides, err := Environment(l)
 	if err != nil {
@@ -128,7 +128,7 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 	cmd.WaitDelay = time.Second
 	group, err := newProcessGroup(cmd, l.LaunchID)
 	if err != nil {
-		return nil, model.NewError(model.ErrorLaunchFailed, "cannot create process group").WithDetail("cause", err.Error())
+		return nil, model.NewError(model.ErrorLaunchFailed, "cannot create process group").WithDetails(model.ErrorLocation(err))
 	}
 	events := make(chan Event, 1)
 	h := &Handle{JobName: group.jobName(), cmd: cmd, group: group, done: make(chan struct{}), Events: events}
@@ -154,7 +154,7 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 			_ = cmd.Wait()
 		}
 		group.close()
-		return nil, model.NewError(model.ErrorLaunchFailed, "cannot start harness").WithDetail("cause", err.Error())
+		return nil, model.NewError(model.ErrorLaunchFailed, "cannot start harness").WithDetails(model.ErrorLocation(err))
 	}
 	h.mu.Unlock()
 	go func() {

@@ -2,6 +2,7 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -333,5 +334,62 @@ func TestProcessNormalExitTerminatesDescendants(t *testing.T) {
 	assertDead(t, pid)
 	if Status(out) != model.TurnStatusSucceeded {
 		t.Fatalf("normal root exit: %+v", out)
+	}
+}
+
+func TestHarnessFailuresExcludeEnvironmentArgvAndStderr(t *testing.T) {
+	const sentinel = "SENTINEL_HARNESS_ENV_ARGV_STDERR"
+	for _, step := range []string{"resolve", "files", "start", "stderr"} {
+		t.Run(step, func(t *testing.T) {
+			d, l, _ := fakeDriver(t, "private-failure")
+			l.Model = sentinel // model selectors become argv
+			l.ExtraEnv["PRIVATE_TEST"] = sentinel
+			switch step {
+			case "resolve":
+				d.Resolver = fakeResolver{err: errors.New(sentinel)}
+			case "files":
+				l.Harness = model.HarnessClaude
+				l.SessionID = testSessionID
+				mustHarness(t, os.MkdirAll(l.StateDir, 0700))
+				mustHarness(t, os.WriteFile(filepath.Join(l.StateDir, "launch"), []byte(sentinel), 0600))
+			case "start":
+				d.Resolver = fakeResolver{path: filepath.Join(t.TempDir(), "missing.exe")}
+			}
+			h, err := d.Start(context.Background(), l, "prompt")
+			if step == "stderr" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				o := waitBounded(t, h)
+				if Status(o) != model.TurnStatusFailed || o.ExitCode != 7 {
+					t.Fatal(o)
+				}
+				if strings.Contains(o.Error, sentinel) {
+					t.Fatal("stderr leaked")
+				}
+			} else {
+				raw, e := json.Marshal(model.AsError(err))
+				if e != nil {
+					t.Fatal(e)
+				}
+				if err == nil || strings.Contains(err.Error()+string(raw), sentinel) {
+					t.Fatal("launch diagnostic leaked", err)
+				}
+			}
+		})
+	}
+}
+func init() { platformProcessHelpers["private-failure"] = privateFailureHelper }
+func privateFailureHelper() int {
+	fmt.Fprintln(os.Stderr, os.Getenv("PRIVATE_TEST"))
+	fmt.Println(`{"type":"thread.started","thread_id":"00000000-0000-4000-8000-000000000001"}`)
+	fmt.Println(`{"type":"item.completed","item":{"type":"agent_message","text":"failed"}}`)
+	fmt.Println(`{"type":"turn.completed"}`)
+	return 7
+}
+func mustHarness(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
 	}
 }

@@ -16,7 +16,7 @@ func DecodeStrict(data []byte, v any) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
-		return NewError(ErrorInvalidRequest, "invalid JSON").WithDetail("cause", err.Error())
+		return NewError(ErrorInvalidRequest, "invalid JSON")
 	}
 	var trailing any
 	if err := dec.Decode(&trailing); err != io.EOF {

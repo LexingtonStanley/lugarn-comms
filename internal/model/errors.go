@@ -3,6 +3,8 @@ package model
 import (
 	"encoding/json"
 	"errors"
+	"os"
+	"os/exec"
 )
 
 // Error is the shared error record for app ops, MCP tools and the CLI.
@@ -44,16 +46,20 @@ func (e *Error) WithDetail(key string, value any) *Error {
 }
 
 // AsError preserves protocol errors, including wrapped ones. Unknown errors
-// become internal errors with their cause in details. A nil error returns nil.
+// become internal errors with only safe name/path diagnostics. A nil error returns nil.
 func AsError(err error) *Error {
 	if err == nil {
 		return nil
+	}
+	var mapped interface{ Protocol() *Error }
+	if errors.As(err, &mapped) {
+		return mapped.Protocol()
 	}
 	var protocolError *Error
 	if errors.As(err, &protocolError) {
 		return protocolError
 	}
-	return NewError(ErrorInternal, "internal error").WithDetail("cause", err.Error())
+	return NewError(ErrorInternal, "internal error").WithDetails(ErrorLocation(err))
 }
 
 // ExitCode returns the CLI status specified by docs/protocol.md's Errors table.
@@ -107,4 +113,22 @@ func ExitCode(code ErrorCode) int {
 	default:
 		return 1
 	}
+}
+
+// ErrorLocation extracts names and paths without formatting an error's payload.
+// In particular, exec output, JSON values and arbitrary wrapped text are private.
+func ErrorLocation(err error) map[string]any {
+	details := map[string]any{}
+	var path *os.PathError
+	var link *os.LinkError
+	var executable *exec.Error
+	switch {
+	case errors.As(err, &path):
+		details["op"], details["path"] = path.Op, path.Path
+	case errors.As(err, &link):
+		details["op"], details["path"], details["target"] = link.Op, link.Old, link.New
+	case errors.As(err, &executable):
+		details["name"] = executable.Name
+	}
+	return details
 }

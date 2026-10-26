@@ -186,7 +186,7 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 	return ready, e
 }
 
-// launchFailure retains machine-readable causes and driver diagnostics in both
+// launchFailure retains machine-readable causes and safe driver diagnostics in both
 // the durable attention event and the request/runner's returned error.
 func launchFailure(cause error) *model.Error {
 	original := model.AsError(cause)
@@ -204,7 +204,7 @@ func launchFailure(cause error) *model.Error {
 		if reason, ok := details["reason"]; ok {
 			details["cause"] = reason
 		} else {
-			details["cause"] = cause.Error()
+			details["cause"] = "launch_failed"
 		}
 	}
 	return model.NewError(model.ErrorLaunchFailed, original.Message).WithDetails(details)

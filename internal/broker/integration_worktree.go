@@ -68,7 +68,7 @@ func (i *Integration) prepareWorktree(ctx context.Context, r *Runner, m model.Me
 	if e = gitwt.CheckVersion(ctx); errors.Is(e, gitwt.ErrGitTooOld) {
 		return &m, nil
 	} else if e != nil {
-		return nil, e
+		return nil, model.NewError(model.ErrorLaunchFailed, "cannot check git version").WithDetail("name", "git").WithDetail("cause", "git_unavailable")
 	}
 	host := i.b.host(ctx)
 	plan, pe := policy.PlanWorktree(policy.WorktreeInput{Base: *m.Folder, TeamID: m.Team, TeamName: team.Name, Member: m.Name, Recorded: recorded}, host)
@@ -105,10 +105,10 @@ func (i *Integration) prepareWorktree(ctx context.Context, r *Runner, m model.Me
 			return nil, e
 		}
 		if e = gitwt.AddWorktree(ctx, *m.Folder, plan.Path, plan.Branch); e != nil {
-			return nil, e
+			return nil, model.NewError(model.ErrorLaunchFailed, "cannot create worktree").WithDetails(map[string]any{"name": "git", "path": plan.Path, "repo": plan.Repo, "cause": "worktree_create_failed"})
 		}
 	} else if _, e = os.Stat(plan.Path); e != nil {
-		return nil, model.NewError(model.ErrorLaunchFailed, "recorded worktree is missing").WithDetail("cause", e.Error())
+		return nil, model.NewError(model.ErrorLaunchFailed, "recorded worktree is missing").WithDetail("cause", "workdir_missing").WithDetail("path", plan.Path)
 	}
 	var ready *model.Member
 	e = r.write(ctx, &m, func(tx *store.Tx, _ *store.Team) error {

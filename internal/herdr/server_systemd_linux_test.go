@@ -208,7 +208,7 @@ func TestStartServerSystemdFailures(t *testing.T) {
 		_ = os.WriteFile(unitFile(f.dir, fakeUnit), []byte("stuck"), 0o600)
 		_, err := StartServer(testContext(t), f.bin, "lugarn-fake", KillUserProcesses(true))
 		p := wantProtocol(t, err, model.ErrorHerdrUnavailable, "start_timeout")
-		if !strings.Contains(p.Details["herdr_message"].(string), "already loaded") {
+		if p.Details["herdr_message"] != nil {
 			t.Fatalf("details = %v", p.Details)
 		}
 	})

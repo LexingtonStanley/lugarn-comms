@@ -105,7 +105,9 @@ func sameNativePath(a, b string) bool {
 func unresolvable(cause error) *model.Error {
 	e := model.NewError(model.ErrorHarnessUnavailable, "cannot guarantee the pinned native harness launch").WithDetail("reason", "unresolvable")
 	if cause != nil {
-		e.WithDetail("cause", cause.Error())
+		for k, v := range model.ErrorLocation(cause) {
+			e.WithDetail(k, v)
+		}
 	}
 	return e
 }
