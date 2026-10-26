@@ -62,14 +62,17 @@ func TestArgs(t *testing.T) {
 							want = append(want, "--settings", l.path(".settings.json"))
 						}
 					case model.HarnessCodex:
+						if mode == model.ModeHeadless {
+							want = append(want, "--no-daemon")
+						}
 						if p == model.ProfileBypass {
-							want = []string{"--dangerously-bypass-approvals-and-sandbox"}
+							want = append(want, "--dangerously-bypass-approvals-and-sandbox")
 						} else {
 							sandbox := "read-only"
 							if p == model.ProfileWorkspace {
 								sandbox = "workspace-write"
 							}
-							want = []string{"-s", sandbox}
+							want = append(want, "-s", sandbox)
 						}
 						b, _ := json.Marshal(l.Binary)
 						args, _ := json.Marshal([]string{"mcp", "--member", l.MemberID, "--token-file", l.TokenPath()})
@@ -123,7 +126,7 @@ func TestConfigQuoting(t *testing.T) {
 		t.Fatal(err)
 	}
 	var decoded string
-	if err = json.Unmarshal([]byte(strings.TrimPrefix(args[3], "mcp_servers.lugarn.command=")), &decoded); err != nil || decoded != l.Binary {
+	if err = json.Unmarshal([]byte(strings.TrimPrefix(args[4], "mcp_servers.lugarn.command=")), &decoded); err != nil || decoded != l.Binary {
 		t.Fatal(args, decoded, err)
 	}
 	if _, err = Args(l, "unknown"); err == nil {
@@ -132,5 +135,27 @@ func TestConfigQuoting(t *testing.T) {
 	env, err := Environment(l)
 	if err != nil || env["EXAMPLE"] != "value" {
 		t.Fatal(env, err)
+	}
+}
+
+func TestModelSelectors(t *testing.T) {
+	for _, h := range []model.Harness{model.HarnessClaude, model.HarnessCodex, model.HarnessOpenCode} {
+		l := testLaunch(t, h)
+		l.Model = "provider/model"
+		a, err := Args(l, model.ModeHeadless)
+		if err != nil {
+			t.Fatal(err)
+		}
+		at := 0
+		if h == model.HarnessOpenCode {
+			at = 4
+		}
+		if a[at] != "--model" || a[at+1] != l.Model {
+			t.Fatal(a)
+		}
+		l.Model = "--model bad\n"
+		if l.Validate() == nil {
+			t.Fatal("accepted unsafe model")
+		}
 	}
 }

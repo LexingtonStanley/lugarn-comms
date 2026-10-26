@@ -5,6 +5,7 @@ package harness
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"syscall"
@@ -41,3 +42,23 @@ func assertDead(t *testing.T, pid int) {
 	}
 	t.Fatalf("process %d remains live", pid)
 }
+
+func liveProcessIDs(h *Handle) ([]int, error) {
+	b, err := exec.Command("ps", "-axo", "pid=,pgid=").Output()
+	if err != nil {
+		return nil, err
+	}
+	var pids []int
+	for _, line := range strings.Split(string(b), "\n") {
+		var pid, group int
+		if _, err := fmt.Sscan(line, &pid, &group); err == nil && group == h.PID {
+			pids = append(pids, pid)
+		}
+	}
+	if len(pids) == 0 {
+		return nil, fmt.Errorf("no process group for %d", h.PID)
+	}
+	return pids, nil
+}
+
+func detachHelper(cmd *exec.Cmd) { cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} }

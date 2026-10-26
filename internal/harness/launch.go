@@ -16,6 +16,8 @@ import (
 // trusted caller configuration, never agent-supplied text. Identity and per-launch
 // config environment variables cannot be overridden.
 type Launch struct {
+	// Model is an optional trusted model selector (for example, haiku).
+	Model     string
 	Harness   model.Harness
 	Profile   model.Profile
 	WorkDir   string
@@ -30,6 +32,7 @@ type Launch struct {
 
 var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 var openCodeSessionPattern = regexp.MustCompile(`^ses_[A-Za-z0-9]{1,128}$`)
+var modelPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,199}$`)
 var envPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func validSession(h model.Harness, id string) bool {
@@ -42,6 +45,9 @@ func validSession(h model.Harness, id string) bool {
 // Validate checks all caller-controlled values that can reach argv or files.
 func (l Launch) Validate() error {
 	bad := func(s string) error { return model.NewError(model.ErrorInvalidRequest, s) }
+	if l.Model != "" && !modelPattern.MatchString(l.Model) {
+		return bad("invalid model selector")
+	}
 	if !l.Harness.Valid() || !l.Profile.Valid() {
 		return bad("invalid harness or profile")
 	}

@@ -17,6 +17,7 @@ func testLaunch(t *testing.T, h model.Harness) Launch {
 	if h == model.HarnessClaude {
 		l.SessionID = testSessionID
 	}
+	t.Setenv("LUGARN_COMMS_HOME", l.StateDir)
 	return l
 }
 

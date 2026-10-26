@@ -134,13 +134,13 @@ func TestHookAndPointer(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = f.WriteString("garbage\n" + `{"session_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb","agent_id":null}` + "\n" + `{"session_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc"}`)
+		_, err = f.WriteString(`{"session_id":"dddddddd-dddd-4ddd-8ddd-dddddddddddd"}` + "\n" + "garbage\n" + `{"session_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb","agent_id":null}` + "\n" + `{"session_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc"}`)
 		if err != nil {
 			t.Fatal(err)
 		}
 		f.Close()
 		id, err := ReadPointer(home, testLaunchID)
-		if err != nil || id != testSessionID {
+		if err != nil || id != "dddddddd-dddd-4ddd-8ddd-dddddddddddd" {
 			t.Fatalf("%s %v", id, err)
 		}
 	}
@@ -151,5 +151,33 @@ func TestHookAndPointer(t *testing.T) {
 	id, err := ReadPointer(home, testLaunchID)
 	if err != nil || id != "" {
 		t.Fatal(id, err)
+	}
+}
+
+func TestPointerRecordsEveryPlatform(t *testing.T) {
+	next := "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+	line := func(id string) string { return `{"session_id":"` + id + `"}` + "\n" }
+	for _, tc := range []struct{ name, body, want string }{
+		{"empty", "", ""},
+		{"last main", line(testSessionID) + line(next), next},
+		{"skip subagent", line(testSessionID) + `{"session_id":"` + next + `","agent_id":"worker"}` + "\n", testSessionID},
+		{"null agent", line(testSessionID) + `{"session_id":"` + next + `","agent_id":null}` + "\n", testSessionID},
+		{"partial tail", line(testSessionID) + strings.TrimSuffix(line(next), "\n"), testSessionID},
+		{"bad record", line(testSessionID) + "bad JSON\n" + line("--unsafe"), testSessionID},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			home := t.TempDir()
+			dir := filepath.Join(home, ".lugarn", "conversations")
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, testLaunchID), []byte(tc.body), 0600); err != nil {
+				t.Fatal(err)
+			}
+			got, err := ReadPointer(home, testLaunchID)
+			if err != nil || got != tc.want {
+				t.Fatal(got, err)
+			}
+		})
 	}
 }

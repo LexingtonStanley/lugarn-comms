@@ -26,6 +26,9 @@ func Args(l Launch, mode model.Mode) ([]string, error) {
 		return nil, model.NewError(model.ErrorInvalidRequest, "pane requires a reported session from a headless turn")
 	}
 	var a []string
+	if l.Model != "" && l.Harness != model.HarnessOpenCode {
+		a = append(a, "--model", l.Model)
+	}
 	switch l.Harness {
 	case model.HarnessClaude:
 		if headless {
@@ -54,6 +57,9 @@ func Args(l Launch, mode model.Mode) ([]string, error) {
 			a = append(a, "--settings", l.path(".settings.json"))
 		}
 	case model.HarnessCodex:
+		if headless {
+			a = append(a, "--no-daemon")
+		}
 		if l.Profile == model.ProfileBypass {
 			a = append(a, "--dangerously-bypass-approvals-and-sandbox")
 		} else {
@@ -83,6 +89,9 @@ func Args(l Launch, mode model.Mode) ([]string, error) {
 			a = append(a, "run", "--format", "json")
 		}
 		a = append(a, "--standalone")
+		if l.Model != "" {
+			a = append(a, "--model", l.Model)
+		}
 		if l.Resume {
 			a = append(a, "--session", l.SessionID)
 		}

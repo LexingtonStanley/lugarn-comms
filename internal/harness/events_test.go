@@ -95,7 +95,7 @@ func TestParserEdges(t *testing.T) {
 		})
 	}
 	p := NewParser(model.HarnessOpenCode, "")
-	for _, line := range []string{`{"type":"text","sessionID":"ses_test","part":{"messageID":"msg_a","text":"old"}}`, `{"type":"step_start","sessionID":"ses_test"}`, `{"type":"text","part":{"messageID":"msg_b","text":"new"}}`, `{"type":"text","part":{"messageID":"msg_b","text":" text"}}`, `{"type":"step_finish","part":{"reason":"stop","cost":0.1,"tokens":{"input":10,"output":3,"reasoning":2,"cache":{"read":4}}}}`, `{"type":"step_finish","part":{"reason":"stop","cost":0.2,"tokens":{"input":5}}}`} {
+	for _, line := range []string{`{"type":"future_event","error":{"message":"ignored"},"sessionID":"ses_other"}`, `{"type":"text","sessionID":"ses_test","part":{"messageID":"msg_a","text":"old"}}`, `{"type":"step_start","sessionID":"ses_test"}`, `{"type":"text","part":{"messageID":"msg_b","text":"new"}}`, `{"type":"text","part":{"messageID":"msg_b","text":" text"}}`, `{"type":"step_finish","part":{"reason":"stop","cost":0.1,"tokens":{"input":10,"output":3,"reasoning":2,"cache":{"read":4}}}}`, `{"type":"step_finish","part":{"reason":"stop","cost":0.2,"tokens":{"input":5}}}`} {
 		p.Line([]byte(line))
 	}
 	o := p.Finish(0, false, false, "")

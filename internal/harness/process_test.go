@@ -25,6 +25,9 @@ type fakeResolver struct {
 func (f fakeResolver) Binary(model.Harness) (string, error) { return f.path, f.err }
 
 func TestMain(m *testing.M) {
+	if len(os.Args) > 1 && os.Args[1] == "mcp" {
+		os.Exit(serveFakeMCP())
+	}
 	if mode := os.Getenv("LUGARN_HARNESS_HELPER"); mode != "" {
 		os.Exit(helper(mode))
 	}
@@ -49,8 +52,11 @@ func helper(mode string) int {
 		time.Sleep(20 * time.Second)
 		return 0
 	}
-	if mode == "tree" {
+	if mode == "tree" || mode == "tree-detached" {
 		child := exec.Command(os.Args[0])
+		if mode == "tree-detached" {
+			detachHelper(child)
+		}
 		child.Env = mergeEnv(os.Environ(), map[string]string{"LUGARN_HARNESS_HELPER": "grandchild"}, false)
 		if err := child.Start(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -75,7 +81,7 @@ func helper(mode string) int {
 		return 1
 	}
 	_, _ = os.Stdout.Write(b)
-	if mode == "tree" {
+	if mode == "tree" || mode == "tree-detached" {
 		time.Sleep(20 * time.Second)
 	}
 	return 0
@@ -145,9 +151,13 @@ func TestProcessSuccess(t *testing.T) {
 }
 
 func TestProcessCancellation(t *testing.T) {
-	for _, kind := range []string{"explicit", "context", "deadline"} {
+	for _, kind := range []string{"explicit", "context", "deadline", "detached"} {
 		t.Run(kind, func(t *testing.T) {
-			d, l, root := fakeDriver(t, "tree")
+			mode := "tree"
+			if kind == "detached" {
+				mode = "tree-detached"
+			}
+			d, l, root := fakeDriver(t, mode)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			var deadlineCancel context.CancelFunc
@@ -173,7 +183,7 @@ func TestProcessCancellation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if kind == "explicit" {
+			if kind == "explicit" || kind == "detached" {
 				var wg sync.WaitGroup
 				for range 8 {
 					wg.Go(h.Cancel)
@@ -243,5 +253,25 @@ func TestEnvironmentMerge(t *testing.T) {
 	joined := strings.Join(got, "\n")
 	if strings.Contains(joined, "old") || strings.Contains(joined, "wrong") || !strings.Contains(joined, "X=new") {
 		t.Fatal(got)
+	}
+}
+
+type versionResolver struct {
+	fakeResolver
+	info model.HarnessInfo
+}
+
+func (f versionResolver) Harnesses(context.Context) []model.HarnessInfo {
+	return []model.HarnessInfo{f.info}
+}
+
+func TestVersionRejection(t *testing.T) {
+	d, l, _ := fakeDriver(t, "ok")
+	issue := model.HarnessIssueUnsupportedVersion
+	d.Resolver = versionResolver{fakeResolver: d.Resolver.(fakeResolver), info: model.HarnessInfo{Harness: model.HarnessCodex, Installed: true, Issue: &issue}}
+	_, err := d.Start(context.Background(), l, "ok")
+	var e *model.Error
+	if !errors.As(err, &e) || e.Code != model.ErrorHarnessUnavailable || e.Details["reason"] != "unsupported_version" {
+		t.Fatal(err)
 	}
 }

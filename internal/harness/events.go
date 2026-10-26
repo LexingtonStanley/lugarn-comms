@@ -162,6 +162,9 @@ func (p *Parser) Line(line []byte) *Event {
 			}
 			u := object(e["usage"])
 			p.setUsage(u, "cache_read_input_tokens", "reasoning_tokens")
+			if reason := integer(object(u["output_tokens_details"])["thinking_tokens"]); reason != nil {
+				p.usage().ReasoningTokens = reason
+			}
 			if cost := number(e["total_cost_usd"]); cost != nil {
 				p.usage().CostUSD = cost
 			}
@@ -199,6 +202,9 @@ func (p *Parser) Line(line []byte) *Event {
 			p.fail(reason)
 		}
 	case model.HarnessOpenCode:
+		if typ != "step_start" && typ != "text" && typ != "step_finish" && typ != "error" {
+			break
+		}
 		id := str(e["sessionID"])
 		p.session(id)
 		if typ == "step_start" {

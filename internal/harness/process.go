@@ -28,20 +28,23 @@ type Resolver interface {
 // uses hostprobe. The resolved program is executed directly, never through a shell.
 type Driver struct{ Resolver Resolver }
 
+var defaultProbe = hostprobe.New()
+
 // Handle owns one process and all its descendants. Events contains exactly one
 // buffered acknowledgement, then closes at completion. Wait does not require a
 // channel consumer. PID and Events are immutable after Start returns.
 type Handle struct {
-	PID       int
-	Events    <-chan Event
-	mu        sync.Mutex
-	cmd       *exec.Cmd
-	group     *processGroup
-	done      chan struct{}
-	finished  bool
-	cancelled bool
-	timedOut  bool
-	outcome   Outcome
+	PID          int
+	Events       <-chan Event
+	mu           sync.Mutex
+	cmd          *exec.Cmd
+	group        *processGroup
+	done         chan struct{}
+	finished     bool
+	cancelled    bool
+	timedOut     bool
+	controlError string
+	outcome      Outcome
 }
 
 // Start writes per-launch files, resolves the native harness and starts a turn.
@@ -60,7 +63,26 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 	}
 	resolver := d.Resolver
 	if resolver == nil {
-		resolver = hostprobe.New()
+		resolver = defaultProbe
+	}
+	if probe, ok := resolver.(interface {
+		Harnesses(context.Context) []model.HarnessInfo
+	}); ok {
+		for _, info := range probe.Harnesses(ctx) {
+			if info.Harness != l.Harness {
+				continue
+			}
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			if !info.Supported || !info.Headless {
+				reason := "unsupported_version"
+				if info.Issue != nil {
+					reason = string(*info.Issue)
+				}
+				return nil, model.NewError(model.ErrorHarnessUnavailable, "harness is unavailable for headless turns").WithDetail("reason", reason)
+			}
+		}
 	}
 	binary, err := resolver.Binary(l.Harness)
 	if err != nil {
@@ -84,6 +106,9 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 	}
 	overrides, err := Environment(l)
 	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	cmd := exec.Command(binary, args...)
@@ -130,9 +155,14 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 			p.fail(err.Error())
 		}
 		h.mu.Lock()
-		_ = group.kill()
+		if err := group.kill(); err != nil && h.controlError == "" {
+			h.controlError = oneLine(err.Error())
+		}
 		group.close()
 		h.outcome = p.Finish(exit, h.cancelled, h.timedOut, string(stderr.data))
+		if h.controlError != "" {
+			h.outcome.Error = oneLine(h.outcome.Error + "; process cleanup: " + h.controlError)
+		}
 		h.finished = true
 		close(events)
 		close(h.done)
@@ -158,7 +188,9 @@ func (h *Handle) stop(cancelled, timedOut bool) {
 		h.cancelled = true
 		h.timedOut = h.timedOut || timedOut
 	}
-	_ = h.group.kill()
+	if err := h.group.kill(); err != nil && h.controlError == "" {
+		h.controlError = oneLine(err.Error())
+	}
 }
 
 // Cancel immediately kills the process group/job. It is safe concurrently with
