@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ github.ref_name }}
+      COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Test
+        run: go test ./...
+      - name: Build all release targets
+        run: scripts/build-all.sh
+      - name: Package archives
+        shell: bash
+        run: |
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+            target_os=${target%/*}
+            target_arch=${target#*/}
+            package="lugarn-comms_${VERSION}_${target_os}_${target_arch}"
+            cp LICENSE.md NOTICE README.md "dist/$package/"
+            if [ "$target_os" = windows ]; then
+              python3 - "$package" <<'PY'
+          import pathlib
+          import sys
+          import zipfile
+
+          package = sys.argv[1]
+          directory = pathlib.Path("dist") / package
+          with zipfile.ZipFile(f"dist/{package}.zip", "w", compression=zipfile.ZIP_DEFLATED) as archive:
+              for name in ("lugarn-comms.exe", "LICENSE.md", "NOTICE", "README.md"):
+                  archive.write(directory / name, arcname=name)
+          PY
+            else
+              tar -czf "dist/$package.tar.gz" -C "dist/$package" lugarn-comms LICENSE.md NOTICE README.md
+            fi
+          done
+      - name: Checksum archives
+        working-directory: dist
+        run: sha256sum -- *.tar.gz *.zip > SHA256SUMS
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$VERSION" \
+            dist/*.tar.gz dist/*.zip dist/SHA256SUMS \
+            --verify-tag --generate-notes --title "$VERSION"
