@@ -114,7 +114,7 @@ func (tx *Tx) GetWorktree(id string) (*WorktreeRecord, error) {
 
 // GetWorktreeByPath returns a worktree by its unique live path, including its removal history.
 func (tx *Tx) GetWorktreeByPath(path string) (*WorktreeRecord, error) {
-	w, err := scanWorktree(tx.queryRow("SELECT "+worktreeColumns+" FROM worktrees WHERE path = ? ORDER BY created_at DESC LIMIT 1", path))
+	w, err := scanWorktree(tx.queryRow("SELECT "+worktreeColumns+" FROM worktrees WHERE path = ? ORDER BY (removed_at IS NULL) DESC, created_at DESC, rowid DESC LIMIT 1", path))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, notFound("worktree")
 	}

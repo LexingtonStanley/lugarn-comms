@@ -135,14 +135,16 @@ func (tx *Tx) Inbox(memberID string, direction model.InboxDirection, limit int, 
 	return result, hasMore, nil
 }
 
-// CountMessagesToHuman counts a sender's messages in [before-10m, before).
+// CountMessagesToHuman counts already stored messages in [before-10m, before].
+// The upper boundary includes earlier commits with the same millisecond timestamp;
+// call before inserting the new message, in the same write transaction.
 func (tx *Tx) CountMessagesToHuman(senderID string, before model.Time) (int64, error) {
 	before = nowIfZero(before)
 	lower := model.FormatTime(before.Add(-10 * time.Minute))
 	var count int64
 	err := tx.queryRow(`SELECT count(*) FROM messages m JOIN deliveries d ON d.message_id = m.id
  JOIN members recipient ON recipient.id = d.recipient_id
- WHERE m.sender_id = ? AND recipient.name = 'human' AND m.created_at >= ? AND m.created_at < ?`, senderID, lower, dbTime(before)).Scan(&count)
+ WHERE m.sender_id = ? AND recipient.name = 'human' AND m.created_at >= ? AND m.created_at <= ?`, senderID, lower, dbTime(before)).Scan(&count)
 	return count, asError(err)
 }
 
