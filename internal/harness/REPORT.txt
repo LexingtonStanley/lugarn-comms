@@ -55,9 +55,14 @@ final text "ok". Files were inspected for secrets; none were found.
 Every model prompt was tiny. Live commands used LUGARN_HARNESS_LIVE=1, isolated
 working/state directories, and read-only profiles. No Herdr was invoked. No
 application code accessed this person's ~/.lugarn, and hook execution tests used
-HOME=t.TempDir(). No global harness configuration was edited. For the MCP live
-Claude and Codex tests, credentials were copied to private disposable config
-folders, without printing them, to keep global hooks/config out of these runs.
+HOME=t.TempDir(). No global harness configuration was edited. The original retained Claude/Codex logs used temporary config folders with
+credential copies. Review identified that as unsafe: rotating refresh tokens in
+a copy can invalidate the person's login. Those helpers and all CLAUDE_CONFIG_DIR/
+CODEX_HOME overrides have been deleted. The live tests now inherit the person's
+normal harness configuration, using only per-launch flags/files. Claude's global
+hooks are accepted; no setting-sources override was added. No credential file is
+opened, read, or copied by the revised test code. Claude/Codex live runs have not
+been repeated for this correction; their retained logs are historical evidence.
 
 Actual commands, with PATH=$HOME/.local/go/bin:$PATH exported:
 

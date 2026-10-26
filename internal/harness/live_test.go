@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -111,11 +110,9 @@ func TestLive(t *testing.T) {
 			if harness == model.HarnessClaude {
 				l.SessionID = newTestUUID(t)
 				l.Model = "haiku"
-				l.ExtraEnv = isolatedClaude(t)
 			}
 			if harness == model.HarnessCodex {
 				l.Model = "gpt-6-luna"
-				l.ExtraEnv = isolatedCodex(t)
 			}
 			if harness == model.HarnessOpenCode {
 				l.Model = "opencode-go/iceman-contributor-free"
@@ -246,57 +243,6 @@ func countLists(path string) int {
 func countCalls(path string) int {
 	b, _ := os.ReadFile(path)
 	return strings.Count(string(b), "tools/call team ")
-}
-
-func isolatedClaude(t *testing.T) map[string]string {
-	t.Helper()
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := t.TempDir()
-	// Copy credentials into private disposable storage, never edit the originals.
-	source := os.Getenv("CLAUDE_CONFIG_DIR")
-	if source == "" {
-		source = filepath.Join(home, ".claude")
-	}
-	copyCredential(t, filepath.Join(source, ".credentials.json"), filepath.Join(dir, ".credentials.json"))
-	if err = statedir.WriteSecret(filepath.Join(dir, "settings.json"), []byte(`{"disableAllHooks":true}`)); err != nil {
-		t.Fatal(err)
-	}
-	return map[string]string{"CLAUDE_CONFIG_DIR": dir, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"}
-}
-
-func isolatedCodex(t *testing.T) map[string]string {
-	t.Helper()
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := t.TempDir()
-	source := os.Getenv("CODEX_HOME")
-	if source == "" {
-		source = filepath.Join(home, ".codex")
-	}
-	copyCredential(t, filepath.Join(source, "auth.json"), filepath.Join(dir, "auth.json"))
-	if err = statedir.WriteSecret(filepath.Join(dir, "config.toml"), []byte("model_reasoning_effort = \"low\"\n")); err != nil {
-		t.Fatal(err)
-	}
-	return map[string]string{"CODEX_HOME": dir}
-}
-
-func copyCredential(t *testing.T, source, dest string) {
-	t.Helper()
-	b, err := os.ReadFile(source)
-	if os.IsNotExist(err) {
-		return
-	}
-	if err != nil {
-		t.Fatal("cannot read credential file")
-	}
-	if statedir.WriteSecret(dest, b) != nil {
-		t.Fatal("cannot write private credential copy")
-	}
 }
 
 func newTestUUID(t *testing.T) string { t.Helper(); return uuid.NewString() }
