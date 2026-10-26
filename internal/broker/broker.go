@@ -20,6 +20,7 @@ type Git interface {
 	RepoInfo(context.Context, string) (gitwt.Info, error)
 	BranchExists(context.Context, string, string) (bool, error)
 	State(context.Context, string) (gitwt.GitState, error)
+	Compare(context.Context, string, string, string) (BranchStatus, error)
 	Remove(context.Context, string, string, string) (gitwt.BranchOutcome, error)
 }
 
