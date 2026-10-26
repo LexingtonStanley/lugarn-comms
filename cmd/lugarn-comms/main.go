@@ -93,8 +93,8 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 		if len(args) != 2 {
 			return usageError(stderr, "usage: lugarn-comms app <op>")
 		}
-		svc, close := openService(ctx)
-		defer close()
+		svc, closeStore := openService(ctx)
+		defer closeStore()
 		return appops.Run(ctx, args[1], stdin, stdout, svc)
 	case "mcp":
 		flags := flag.NewFlagSet("mcp", flag.ContinueOnError)
@@ -114,8 +114,8 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 			fmt.Fprintln(stderr, "unauthenticated: --member and --token-file are required")
 			return 3
 		}
-		svc, close := openService(ctx)
-		defer close()
+		svc, closeStore := openService(ctx)
+		defer closeStore()
 		server, err := mcpserver.New(agentops.Identity{Member: *member, TokenFile: *token}, svc, svc)
 		if err == nil {
 			reader, ok := stdin.(io.ReadCloser)
@@ -130,16 +130,16 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 		}
 		return 0
 	case "send", "reply", "inbox", "team", "spawn", "stop":
-		svc, close := openService(ctx)
-		defer close()
+		svc, closeStore := openService(ctx)
+		defer closeStore()
 		return cli.Run(ctx, args, stdin, stdout, stderr, svc, svc)
 	case "run":
 		fmt.Fprintf(stderr, "lugarn-comms: %s is not implemented yet (C2)\n", args[0])
 		return 2
 	default:
 		if len(args) > 0 && (args[0] == "--member" || args[0] == "--token-file" || args[0] == "--format" || strings.HasPrefix(args[0], "--member=") || strings.HasPrefix(args[0], "--token-file=") || strings.HasPrefix(args[0], "--format=")) {
-			svc, close := openService(ctx)
-			defer close()
+			svc, closeStore := openService(ctx)
+			defer closeStore()
 			return cli.Run(ctx, args, stdin, stdout, stderr, svc, svc)
 		}
 		return usageError(stderr, fmt.Sprintf("unknown subcommand %q", args[0]))
