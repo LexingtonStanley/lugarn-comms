@@ -578,3 +578,29 @@ func TestBinaryNewerStoreErrors(t *testing.T) {
 		t.Fatal(string(data))
 	}
 }
+
+func TestBinaryMCPDerivesStoreFromTokenPath(t *testing.T) {
+	f := fixture(t, 100)
+	cmd := f.cmd("mcp", "--member", f.spec.Members[0].ID, "--token-file", f.tokens["writer"])
+	var env []string
+	for _, entry := range cmd.Env {
+		if !strings.HasPrefix(entry, "LUGARN_COMMS_HOME=") {
+			env = append(env, entry)
+		}
+	}
+	cmd.Env = env
+	session, e := mcp.NewClient(&mcp.Implementation{Name: "stripped-env", Version: "1"}, nil).Connect(f.ctx, &mcp.CommandTransport{Command: cmd}, nil)
+	emust(t, e)
+	defer session.Close()
+	result, e := session.CallTool(f.ctx, &mcp.CallToolParams{Name: "team"})
+	emust(t, e)
+	if result.IsError {
+		t.Fatal(result)
+	}
+	raw, e := json.Marshal(result.StructuredContent)
+	emust(t, e)
+	team := decode[wire.TeamOutput](t, raw)
+	if team.Team.ID != f.spec.ID {
+		t.Fatal(team)
+	}
+}

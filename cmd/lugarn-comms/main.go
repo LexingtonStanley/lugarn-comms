@@ -115,7 +115,7 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 			fmt.Fprintln(stderr, "unauthenticated: --member and --token-file are required")
 			return 3
 		}
-		svc, closeStore := openService(ctx)
+		svc, closeStore := openServiceForToken(ctx, *token)
 		defer closeStore()
 		server, err := mcpserver.New(agentops.Identity{Member: *member, TokenFile: *token}, svc, svc)
 		if err == nil {
@@ -179,6 +179,24 @@ type services interface {
 
 func openService(ctx context.Context) (services, func()) {
 	dir, err := statedir.Resolve()
+	if err != nil {
+		return errorService{model.AsError(err)}, func() {}
+	}
+	return openServiceDir(ctx, dir)
+}
+func openServiceForToken(ctx context.Context, tokenPath string) (services, func()) {
+	// Codex strips MCP environment variables. The per-launch token path already
+	// carries the state root, so an isolated launch must never fall back to home.
+	if filepath.IsAbs(tokenPath) && filepath.Base(filepath.Dir(tokenPath)) == "launch" {
+		return openServiceDir(ctx, filepath.Dir(filepath.Dir(tokenPath)))
+	}
+	if os.Getenv("LUGARN_COMMS_HOME") != "" {
+		return openService(ctx)
+	}
+	return errorService{model.NewError(model.ErrorInvalidRequest, "MCP needs an absolute launch token path or LUGARN_COMMS_HOME")}, func() {}
+}
+func openServiceDir(ctx context.Context, dir string) (services, func()) {
+	dir, err := filepath.Abs(dir)
 	if err == nil {
 		err = statedir.Ensure(dir)
 	}

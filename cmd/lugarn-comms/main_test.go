@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/version"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 )
 
 func TestRun(t *testing.T) {
@@ -168,5 +169,22 @@ func TestRunnerCommand(t *testing.T) {
 		if got := runWithInput(context.Background(), tt.args, strings.NewReader(""), &out, &diag); got != tt.want {
 			t.Fatalf("%v: exit %d want %d: %s", tt.args, got, tt.want, &diag)
 		}
+	}
+}
+
+func TestMCPStateRootSurvivesStrippedEnvironment(t *testing.T) {
+	state := t.TempDir()
+	t.Setenv("LUGARN_COMMS_HOME", "")
+	svc, closeStore := openServiceForToken(context.Background(), filepath.Join(state, "launch", "missing.token"))
+	defer closeStore()
+	result, err := svc.Status(context.Background(), wire.StatusRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Teams) != 0 {
+		t.Fatal(result)
+	}
+	if _, err := os.Stat(filepath.Join(state, "comms.db")); err != nil {
+		t.Fatal(err)
 	}
 }
