@@ -110,7 +110,7 @@ func (r *Runner) acquire(ctx context.Context) error {
 		if t.State != model.TeamStateStarting && t.State != model.TeamStateRunning {
 			return model.NewError(model.ErrorTeamNotRunning, "runner needs a starting or running team")
 		}
-		if r.b.fresh(t) {
+		if t.Runner.State == model.RunnerStateUp && r.b.fresh(t) {
 			return model.NewError(model.ErrorLeaseConflict, "another runner has a fresh heartbeat")
 		}
 		r.freshStart = t.State == model.TeamStateStarting
