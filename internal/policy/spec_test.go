@@ -127,7 +127,7 @@ func TestValidateSpecValueRules(t *testing.T) {
 		{"spawn values", func(s *model.TeamSpec) {
 			s.Members[0].Spawn = &model.SpawnSettings{Enabled: true, RunningAtOnce: ptr(0), PerRun: ptr(25),
 				Harnesses: &[]model.Harness{model.HarnessCodex, "gpt", model.HarnessCodex},
-				Mode: ptr(model.Mode("tab")), Folder: ptr(model.SpawnFolder("copy")), MaxProfile: ptr(model.Profile("root"))}
+				Mode:      ptr(model.Mode("tab")), Folder: ptr(model.SpawnFolder("copy")), MaxProfile: ptr(model.Profile("root"))}
 		}, []string{"/members/0/spawn/running_at_once", "/members/0/spawn/per_run", "/members/0/spawn/harnesses/1",
 			"/members/0/spawn/harnesses/2", "/members/0/spawn/mode", "/members/0/spawn/folder", "/members/0/spawn/max_profile",
 			"/members/0/spawn/brief"}},

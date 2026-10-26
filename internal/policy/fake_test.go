@@ -23,11 +23,11 @@ func newHost(os model.HostOS) *fakeHost {
 		issues: map[model.Harness]model.HarnessIssue{}, paths: map[string]bool{}, branches: map[string]bool{}}
 }
 
-func (h *fakeHost) OS() model.HostOS                               { return h.os }
-func (h *fakeHost) FolderExists(p string) bool                     { return h.folders[p] }
+func (h *fakeHost) OS() model.HostOS                                { return h.os }
+func (h *fakeHost) FolderExists(p string) bool                      { return h.folders[p] }
 func (h *fakeHost) HarnessIssue(x model.Harness) model.HarnessIssue { return h.issues[x] }
-func (h *fakeHost) PathExists(p string) bool                       { return h.paths[p] || h.folders[p] }
-func (h *fakeHost) BranchExists(root, b string) bool               { return h.branches[root+"|"+b] }
+func (h *fakeHost) PathExists(p string) bool                        { return h.paths[p] || h.folders[p] }
+func (h *fakeHost) BranchExists(root, b string) bool                { return h.branches[root+"|"+b] }
 func (h *fakeHost) RepoRoot(p string) (string, bool) {
 	r, ok := h.repos[p]
 	return r, ok
