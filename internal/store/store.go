@@ -172,8 +172,11 @@ func openPool(ctx context.Context, path, txlock string, connections int, readOnl
 	if readOnly {
 		query.Set("mode", "ro")
 	}
-	u := &url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: query.Encode()}
-	db, err := sql.Open("sqlite", u.String())
+	uri, err := sqliteURI(path, query)
+	if err != nil {
+		return nil, asError(err)
+	}
+	db, err := sql.Open("sqlite", uri)
 	if err != nil {
 		return nil, asError(err)
 	}
@@ -185,13 +188,34 @@ func openPool(ctx context.Context, path, txlock string, connections int, readOnl
 	return db, nil
 }
 
+// sqliteURI makes an absolute path into a SQLite file URI. Windows paths need
+// a leading slash (file:///C:/...); without it, "C:" lands in the authority.
+func sqliteURI(path string, query url.Values) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	return fileURI(filepath.ToSlash(abs), query), nil
+}
+
+func fileURI(slashPath string, query url.Values) string {
+	if !strings.HasPrefix(slashPath, "/") {
+		slashPath = "/" + slashPath
+	}
+	u := &url.URL{Scheme: "file", Path: slashPath, RawQuery: query.Encode()}
+	return u.String()
+}
+
 func preflightVersion(ctx context.Context, path string) (int, error) {
 	query := url.Values{}
 	query.Set("mode", "ro")
 	query.Add("_pragma", "busy_timeout=5000")
 	query.Add("_pragma", "foreign_keys=ON")
-	u := &url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: query.Encode()}
-	db, err := sql.Open("sqlite", u.String())
+	uri, err := sqliteURI(path, query)
+	if err != nil {
+		return 0, asError(err)
+	}
+	db, err := sql.Open("sqlite", uri)
 	if err != nil {
 		return 0, asError(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -213,5 +214,19 @@ func requireCode(t *testing.T, err error, code model.ErrorCode) {
 	var protocolErr *model.Error
 	if !errors.As(err, &protocolErr) || protocolErr.Code != code {
 		t.Fatalf("error = %#v, want %s", err, code)
+	}
+}
+
+func TestFileURI(t *testing.T) {
+	q := url.Values{}
+	q.Set("mode", "ro")
+	for slashPath, want := range map[string]string{
+		"/home/lex/.lugarn/comms/comms.db":           "file:///home/lex/.lugarn/comms/comms.db?mode=ro",
+		"C:/Users/lex/AppData/Local/Lugarn/comms.db": "file:///C:/Users/lex/AppData/Local/Lugarn/comms.db?mode=ro",
+		"/tmp/a b#c?d.db":                            "file:///tmp/a%20b%23c%3Fd.db?mode=ro",
+	} {
+		if got := fileURI(slashPath, q); got != want {
+			t.Errorf("fileURI(%q) = %q, want %q", slashPath, got, want)
+		}
 	}
 }
