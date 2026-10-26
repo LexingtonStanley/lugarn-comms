@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math/rand/v2"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -297,9 +298,44 @@ func (s *Store) Close() error {
 	return asError(errors.Join(errs...))
 }
 
+// writeWait bounds how long Write keeps retrying a busy BEGIN IMMEDIATE.
+const writeWait = 30 * time.Second
+
 // Write runs fn in a BEGIN IMMEDIATE transaction and rolls it back on error.
+//
+// SQLite's busy handler isn't fair: under steady contention from other
+// processes one writer can wait out the whole busy_timeout while others keep
+// winning the lock. A BEGIN that fails busy has done nothing, so Write retries
+// it with jittered backoff until writeWait or ctx ends.
 func (s *Store) Write(ctx context.Context, fn func(*Tx) error) error {
-	return s.run(ctx, s.write, fn)
+	deadline := time.Now().Add(writeWait)
+	for attempt := 0; ; attempt++ {
+		tx, err := s.write.BeginTx(ctx, nil)
+		if err == nil {
+			return s.finish(ctx, tx, fn)
+		}
+		if !busy(err) || time.Now().After(deadline) {
+			return asError(err)
+		}
+		pause := time.Duration(5+rand.IntN(20+min(attempt, 20)*5)) * time.Millisecond
+		t := time.NewTimer(pause)
+		select {
+		case <-ctx.Done():
+			t.Stop()
+			return asError(ctx.Err())
+		case <-t.C:
+		}
+	}
+}
+
+// busy reports SQLITE_BUSY or SQLITE_LOCKED, including extended codes.
+func busy(err error) bool {
+	var sqliteErr *sqlite.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+	code := sqliteErr.Code() & 0xff
+	return code == 5 || code == 6
 }
 
 // Read runs fn in a read-only snapshot transaction and rolls it back on error.
@@ -312,6 +348,10 @@ func (s *Store) run(ctx context.Context, db *sql.DB, fn func(*Tx) error) error {
 	if err != nil {
 		return asError(err)
 	}
+	return s.finish(ctx, tx, fn)
+}
+
+func (s *Store) finish(ctx context.Context, tx *sql.Tx, fn func(*Tx) error) error {
 	defer func() { _ = tx.Rollback() }()
 	wrapped := &Tx{tx: tx, ctx: ctx}
 	if err := fn(wrapped); err != nil {
