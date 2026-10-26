@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,7 +39,7 @@ func TestRun(t *testing.T) {
 	for _, command := range []string{"help", "-h", "--help"} {
 		tests = append(tests, testCase{name: command + " extra argument", args: []string{command, "extra"}, code: 64, stderr: fmt.Sprintf("lugarn-comms: unexpected arguments for %s\nTry 'lugarn-comms help' for usage.\n", command)})
 	}
-	for _, command := range []string{"mcp", "send", "reply", "inbox", "team", "app", "run"} {
+	for _, command := range []string{"run"} {
 		for _, args := range [][]string{{command}, {command, "--help"}} {
 			tests = append(tests, testCase{name: strings.Join(args, " "), args: args, code: 2, stderr: fmt.Sprintf("lugarn-comms: %s is not implemented yet\n", command)})
 		}
@@ -96,4 +97,31 @@ type failingWriter struct{}
 
 func (failingWriter) Write([]byte) (int, error) {
 	return 0, errors.New("broken writer")
+}
+
+func TestFrontDoorDispatch(t *testing.T) {
+	for _, tt := range []struct {
+		args  []string
+		input string
+		code  int
+		out   string
+	}{
+		{[]string{"app", "status"}, `{"protocol":1,"op":"status","request_id":"x"}`, 1, `"message":"not implemented yet (C1d)"`},
+		{[]string{"team"}, "", 1, `"error"`},
+		{[]string{"--format", "json", "team"}, "", 1, `"error"`},
+		{[]string{"spawn"}, "", 2, `"invalid_request"`},
+		{[]string{"stop"}, "", 2, `"invalid_request"`},
+		{[]string{"mcp"}, "", 3, ""},
+		{[]string{"app"}, "", 64, ""},
+	} {
+		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {
+			var out, diag bytes.Buffer
+			if got := runWithInput(context.Background(), tt.args, strings.NewReader(tt.input), &out, &diag); got != tt.code {
+				t.Fatalf("exit %d want %d: %s %s", got, tt.code, &out, &diag)
+			}
+			if !strings.Contains(out.String(), tt.out) {
+				t.Fatal(out.String())
+			}
+		})
+	}
 }

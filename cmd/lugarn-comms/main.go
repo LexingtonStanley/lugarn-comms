@@ -1,24 +1,37 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"runtime"
+	"strings"
 
+	"github.com/LexingtonStanley/lugarn-comms/internal/agentops"
+	"github.com/LexingtonStanley/lugarn-comms/internal/appops"
+	"github.com/LexingtonStanley/lugarn-comms/internal/cli"
+	"github.com/LexingtonStanley/lugarn-comms/internal/mcpserver"
+	"github.com/LexingtonStanley/lugarn-comms/internal/model"
+	"github.com/LexingtonStanley/lugarn-comms/internal/service"
 	"github.com/LexingtonStanley/lugarn-comms/internal/version"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 const usage = `Usage: lugarn-comms <command> [arguments]
 
 Commands:
-  mcp       Serve an agent's comms tools over MCP on stdio (not implemented yet)
-  send      Send a message to a team member (not implemented yet)
-  reply     Reply to a message (not implemented yet)
-  inbox     Read your messages (not implemented yet)
-  team      Show your team and what you may do (not implemented yet)
-  app       Answer requests from the Lugarn app (not implemented yet)
+  mcp       Serve an agent's comms tools over MCP on stdio
+  send      Send a message to a team member
+  reply     Reply to a message
+  inbox     Read your messages
+  team      Show your team and what you may do
+  spawn     Spawn a worker
+  stop      Stop a worker you spawned
+  app       Answer requests from the Lugarn app
   run       Run a team's runner (not implemented yet)
   version   Print build information (use --json for JSON)
   help      Print this help (also -h or --help)
@@ -26,15 +39,21 @@ Commands:
 Exit codes:
   0   Success (including help)
   1   Output error
-  2   Command is not implemented yet
+  2   Invalid request (or run is not implemented yet)
   64  Invalid command or arguments
 `
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+	os.Exit(runWithInput(ctx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
+	return runWithInput(context.Background(), args, os.Stdin, stdout, stderr)
+}
+
+func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		return writeOutput(stdout, stderr, usage)
 	}
@@ -66,10 +85,54 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		return 0
-	case "mcp", "send", "reply", "inbox", "team", "app", "run":
+	case "app":
+		if len(args) != 2 {
+			return usageError(stderr, "usage: lugarn-comms app <op>")
+		}
+		return appops.Run(ctx, args[1], stdin, stdout, &service.Fake{})
+	case "mcp":
+		flags := flag.NewFlagSet("mcp", flag.ContinueOnError)
+		flags.SetOutput(stderr)
+		member := flags.String("member", "", "member id")
+		token := flags.String("token-file", "", "launch token path")
+		if err := flags.Parse(args[1:]); err != nil {
+			if err == flag.ErrHelp {
+				return 0
+			}
+			return 2
+		}
+		if flags.NArg() != 0 {
+			return usageError(stderr, "unexpected MCP arguments")
+		}
+		if *member == "" || *token == "" {
+			fmt.Fprintln(stderr, "unauthenticated: --member and --token-file are required")
+			return 3
+		}
+		stub := &service.Fake{}
+		server, err := mcpserver.New(agentops.Identity{Member: *member, TokenFile: *token}, stub, stub)
+		if err == nil {
+			reader, ok := stdin.(io.ReadCloser)
+			if !ok {
+				reader = io.NopCloser(stdin)
+			}
+			err = server.Run(ctx, &mcp.IOTransport{Reader: reader, Writer: writerCloser{stdout}})
+		}
+		if err != nil {
+			fmt.Fprintln(stderr, model.AsError(err))
+			return 1
+		}
+		return 0
+	case "send", "reply", "inbox", "team", "spawn", "stop":
+		stub := &service.Fake{}
+		return cli.Run(ctx, args, stdin, stdout, stderr, stub, stub)
+	case "run":
 		fmt.Fprintf(stderr, "lugarn-comms: %s is not implemented yet\n", args[0])
 		return 2
 	default:
+		if len(args) > 0 && (args[0] == "--member" || args[0] == "--token-file" || args[0] == "--format" || strings.HasPrefix(args[0], "--member=") || strings.HasPrefix(args[0], "--token-file=") || strings.HasPrefix(args[0], "--format=")) {
+			stub := &service.Fake{}
+			return cli.Run(ctx, args, stdin, stdout, stderr, stub, stub)
+		}
 		return usageError(stderr, fmt.Sprintf("unknown subcommand %q", args[0]))
 	}
 }
@@ -86,3 +149,7 @@ func writeOutput(stdout, stderr io.Writer, output string) int {
 	}
 	return 0
 }
+
+type writerCloser struct{ io.Writer }
+
+func (writerCloser) Close() error { return nil }
