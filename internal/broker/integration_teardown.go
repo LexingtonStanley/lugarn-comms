@@ -56,20 +56,8 @@ func (i *Integration) Close(ctx context.Context, t store.Team, members []model.M
 			record(e)
 			continue
 		}
-		if turn != nil && turn.PID != nil {
-			state, e := (nativeProcesses{}).Inspect(ctx, *turn.PID)
-			if e != nil {
-				record(e)
-				continue
-			}
-			if state.Alive {
-				birth := helper.processBirth(*turn)
-				if birth == "" {
-					record(model.NewError(model.ErrorInternal, "cannot terminate an unverified turn process").WithDetail("turn", turn.ID))
-					continue
-				}
-				record(cancelOwnedTree(ctx, *turn.PID, birth))
-			}
+		if turn != nil {
+			record(helper.cancelTurnProcess(ctx, *turn))
 		}
 	}
 	workspace := placement.Workspace

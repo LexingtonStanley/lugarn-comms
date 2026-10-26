@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/LexingtonStanley/lugarn-comms/internal/harness"
 	"golang.org/x/sys/windows"
 )
 
@@ -43,7 +44,7 @@ func (p nativeProcesses) Cancel(ctx context.Context, pid int64, birth string) er
 	if birth == "" || birth != s.Birth {
 		return fmt.Errorf("refusing to kill unverified process %d", pid)
 	}
-	// C2c normally cancels the job. For an orphan, retain process handles while
+	// The recorded job is tried before this fallback. Retain process handles while
 	// walking the snapshot, and terminate descendants before the verified root.
 	return p.killTree(ctx, uint32(pid), birth, 0, map[uint32]bool{})
 }
@@ -97,4 +98,13 @@ func (p nativeProcesses) killTree(ctx context.Context, pid uint32, expected stri
 		return nil
 	}
 	return windows.TerminateProcess(h, 1)
+}
+
+// TerminateJob receives only an exact name read from the turn's private process
+// record. Missing names permit the caller's PID/birth fallback; access failures do not.
+func (nativeProcesses) TerminateJob(ctx context.Context, name string) (bool, error) {
+	if e := ctx.Err(); e != nil {
+		return false, e
+	}
+	return harness.TerminateJob(name)
 }

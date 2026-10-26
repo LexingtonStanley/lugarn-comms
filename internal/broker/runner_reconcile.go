@@ -145,10 +145,7 @@ func (r *Runner) checkOrphans(ctx context.Context, stopping bool) error {
 			timeout = time.Duration(team.TurnTimeoutSeconds) * time.Second
 		}
 		if s.Alive && (stopping || r.b.now().Sub(o.turn.StartedAt.Time) >= timeout) {
-			if o.birth == "" {
-				return model.NewError(model.ErrorInternal, "cannot safely cancel an orphan without its process birth identity")
-			}
-			if e = r.opts.Processes.Cancel(ctx, *o.turn.PID, o.birth); e != nil {
+			if e = r.cancelTurnProcess(ctx, o.turn); e != nil {
 				return e
 			}
 			s, e = r.opts.Processes.Inspect(ctx, *o.turn.PID)
@@ -158,6 +155,11 @@ func (r *Runner) checkOrphans(ctx context.Context, stopping bool) error {
 		}
 		if s.Alive {
 			continue
+		}
+		// A dead/reused root PID can still have descendants in its recorded job.
+		// Only that job may be signalled here, never the replacement PID.
+		if _, e = r.terminateTurnJob(ctx, o.turn); e != nil {
+			return e
 		}
 		e = r.write(ctx, &o.member, func(tx *store.Tx, t *store.Team) error {
 			current, e := tx.GetTurn(o.turn.ID)

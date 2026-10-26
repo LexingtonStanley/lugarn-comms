@@ -122,3 +122,27 @@ func (g *processGroup) finish() error {
 	}
 	return nil
 }
+
+var openJobObjectW = jobKernel32.NewProc("OpenJobObjectW")
+
+// TerminateJob opens precisely the caller's recorded job name with query and
+// terminate rights. It never creates or discovers jobs. A missing name returns
+// false, nil so the caller can use its recorded PID/birth fallback. Other errors
+// are returned without falling back or pretending termination succeeded.
+func TerminateJob(name string) (bool, error) {
+	encoded, err := windows.UTF16PtrFromString(name)
+	if err != nil {
+		return false, err
+	}
+	raw, _, lastErr := openJobObjectW.Call(jobObjectQuery|jobObjectTerminate, 0, uintptr(unsafe.Pointer(encoded)))
+	runtime.KeepAlive(encoded)
+	if raw == 0 {
+		if lastErr == windows.ERROR_FILE_NOT_FOUND {
+			return false, nil
+		}
+		return false, fmt.Errorf("OpenJobObjectW: %w", lastErr)
+	}
+	job := windows.Handle(raw)
+	defer windows.CloseHandle(job)
+	return true, windows.TerminateJobObject(job, 1)
+}
