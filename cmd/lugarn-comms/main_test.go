@@ -175,7 +175,7 @@ func TestRunnerCommand(t *testing.T) {
 func TestMCPStateRootSurvivesStrippedEnvironment(t *testing.T) {
 	state := t.TempDir()
 	t.Setenv("LUGARN_COMMS_HOME", "")
-	svc, closeStore := openServiceForToken(context.Background(), filepath.Join(state, "launch", "missing.token"))
+	svc, closeStore := openServiceForToken(context.Background(), filepath.Join(state, "launch", "00000000000000000000000001.token"))
 	defer closeStore()
 	result, err := svc.Status(context.Background(), wire.StatusRequest{})
 	if err != nil {

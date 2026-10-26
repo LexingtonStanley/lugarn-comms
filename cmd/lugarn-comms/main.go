@@ -131,7 +131,7 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 		}
 		return 0
 	case "send", "reply", "inbox", "team", "spawn", "stop":
-		svc, closeStore := openService(ctx)
+		svc, closeStore := openAgentService(ctx, args)
 		defer closeStore()
 		return cli.Run(ctx, args, stdin, stdout, stderr, svc, svc)
 	case "pane-shell":
@@ -144,7 +144,7 @@ func runWithInput(ctx context.Context, args []string, stdin io.Reader, stdout, s
 		return runTeam(ctx, args[1:], stderr)
 	default:
 		if len(args) > 0 && (args[0] == "--member" || args[0] == "--token-file" || args[0] == "--format" || strings.HasPrefix(args[0], "--member=") || strings.HasPrefix(args[0], "--token-file=") || strings.HasPrefix(args[0], "--format=")) {
-			svc, closeStore := openService(ctx)
+			svc, closeStore := openAgentService(ctx, args)
 			defer closeStore()
 			return cli.Run(ctx, args, stdin, stdout, stderr, svc, svc)
 		}
@@ -184,10 +184,28 @@ func openService(ctx context.Context) (services, func()) {
 	}
 	return openServiceDir(ctx, dir)
 }
+func openAgentService(ctx context.Context, args []string) (services, func()) {
+	token := os.Getenv("LUGARN_COMMS_TOKEN_FILE")
+	for n := 0; n < len(args); n++ {
+		if args[n] == "--" {
+			break
+		}
+		if value, ok := strings.CutPrefix(args[n], "--token-file="); ok {
+			token = value
+		} else if args[n] == "--token-file" && n+1 < len(args) {
+			n++
+			token = args[n]
+		}
+	}
+	if token != "" {
+		return openServiceForToken(ctx, token)
+	}
+	return openService(ctx)
+}
 func openServiceForToken(ctx context.Context, tokenPath string) (services, func()) {
 	// Codex strips MCP environment variables. The per-launch token path already
 	// carries the state root, so an isolated launch must never fall back to home.
-	if filepath.IsAbs(tokenPath) && filepath.Base(filepath.Dir(tokenPath)) == "launch" {
+	if filepath.IsAbs(tokenPath) && filepath.Base(filepath.Dir(tokenPath)) == "launch" && strings.HasSuffix(filepath.Base(tokenPath), ".token") && model.ValidateULID(strings.TrimSuffix(filepath.Base(tokenPath), ".token")) == nil {
 		return openServiceDir(ctx, filepath.Dir(filepath.Dir(tokenPath)))
 	}
 	if os.Getenv("LUGARN_COMMS_HOME") != "" {

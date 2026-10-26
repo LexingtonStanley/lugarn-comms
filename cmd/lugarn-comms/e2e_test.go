@@ -604,3 +604,19 @@ func TestBinaryMCPDerivesStoreFromTokenPath(t *testing.T) {
 		t.Fatal(team)
 	}
 }
+
+func TestBinaryCLIStoreFromTokenPathWithoutEnvironment(t *testing.T) {
+	f := fixture(t, 100)
+	cmd := f.agent("writer", "team")
+	var env []string
+	for _, entry := range cmd.Env {
+		if !strings.HasPrefix(entry, "LUGARN_COMMS_HOME=") {
+			env = append(env, entry)
+		}
+	}
+	cmd.Env = env
+	team := decode[wire.TeamOutput](t, checked(t, process(cmd, nil), 0))
+	if team.Team.ID != f.spec.ID {
+		t.Fatal(team)
+	}
+}
