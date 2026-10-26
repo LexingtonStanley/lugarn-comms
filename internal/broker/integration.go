@@ -85,7 +85,10 @@ func (i *Integration) Runner(team string, opts RunnerOptions) *Runner {
 	opts.Panes = i.panes
 	opts.HomeDir = i.opts.HomeDir
 	r := NewRunner(i.b, team, opts)
-	r.opts.PaneLifecycle = &integrationLifecycle{i: i, r: r}
+	lifecycle := &integrationLifecycle{i: i, r: r}
+	r.opts.PaneLifecycle = lifecycle
+	r.opts.Requests = lifecycle
+	r.prepareMember = func(ctx context.Context, m model.Member) (*model.Member, error) { return i.prepareWorktree(ctx, r, m) }
 	r.onAcquire = func(ctx context.Context) error {
 		placement, e := i.placement(team)
 		if e != nil {

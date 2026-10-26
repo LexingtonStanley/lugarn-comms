@@ -20,6 +20,11 @@ type integrationLifecycle struct {
 
 func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause model.LeaseCause) (err error) {
 	original := m
+	prepared, e := l.i.prepareWorktree(ctx, l.r, m)
+	if e != nil {
+		return e
+	}
+	m = *prepared
 	defer func() {
 		if err != nil {
 			var current *model.Member

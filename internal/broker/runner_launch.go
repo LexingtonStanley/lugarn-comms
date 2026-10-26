@@ -45,6 +45,13 @@ func (r *Runner) memberState(tx *store.Tx, m model.Member, state model.MemberSta
 	return r.b.event(tx, &m.Team, model.EventMemberStateChanged, true, &m.ID, nil, wire.MemberStateChangedEventData{Member: *updated, From: m.State, To: state, Reason: reason})
 }
 func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model.LeaseCause) (*model.Member, error) {
+	if r.prepareMember != nil {
+		ready, e := r.prepareMember(ctx, m)
+		if e != nil {
+			return nil, r.launchFailed(ctx, m, e)
+		}
+		m = *ready
+	}
 	host := r.b.host(ctx)
 	if !host.CanRunHeadless(*m.Harness) {
 		return nil, r.launchFailed(ctx, m, invalid("harness cannot run headless"))
@@ -76,7 +83,7 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 	var starting *model.Member
 	newSession := false
 	e = r.write(ctx, &m, func(tx *store.Tx, t *store.Team) error {
-		if t.State != model.TeamStateRunning || m.Lease.Driver != model.DriverNone {
+		if t.State != model.TeamStateRunning || m.Lease.Driver != model.DriverNone && !(m.Lease.Driver == model.DriverPane && (cause == model.LeaseCauseReturnHeadless || cause == model.LeaseCausePaneExit)) {
 			return errRunnerGeneration
 		}
 		current, e := tx.GetMember(m.ID)
@@ -94,6 +101,14 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 		}
 		now := r.b.now()
 		next := model.Lease{Driver: model.DriverHeadless, Generation: m.Lease.Generation + 1, Launch: &id}
+		if m.Lease.Launch != nil {
+			if e = tx.EndLaunch(*m.Lease.Launch, model.LaunchEndReasonConverted, now); e != nil {
+				return e
+			}
+			if _, e = tx.RevokeMemberTokens(m.ID, now); e != nil {
+				return e
+			}
+		}
 		if e = tx.InsertLaunch(store.Launch{ID: id, MemberID: m.ID, Generation: next.Generation, Driver: model.ModeHeadless, SessionIDStart: current.Session, StartedAt: now}); e != nil {
 			return e
 		}
@@ -117,8 +132,10 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 			}
 			newSession = true
 		}
-		if e = r.memberState(tx, m, model.MemberStateStarting, nil); e != nil {
-			return e
+		if m.State != model.MemberStateRunning {
+			if e = r.memberState(tx, m, model.MemberStateStarting, nil); e != nil {
+				return e
+			}
 		}
 		starting, e = tx.GetMember(m.ID)
 		return e
@@ -149,8 +166,10 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 		if e := tx.UpdateMember(m.ID, store.MemberPatch{LastDriver: ptr(ptr(model.ModeHeadless))}, r.b.now()); e != nil {
 			return e
 		}
-		if e := r.memberState(tx, *starting, model.MemberStateRunning, nil); e != nil {
-			return e
+		if starting.State != model.MemberStateRunning {
+			if e := r.memberState(tx, *starting, model.MemberStateRunning, nil); e != nil {
+				return e
+			}
 		}
 		ready, e = tx.GetMember(m.ID)
 		if e != nil {

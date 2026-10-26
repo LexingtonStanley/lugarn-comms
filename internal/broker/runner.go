@@ -19,22 +19,23 @@ var errRunnerGeneration = model.NewError(model.ErrorLeaseConflict, "runner membe
 // Runner drives one team. Construct a new value for every run; Run is single-use.
 // Cancelling its context detaches live turns; a team stop cancels them instead.
 type Runner struct {
-	onAcquire    func(context.Context) error
-	paneObserved map[string]runnerPanePoll
-	freshStart   bool
-	startMembers map[string]bool
-	workers      sync.WaitGroup
-	stopping     atomic.Bool
-	workerErrors chan error
-	handles      map[string]TurnHandle
-	orphans      map[string]runnerOrphan
-	b            *Broker
-	team         string
-	opts         RunnerOptions
-	owner        model.Runner
-	used         atomic.Bool
-	mu           sync.Mutex
-	busy         map[string]bool
+	prepareMember func(context.Context, model.Member) (*model.Member, error)
+	onAcquire     func(context.Context) error
+	paneObserved  map[string]runnerPanePoll
+	freshStart    bool
+	startMembers  map[string]bool
+	workers       sync.WaitGroup
+	stopping      atomic.Bool
+	workerErrors  chan error
+	handles       map[string]TurnHandle
+	orphans       map[string]runnerOrphan
+	b             *Broker
+	team          string
+	opts          RunnerOptions
+	owner         model.Runner
+	used          atomic.Bool
+	mu            sync.Mutex
+	busy          map[string]bool
 }
 
 // NewRunner constructs a runner over b's store and transaction helpers. It does
