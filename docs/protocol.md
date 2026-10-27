@@ -1621,7 +1621,9 @@ The exit status is the error's exit code.
 One vocabulary for app ops, MCP tools and the CLI: `{ "code", "message", "details" }`.
 `message` is for people and may change; `code` is stable; `details` is an object, empty when
 there's nothing to add. Every error's `message` and `details` exclude environment values,
-full argv and file contents:
+full argv and file contents. The one exception is a harness's own failure reason: it's
+scrubbed as below, but a secret the broker never saw, in a shape it doesn't know, can't be
+caught.
 
 - Request errors identify fields by location and schema keyword, never by value:
   `details.at` is a JSON pointer and `details.keyword` is the failing schema keyword.
