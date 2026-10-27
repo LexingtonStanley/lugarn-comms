@@ -3,7 +3,10 @@ package model
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
+	"strconv"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -16,13 +19,38 @@ func DecodeStrict(data []byte, v any) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
-		return NewError(ErrorInvalidRequest, "invalid JSON")
+		return jsonDecodeError("invalid JSON", err)
 	}
 	var trailing any
 	if err := dec.Decode(&trailing); err != io.EOF {
-		return NewError(ErrorInvalidRequest, "expected a single JSON value")
+		return jsonDecodeError("expected a single JSON value", err)
 	}
 	return nil
+}
+
+// jsonDecodeError extracts only locations, never json error text or values.
+func jsonDecodeError(message string, err error) *Error {
+	failure := NewError(ErrorInvalidRequest, message)
+	if err == nil {
+		return failure
+	}
+	var mismatch *json.UnmarshalTypeError
+	var syntax *json.SyntaxError
+	switch {
+	case errors.As(err, &mismatch):
+		failure.WithDetail("field", mismatch.Field)
+	case errors.As(err, &syntax):
+		failure.WithDetail("offset", syntax.Offset)
+	default:
+		// encoding/json has no exported unknown-field error type. Its quoted
+		// field name is the sole piece of its error string we accept.
+		if quoted, ok := strings.CutPrefix(err.Error(), "json: unknown field "); ok {
+			if field, e := strconv.Unquote(quoted); e == nil {
+				failure.WithDetail("field", field)
+			}
+		}
+	}
+	return failure
 }
 
 // Null represents the host field reserved as null in v1. A nil *Null marshals

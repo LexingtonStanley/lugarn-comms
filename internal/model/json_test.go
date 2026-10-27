@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -121,5 +122,44 @@ func TestTimeJSON(t *testing.T) {
 	}
 	if err := json.Unmarshal([]byte(`null`), &value); err != nil || !value.IsZero() {
 		t.Errorf("null must clear an existing time: %v, %v", value, err)
+	}
+}
+
+func TestDecodeStrictLocationDetails(t *testing.T) {
+	type input struct {
+		Nested struct {
+			Count int `json:"count"`
+		} `json:"nested"`
+	}
+	for _, tc := range []struct {
+		name, input, field string
+		offset             int64
+	}{
+		{"unknown", `{"unknown":"PRIVATE_VALUE"}`, "unknown", 0},
+		{"escaped field", `{"unknown\"field":"PRIVATE_VALUE"}`, `unknown"field`, 0},
+		{"type", `{"nested":{"count":"PRIVATE_VALUE"}}`, "nested.count", 0},
+		{"syntax", `{"nested":!}`, "", 11},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := DecodeStrict([]byte(tc.input), &input{})
+			failure := AsError(err)
+			if failure == nil || failure.Code != ErrorInvalidRequest {
+				t.Fatal(err)
+			}
+			if tc.offset != 0 {
+				if len(failure.Details) != 1 || failure.Details["offset"] != tc.offset {
+					t.Fatal(failure.Details)
+				}
+			} else if len(failure.Details) != 1 || failure.Details["field"] != tc.field {
+				t.Fatal(failure.Details)
+			}
+			raw, e := json.Marshal(failure)
+			if e != nil {
+				t.Fatal(e)
+			}
+			if strings.Contains(string(raw), "PRIVATE_VALUE") {
+				t.Fatal("JSON diagnostic echoed a value")
+			}
+		})
 	}
 }

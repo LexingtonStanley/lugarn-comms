@@ -24,7 +24,7 @@ func TestErrorDiagnosticsExcludePayload(t *testing.T) {
 	if AsError(cases[1]).Details["path"] != "/safe/config.json" {
 		t.Fatal("lost path")
 	}
-	for _, raw := range []string{`{"` + sentinel + `":1}`, `{"code":"` + sentinel + `","details":{},"message":"ok"}`} {
+	for _, raw := range []string{`{"unknown":"` + sentinel + `"}`, `{"code":"` + sentinel + `","details":{},"message":"ok"}`} {
 		var out struct {
 			Code int `json:"code"`
 		}

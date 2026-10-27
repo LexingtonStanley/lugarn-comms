@@ -3,6 +3,7 @@ package wire
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -86,7 +87,26 @@ func Validate(document, definition string, b []byte) error {
 		return model.NewError(model.ErrorInvalidRequest, "invalid JSON")
 	}
 	if err = s.Validate(v); err != nil {
-		return model.NewError(model.ErrorInvalidRequest, "schema violation")
+		failure := model.NewError(model.ErrorInvalidRequest, "schema violation")
+		var validation *jsonschema.ValidationError
+		if errors.As(err, &validation) {
+			// Use the first leaf to identify a concrete failed keyword.
+			for len(validation.Causes) > 0 {
+				validation = validation.Causes[0]
+			}
+			at := ""
+			for _, token := range validation.InstanceLocation {
+				at += "/" + strings.NewReplacer("~", "~0", "/", "~1").Replace(token)
+			}
+			keyword := ""
+			if validation.ErrorKind != nil {
+				if path := validation.ErrorKind.KeywordPath(); len(path) > 0 {
+					keyword = path[0]
+				}
+			}
+			failure.WithDetails(map[string]any{"at": at, "keyword": keyword})
+		}
+		return failure
 	}
 	return nil
 }
