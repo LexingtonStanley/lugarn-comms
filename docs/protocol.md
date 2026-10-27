@@ -114,10 +114,11 @@ recorded on the member.
 | `launch/<launch id>.opencode.json`| OpenCode's per-launch config (`OPENCODE_CONFIG`): the MCP registration and the profile's `permission` block | deleted when the launch ends |
 | `launch/<launch id>/msg-<message id>-<attempt>.md` | A pane delivery too long to inline ([Untrusted text](#untrusted-text)) | deleted when the launch ends |
 | `launch/<launch id>/bin/<harness>` | Link to the resolved native harness executable for the clean pane shell | deleted with the exact launch directory when the launch ends; link target survives |
-| `launch/<launch id>/clean-shell.json`, `shell-ready` | POSIX shell bootstrap capsule and readiness marker | deleted with the exact launch directory when the launch ends |
+| `shell-home/` | POSIX pane startup home with empty rc files; no credentials | retained with state |
+| `launch/<launch id>/clean-shell.json`, `shell-ready` | POSIX shell bootstrap capsule (including original home selectors) and readiness marker | deleted with the exact launch directory when the launch ends |
 | `launch/<launch id>/runner-launch.json`, `<turn id>.process.json` | Immutable launch description and process birth identity | deleted with the exact launch directory when the launch ends |
 | `launch/<launch id>/pane-launch.json` | Windows native harness executable, exact argv and only the launch's own environment variables (no copied parent environment); owner-only and never logged | deleted with the exact launch directory when the launch ends |
-| `runner/<team id>.json` | Recorded workspace/pane and verified runner process; optional bridge ownership | retained across runner takeover; removed by stop-team |
+| `runner/<team id>.json` | Recorded workspace/pane and verified runner process; original POSIX home selectors and optional bridge ownership | retained across runner takeover; removed by stop-team |
 | `sessions/<member id>/<session hash>.json` | Private initialized-session metadata; Codex rollout remains authoritative for cwd | retained for session resume until the member is removed; its sessions directory is then deleted |
 | `login-path.json` | Login-shell PATH capture, shell, timestamp and issue | refreshed after one hour, and on every start-herdr/start-team |
 | `lugarn-runner-<random>/lugarn-comms[.exe]` | Native bridge plus `owner.sha256` (the state-directory hash), only when the broker executable path needs one | removed by stop-team; owned, unrecorded leftovers older than 60 seconds swept at runner start/takeover and stop-team; state directory preferred when plain, otherwise OS temp directory |
@@ -355,13 +356,34 @@ stopped workers stay (stopped, wakeable).
 Then it ensures the Herdr workspace and opens the runner pane, passing a fresh capture of
 the person's `PATH` ([The person's `PATH`](#the-persons-path)). It returns once the runner's
 first heartbeat lands, or after 15 seconds closes the pane, sets the team `stopped` and fails
-with `runner_unavailable`, `details.cause: shell_not_ready`. The message tells the person
-to open a Herdr pane, answer or resolve their shell's startup questions, and retry.
-Herdr 0.9.5 creates a pane running the person's shell and `pane run` types into it. It
-offers neither exact-argv creation nor a shell-prompt readiness signal; foreground process
-information cannot distinguish an rc-file `read` from an idle prompt. The timeout therefore
-reports unconfirmed startup, not proof of a shell question. Failed starts retain the usual
-pane cleanup; this diagnostic doesn't leave a runner running behind a stopped team.
+with `runner_unavailable`. On timeout it asks Herdr `pane process-info`: a foreground broker
+means `details.cause: runner_no_heartbeat` (the runner started but never heartbeated); a shell,
+another process, or unavailable process information leaves startup unconfirmed and reports
+`details.cause: shell_not_ready`. The latter message suggests resolving shell startup questions.
+The process inspection is bounded to 2 additional seconds before pane cleanup.
+Herdr 0.9.5 creates a pane running the configured shell (or `SHELL`) and `pane run` types into
+it. It offers neither exact-argv creation nor a shell-prompt readiness signal; foreground
+process information cannot distinguish an rc-file `read` from an idle prompt.
+
+On POSIX, every broker-created runner pane and harness bootstrap pane starts with
+`HOME` and `ZDOTDIR` set to `<state dir>/shell-home`, and `XDG_CONFIG_HOME` set to its
+`.config` directory. The broker prepares this private home idempotently (directories 0700,
+files 0600), refuses links, and empties `.zshenv`, `.zprofile`, `.zshrc`, `.zlogin`,
+`.bash_profile`, `.bashrc`, `.profile` and `.config/fish/config.fish`. Empty zsh files also
+prevent the first-run wizard. The person's startup files therefore cannot consume the typed
+command. System-wide startup files still run and can still block startup.
+The runner placement and clean-shell capsule record the original `HOME`, `ZDOTDIR` and
+`XDG_CONFIG_HOME`, preserving unset and explicitly empty values. The native broker restores
+these before runner initialization, PATH capture, Herdr client calls or the clean harness
+shell; the typed line carries only plain words. No configuration or credential files are
+copied. Herdr 0.9.5's POSIX pane integration injects environment context, not an rc snippet
+or `ZDOTDIR` override; that context survives restoration. Agent detection and the process-based
+`agent start` idle check remain in use.
+
+On Windows the HOME override does not apply: PowerShell finds `$PROFILE` through the
+Documents known folder. Profile questions can still consume the typed command, with the
+same timeout diagnosis. Failed starts retain the usual pane cleanup; the diagnostic doesn't
+leave a runner running behind a stopped team.
 
 The runner then launches every spec member in its home mode ([Leases](#leases-and-launches)).
 Pane members get a pane and `herdr agent start`; headless members get a headless lease and no
@@ -964,11 +986,14 @@ re-parses:
    - bash sets a default `HISTFILE` when it's unset, and saves the typed launch lines there
      on exit. An empty one saves nothing (Flare).
 
-   The clean-shell bootstrap is itself typed into the original shell. Its rc-file questions
-   can swallow that command before the clean shell runs. The broker waits at most 20 seconds
-   for the bootstrap's private `shell-ready` marker; absent confirmation, it closes the pane
-   and reports `launch_failed`, `details.cause: shell_not_ready`, with guidance to resolve
-   the shell's startup questions and retry. It never guesses answers to shell questions.
+   The clean-shell bootstrap is itself typed into the original shell, using the broker-owned
+   POSIX home described under `start-team`. It restores the original home selectors before
+   execing the clean shell. The broker waits at most 20 seconds for the private `shell-ready`
+   marker. On timeout it asks Herdr `pane process-info` (at most 2 additional seconds), closes
+   the pane and reports `launch_failed`: `details.cause: bootstrap_no_marker` if the broker
+   bootstrap is still in the foreground, or `details.cause: shell_not_ready` if execution is
+   unconfirmed. The latter includes guidance to resolve shell startup questions; it never
+   guesses answers. A shell process alone cannot prove an rc-file question caused the failure.
 
    C2d pins the exact commands and verifies them under zsh, bash and fish; Windows is below. If a host can't give that guarantee, the pane launch fails
    (`harness_unavailable`, `details.reason: unresolvable`) rather than running whatever the
@@ -989,7 +1014,9 @@ re-parses:
    - Before agent detection, the broker waits at most 20 seconds for `pane-launch` to write
      its private `pane-started` marker. If a profile question swallowed the typed line, the
      absent marker fails with `launch_failed`, `details.cause: shell_not_ready`, and the pane
-     is closed. This has the same Herdr 0.9.5 limitation and recovery guidance as POSIX.
+     is closed. If process-info shows the broker bootstrap instead, the cause is
+     `bootstrap_no_marker`. Windows retains this Herdr 0.9.5 typing limitation; the POSIX
+     HOME override cannot bypass a PowerShell profile in the Documents known folder.
    - The harness gets the per-launch `PATH` and the pane's console. `pane-launch` ignores Ctrl+C, leaving it to the harness, and exits with the harness's exit code.
    - Herdr detects the agent from its screen as usual. A wrapper in between doesn't matter (verified on ufo).
    - The broker then names it with `herdr agent rename <pane> <agent name>`, once `herdr agent list` shows an agent of the expected kind in that pane. It waits up to 30 seconds for that, and otherwise the launch fails (`launch_failed`, `details.cause: agent_not_detected`).

@@ -23,6 +23,7 @@ type HerdrAPI interface {
 	OpenTab(context.Context, string, string, string, map[string]string) (herdr.Tab, error)
 	CloseTab(context.Context, string) error
 	Pane(context.Context, string) (herdr.Pane, error)
+	ProcessInfo(context.Context, string) (herdr.ProcessInfo, error)
 	ClosePane(context.Context, string) error
 	RunCommand(context.Context, string, ...string) error
 	StartAgent(context.Context, herdr.StartOptions) (herdr.Agent, error)

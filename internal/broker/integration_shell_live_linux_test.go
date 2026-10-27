@@ -83,6 +83,8 @@ func TestIntegrationLiveShellPinning(t *testing.T) {
 			must(t, e)
 			t.Cleanup(func() { os.RemoveAll(home) })
 			t.Setenv("HOME", home)
+			t.Setenv("ZDOTDIR", home)
+			t.Setenv("SHELL", shellBin)
 			t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 			configDir := filepath.Join(home, ".config", "herdr")
 			must(t, os.MkdirAll(configDir, 0700))
@@ -95,7 +97,7 @@ func TestIntegrationLiveShellPinning(t *testing.T) {
 				must(t, os.WriteFile(filepath.Join(shadow, name), native, 0700))
 			}
 			hijacked := filepath.Join(home, "hijacked")
-			rc := fmt.Sprintf("alias claude='printf hijacked >> %s'\ncodex() { printf hijacked >> %s; }\nexport PATH=%s:$PATH\n", shellQuote(hijacked), shellQuote(hijacked), shellQuote(shadow))
+			rc := "echo STARTUP_QUESTION\nread -r answer\n" + fmt.Sprintf("alias claude='printf hijacked >> %s'\ncodex() { printf hijacked >> %s; }\nexport PATH=%s:$PATH\n", shellQuote(hijacked), shellQuote(hijacked), shellQuote(shadow))
 			switch shell {
 			case "zsh":
 				must(t, os.WriteFile(filepath.Join(home, ".zshrc"), []byte(rc), 0600))
@@ -103,7 +105,7 @@ func TestIntegrationLiveShellPinning(t *testing.T) {
 				must(t, os.WriteFile(filepath.Join(home, ".bashrc"), []byte(rc), 0600))
 			case "fish":
 				must(t, os.MkdirAll(filepath.Join(home, ".config", "fish"), 0700))
-				must(t, os.WriteFile(filepath.Join(home, ".config", "fish", "config.fish"), []byte("alias claude 'echo hijacked'; function codex; echo hijacked; end; set -gx PATH "+shellQuote(shadow)+" $PATH\n"), 0600))
+				must(t, os.WriteFile(filepath.Join(home, ".config", "fish", "config.fish"), []byte("echo STARTUP_QUESTION; read answer; alias claude 'echo hijacked'; function codex; echo hijacked; end; set -gx PATH "+shellQuote(shadow)+" $PATH\n"), 0600))
 			}
 			session := privateIntegrationSession(t)
 			ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -140,18 +142,22 @@ func TestIntegrationLiveShellPinning(t *testing.T) {
 				tab, e := client.OpenTab(ctx, ws.ID, string(kind), work, env)
 				must(t, e)
 				must(t, client.RunCommand(ctx, tab.RootPane, boot...))
-				must(t, integration.waitShell(ctx, id))
+				must(t, integration.waitShell(ctx, id, client, tab.RootPane))
 				_, startErr := client.StartAgent(ctx, herdr.StartOptions{Name: herdr.AgentName("probe", string(kind)), Harness: kind, Pane: tab.RootPane, Args: args, Timeout: 4 * time.Second})
 				raw, e := os.ReadFile(log)
 				if e != nil {
 					t.Errorf("%s never reached pinned executable: %v (start=%v)", kind, e, startErr)
 				} else {
 					var got struct {
-						Binary string
-						Args   []string
-						Pane   string
+						Binary      string
+						Args        []string
+						Pane        string
+						Environment shellEnvironment
 					}
 					must(t, json.Unmarshal(raw, &got))
+					if !reflect.DeepEqual(got.Environment, captureShellEnvironment()) || got.Pane != tab.RootPane {
+						t.Errorf("environment was not restored: %#v", got)
+					}
 					t.Logf("%s argv=%q HERDR_PANE_ID=%s (ready=%v)", kind, got.Args, got.Pane, startErr)
 					if !sameNativePath(got.Binary, fakeBinary) || !reflect.DeepEqual(got.Args, args) {
 						t.Errorf("%s quoting/pinning mismatch: executable=%q args=%q, want %q", kind, got.Binary, got.Args, args)

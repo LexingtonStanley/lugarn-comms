@@ -56,6 +56,9 @@ func runTeam(ctx context.Context, args []string, stderr io.Writer) int {
 	if e := model.ValidateOpaqueID(*team); e != nil {
 		return fail(e)
 	}
+	if e := broker.RestoreRunnerEnvironment(*team); e != nil {
+		return fail(e)
+	}
 	dir, e := statedir.Resolve()
 	if e != nil {
 		return fail(e)

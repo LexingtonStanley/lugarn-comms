@@ -14,10 +14,13 @@ import (
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
 )
 
-type paneShellConfig struct{ Path, Ready string }
+type paneShellConfig struct {
+	Path, Ready string
+	Environment shellEnvironment `json:",omitempty"`
+}
 
 // RunPaneShell is the native pane bootstrap. Its generated capsule is confined
-// to this state directory. It execs a clean shell without changing the config home.
+// to this state directory. It restores the original home selectors, then execs a clean shell.
 func RunPaneShell() error {
 	var config paneShellConfig
 	path, e := readPaneCapsule("clean-shell.json", "", &config)
@@ -26,6 +29,11 @@ func RunPaneShell() error {
 	}
 	if config.Ready != filepath.Join(filepath.Dir(path), "shell-ready") {
 		return invalid("invalid pane ready path")
+	}
+	if config.Environment != nil {
+		if e = config.Environment.restore(); e != nil {
+			return e
+		}
 	}
 	env := []string{}
 	for _, entry := range os.Environ() {
@@ -72,7 +80,10 @@ func (i *Integration) preparePaneShell(ctx context.Context, l harness.Launch, bi
 	}
 	env["LUGARN_COMMS_HOME"] = l.StateDir
 	env["LUGARN_COMMS_POINTER_HOME"] = i.opts.HomeDir
-	config := paneShellConfig{Path: bin + string(os.PathListSeparator) + completeSystemPath(), Ready: filepath.Join(root, "shell-ready")}
+	config := paneShellConfig{Path: bin + string(os.PathListSeparator) + completeSystemPath(), Ready: filepath.Join(root, "shell-ready"), Environment: captureShellEnvironment()}
+	if e = i.paneHome(env); e != nil {
+		return nil, nil, e
+	}
 	data, e := json.Marshal(config)
 	if e != nil {
 		return nil, nil, e
@@ -111,8 +122,8 @@ func unresolvable(cause error) *model.Error {
 	}
 	return e
 }
-func (i *Integration) waitShell(ctx context.Context, id string) error {
-	return i.waitPaneMarker(ctx, id, "shell-ready")
+func (i *Integration) waitShell(ctx context.Context, id string, client HerdrAPI, pane string) error {
+	return i.waitPaneMarker(ctx, id, "shell-ready", client, pane)
 }
 
 // Herdr 0.9.5 exposes neither exact-argv pane creation nor a shell-prompt
@@ -122,7 +133,7 @@ func shellNotReady(code model.ErrorCode) *model.Error {
 	return model.NewError(code, "pane startup was not confirmed; the shell may be asking a startup question. Open a Herdr pane, answer or resolve the shell's startup questions, then retry").WithDetail("cause", "shell_not_ready")
 }
 
-func (i *Integration) waitPaneMarker(ctx context.Context, id, marker string) error {
+func (i *Integration) waitPaneMarker(ctx context.Context, id, marker string, client HerdrAPI, pane string) error {
 	path := filepath.Join(i.b.opts.StateDir, "launch", id, marker)
 	waiting, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
@@ -137,7 +148,7 @@ func (i *Integration) waitPaneMarker(ctx context.Context, id, marker string) err
 		}
 		remaining := min(20*time.Second-elapsed, time.Until(deadline))
 		if remaining <= 0 || waiting.Err() != nil {
-			return shellNotReady(model.ErrorLaunchFailed)
+			return startupTimeout(ctx, model.ErrorLaunchFailed, client, pane, i.opts.Binary, "bootstrap_no_marker")
 		}
 		pause := min(20*time.Millisecond, remaining)
 		if e := i.b.opts.Wait(waiting, pause); e != nil {
@@ -145,7 +156,7 @@ func (i *Integration) waitPaneMarker(ctx context.Context, id, marker string) err
 				return ctx.Err()
 			}
 			if waiting.Err() != nil {
-				return shellNotReady(model.ErrorLaunchFailed)
+				return startupTimeout(ctx, model.ErrorLaunchFailed, client, pane, i.opts.Binary, "bootstrap_no_marker")
 			}
 			return e
 		}

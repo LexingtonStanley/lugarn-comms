@@ -343,3 +343,12 @@ func (c *Client) ReadAgent(ctx context.Context, target string, lines int) (strin
 	out, err := c.call(ctx, 0, "agent read", args...)
 	return string(out), err
 }
+
+// ProcessInfo asks the named server which processes currently occupy a pane.
+func (c *Client) ProcessInfo(ctx context.Context, pane string) (ProcessInfo, error) {
+	var r struct {
+		Info ProcessInfo `json:"process_info"`
+	}
+	err := c.result(ctx, 0, "pane process-info", &r, "pane", "process-info", "--pane", pane)
+	return r.Info, err
+}
