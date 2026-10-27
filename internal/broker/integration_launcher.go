@@ -24,6 +24,7 @@ type runnerPlacement struct {
 	Workspace, Pane, BridgeDir, Binary string
 	PID                                int64
 	Birth                              string
+	Environment                        shellEnvironment `json:",omitempty"`
 }
 
 func (i *Integration) placementPath(team string) string {
@@ -147,6 +148,15 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 	if e := i.refreshPath(ctx); e != nil {
 		return e
 	}
+	env := i.rootEnv()
+	if e := i.paneHome(env); e != nil {
+		return e
+	}
+	var original shellEnvironment
+	if runtime.GOOS != "windows" {
+		original = captureShellEnvironment()
+		env["LUGARN_COMMS_RESTORE_ENV"] = "1"
+	}
 	client := i.opts.Herdr(t.HerdrServer)
 	previous, e := i.placement(t.ID)
 	if e != nil {
@@ -166,7 +176,7 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 				}
 			}
 			if pane == "" {
-				tab, e := client.OpenTab(ctx, ws.ID, "runner", i.b.opts.StateDir, i.rootEnv())
+				tab, e := client.OpenTab(ctx, ws.ID, "runner", i.b.opts.StateDir, env)
 				if e != nil {
 					return e
 				}
@@ -177,7 +187,7 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 		}
 	}
 	if pane == "" {
-		ws, e := client.CreateWorkspace(ctx, herdr.WorkspaceName(t.Name), i.b.opts.StateDir, i.rootEnv())
+		ws, e := client.CreateWorkspace(ctx, herdr.WorkspaceName(t.Name), i.b.opts.StateDir, env)
 		if e != nil {
 			return e
 		}
@@ -188,7 +198,7 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 		_ = i.closeOwnedPane(context.WithoutCancel(ctx), t.HerdrServer, workspace, pane)
 		return e
 	}
-	placed := runnerPlacement{Workspace: workspace, Pane: pane, BridgeDir: dir, Binary: bridge}
+	placed := runnerPlacement{Workspace: workspace, Pane: pane, BridgeDir: dir, Binary: bridge, Environment: original}
 	if e = i.savePlacement(t.ID, placed); e != nil {
 		if dir != "" {
 			_ = os.RemoveAll(dir)
@@ -216,7 +226,7 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 		e = client.RunCommand(ctx, pane, bridge, "run", "--team", t.ID)
 	}
 	if e == nil {
-		e = i.waitRunner(ctx, t.ID, pane)
+		e = i.waitRunner(ctx, t.ID, pane, client, bridge)
 	}
 	if e != nil {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
@@ -224,7 +234,7 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 		_ = i.closeOwnedPane(cleanup, t.HerdrServer, workspace, pane)
 		// The placement still records this bridge. Stop-team removes that record
 		// before deleting the bridge; a timed-out runner may still hold its binary.
-		if failure := model.AsError(e); failure.Code == model.ErrorRunnerUnavailable && failure.Details["cause"] == "shell_not_ready" {
+		if failure := model.AsError(e); failure.Code == model.ErrorRunnerUnavailable && (failure.Details["cause"] == "shell_not_ready" || failure.Details["cause"] == "runner_no_heartbeat") {
 			return failure
 		}
 		return model.NewError(model.ErrorRunnerUnavailable, "runner could not start").WithDetail("failure", model.AsError(e))
@@ -232,7 +242,7 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 	return nil
 }
 
-func (i *Integration) waitRunner(ctx context.Context, teamID, pane string) error {
+func (i *Integration) waitRunner(ctx context.Context, teamID, pane string, client HerdrAPI, binary string) error {
 	waiting, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	deadline := time.Now().Add(15 * time.Second)
@@ -251,14 +261,14 @@ func (i *Integration) waitRunner(ctx context.Context, teamID, pane string) error
 			return ctx.Err()
 		}
 		if waiting.Err() != nil {
-			return shellNotReady(model.ErrorRunnerUnavailable)
+			return startupTimeout(ctx, model.ErrorRunnerUnavailable, client, pane, binary, "runner_no_heartbeat")
 		}
 		if e != nil || ready {
 			return e
 		}
 		remaining := min(15*time.Second-elapsed, time.Until(deadline))
 		if remaining <= 0 {
-			return shellNotReady(model.ErrorRunnerUnavailable)
+			return startupTimeout(ctx, model.ErrorRunnerUnavailable, client, pane, binary, "runner_no_heartbeat")
 		}
 		pause := min(50*time.Millisecond, remaining)
 		if e := i.b.opts.Wait(waiting, pause); e != nil {
@@ -266,7 +276,7 @@ func (i *Integration) waitRunner(ctx context.Context, teamID, pane string) error
 				return ctx.Err()
 			}
 			if waiting.Err() != nil {
-				return shellNotReady(model.ErrorRunnerUnavailable)
+				return startupTimeout(ctx, model.ErrorRunnerUnavailable, client, pane, binary, "runner_no_heartbeat")
 			}
 			return e
 		}

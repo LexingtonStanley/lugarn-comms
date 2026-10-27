@@ -23,10 +23,11 @@ func TestMain(m *testing.M) {
 	if os.Getenv("LUGARN_INTEGRATION_HELPER") == "argv-agent" {
 		binary, _ := os.Executable()
 		data, _ := json.Marshal(struct {
-			Binary string
-			Args   []string
-			Pane   string
-		}{binary, os.Args[1:], os.Getenv("HERDR_PANE_ID")})
+			Binary      string
+			Args        []string
+			Pane        string
+			Environment shellEnvironment
+		}{binary, os.Args[1:], os.Getenv("HERDR_PANE_ID"), captureShellEnvironment()})
 		_ = os.WriteFile(os.Getenv("LUGARN_INTEGRATION_ARGV_LOG"), data, 0600)
 		_, _ = os.Stdout.WriteString("\x1b[?2004hClaude Code\r\n❯ \r\nCodex\r\n› \r\n> ")
 		_, _ = io.Copy(io.Discard, os.Stdin)
@@ -147,4 +148,8 @@ func TestPaneObservationErrorRetriesWithoutStoppingRunner(t *testing.T) {
 		t.Fatal("transient observation failed runner", e)
 	default:
 	}
+}
+
+func (*adapterHerdr) ProcessInfo(context.Context, string) (herdr.ProcessInfo, error) {
+	return herdr.ProcessInfo{Foreground: []herdr.ForegroundProcess{{Name: "sh"}}}, nil
 }

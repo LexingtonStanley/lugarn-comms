@@ -586,3 +586,13 @@ func TestFutureHerdrCodesRemainIdentifiers(t *testing.T) {
 		})
 	}
 }
+
+func TestPaneProcessInfo(t *testing.T) {
+	f := newFake(t)
+	f.on("pane process-info", ok(`{"process_info":{"shell_pid":123,"foreground_processes":[{"pid":124,"name":"lugarn-comms","argv":["/tmp/lugarn-comms","run","--team","t"]}]}}`))
+	info, err := f.client().ProcessInfo(testContext(t), "w1:p2")
+	if err != nil || info.ShellPID != 123 || len(info.Foreground) != 1 || info.Foreground[0].Argv[0] != "/tmp/lugarn-comms" {
+		t.Fatal(info, err)
+	}
+	wantArgs(t, onlyCall(t, f), "pane", "process-info", "--pane", "w1:p2")
+}

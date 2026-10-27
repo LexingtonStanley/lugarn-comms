@@ -156,3 +156,7 @@ func TestIntegrationBridgeUsesPlainExecutable(t *testing.T) {
 		t.Fatal("unnecessary temporary executable", actual, dir)
 	}
 }
+
+func (*launcherHerdr) ProcessInfo(context.Context, string) (herdr.ProcessInfo, error) {
+	return herdr.ProcessInfo{Foreground: []herdr.ForegroundProcess{{Name: "zsh"}}}, nil
+}

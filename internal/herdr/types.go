@@ -220,3 +220,15 @@ func str(s *string) string {
 	}
 	return *s
 }
+
+// ProcessInfo is Herdr's foreground job snapshot, not proof of prompt readiness.
+type ProcessInfo struct {
+	ShellPID   int64               `json:"shell_pid"`
+	Foreground []ForegroundProcess `json:"foreground_processes"`
+}
+type ForegroundProcess struct {
+	PID   int64    `json:"pid"`
+	Name  string   `json:"name"`
+	Argv0 string   `json:"argv0"`
+	Argv  []string `json:"argv"`
+}
