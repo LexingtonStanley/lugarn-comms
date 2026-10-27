@@ -103,6 +103,11 @@ func StartServer(ctx context.Context, bin, session string, opts ...ServerOption)
 	if st.Running {
 		return StartResult{Status: st}, nil
 	}
+	// Status computes the socket path using Herdr's own session/config rules,
+	// including XDG_CONFIG_HOME. Check before either detached or systemd spawn.
+	if err := checkServerSocketPaths(st.Socket); err != nil {
+		return StartResult{Status: st}, err
+	}
 	path, err := c.resolve("server")
 	if err != nil {
 		return StartResult{Status: st}, err

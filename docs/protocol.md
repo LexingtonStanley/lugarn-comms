@@ -1374,9 +1374,21 @@ branch stays and is reported) or `missing` (already gone). Each removal sets the
 
 Request: `server` (default `default`). Result: `herdr`, `started`, `method` (`detached`,
 `systemd`, `wmi`, or null if it was already running). Errors: `herdr_unavailable`
-(`details.reason: not_installed` or `start_timeout`).
+(`details.reason: not_installed`, `socket_path_too_long`, or `start_timeout`).
 
 - If the server already answers, nothing happens: `started: false`.
+- Before starting on POSIX, the broker checks the socket path computed by
+  `herdr --session <server> status --json`. Herdr 0.9.5 puts a named session's sockets at
+  `${XDG_CONFIG_HOME:-$HOME/.config}/herdr/sessions/<server>/herdr.sock` and
+  `herdr-client.sock` in the same directory; `default` omits `sessions/<server>/`.
+  Explicit `--session` ignores inherited `HERDR_SOCKET_PATH`; the broker strips `HERDR_*`
+  from its client and server environment. Both socket paths, including their terminating
+  NUL, must fit `sun_path` (108 bytes on Linux, 104 on macOS). An overlong path fails
+  immediately with `herdr_unavailable`, `details.reason: socket_path_too_long`,
+  `details.path` (the first offending socket), `details.length` (UTF-8 bytes), and
+  `details.limit` (maximum path bytes, excluding NUL). Shorten `HOME`, `XDG_CONFIG_HOME`,
+  or the session name. This check precedes detached and systemd starts; Windows named
+  pipes have no Unix socket path limit.
 - On Linux with logind's `KillUserProcesses=yes` (`hello.host.logind`), the broker starts it
   under the user's service manager:
   `systemd-run --user --unit=lugarn-herdr-<server>.service --collect -- <herdr> --session <server> server`
