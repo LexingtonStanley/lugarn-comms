@@ -47,6 +47,39 @@ func (r *Runner) memberStateError(tx *store.Tx, m model.Member, state model.Memb
 	return r.b.event(tx, &m.Team, model.EventMemberStateChanged, true, &m.ID, nil, wire.MemberStateChangedEventData{Member: *updated, From: m.State, To: state, Reason: reason, Error: failure})
 }
 func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model.LeaseCause) (*model.Member, error) {
+	// Launch checks (including worktree preparation) are part of starting. Record
+	// that state before they can fail, just as openPane does for pane launches.
+	if e := r.write(ctx, &m, func(tx *store.Tx, t *store.Team) error {
+		if t.State != model.TeamStateRunning {
+			return errRunnerGeneration
+		}
+		if cause == model.LeaseCauseWake {
+			allowed, e := r.mayWake(tx, m)
+			if e != nil {
+				return e
+			}
+			if !allowed {
+				return errRunnerGeneration
+			}
+		}
+		current, e := tx.GetMember(m.ID)
+		if e != nil {
+			return e
+		}
+		if current.State == model.MemberStateStopped {
+			if e = r.memberState(tx, *current, model.MemberStateStarting, nil); e != nil {
+				return e
+			}
+			current, e = tx.GetMember(m.ID)
+			if e != nil {
+				return e
+			}
+		}
+		m = *current
+		return nil
+	}); e != nil {
+		return nil, e
+	}
 	if r.prepareMember != nil {
 		ready, e := r.prepareMember(ctx, m)
 		if e != nil {
@@ -89,15 +122,6 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 		if e != nil {
 			return e
 		}
-		if cause == model.LeaseCauseWake {
-			allowed, e := r.mayWake(tx, *current)
-			if e != nil {
-				return e
-			}
-			if !allowed {
-				return errRunnerGeneration
-			}
-		}
 		now := r.b.now()
 		next := model.Lease{Driver: model.DriverHeadless, Generation: m.Lease.Generation + 1, Launch: &id}
 		if m.Lease.Launch != nil {
@@ -131,7 +155,7 @@ func (r *Runner) launchHeadless(ctx context.Context, m model.Member, cause model
 			}
 			newSession = true
 		}
-		if m.State != model.MemberStateRunning {
+		if m.State != model.MemberStateRunning && m.State != model.MemberStateStarting {
 			if e = r.memberState(tx, m, model.MemberStateStarting, nil); e != nil {
 				return e
 			}

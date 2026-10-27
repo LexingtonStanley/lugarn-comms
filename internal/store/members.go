@@ -204,7 +204,8 @@ func (tx *Tx) GetLiveMember(teamID, name string) (*model.Member, error) {
 	return &m.Member, nil
 }
 
-// ListMembers returns team members in insertion order, optionally including removed rows.
+// ListMembers returns team members by creation time, then id, both ascending,
+// optionally including removed rows.
 func (tx *Tx) ListMembers(teamID string, includeRemoved bool) ([]model.Member, error) {
 	query := "SELECT " + memberColumns + memberFrom + "WHERE m.team_id = ?"
 	if !includeRemoved {

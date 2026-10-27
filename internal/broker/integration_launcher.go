@@ -215,30 +215,8 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 	if e == nil {
 		e = client.RunCommand(ctx, pane, bridge, "run", "--team", t.ID)
 	}
-	deadline := time.NewTimer(15 * time.Second)
-	defer deadline.Stop()
-	poll := time.NewTicker(50 * time.Millisecond)
-	defer poll.Stop()
-	for e == nil {
-		var ready bool
-		e = i.b.db.Read(ctx, func(tx *store.Tx) error {
-			team, e := tx.GetTeam(t.ID)
-			if e != nil {
-				return e
-			}
-			ready = team.Runner.State == model.RunnerStateUp && i.b.fresh(team) && team.Runner.Pane != nil && *team.Runner.Pane == pane
-			return nil
-		})
-		if e != nil || ready {
-			break
-		}
-		select {
-		case <-ctx.Done():
-			e = ctx.Err()
-		case <-deadline.C:
-			e = model.NewError(model.ErrorRunnerUnavailable, "runner did not heartbeat within 15 seconds")
-		case <-poll.C:
-		}
+	if e == nil {
+		e = i.waitRunner(ctx, t.ID, pane)
 	}
 	if e != nil {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
@@ -246,7 +224,52 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 		_ = i.closeOwnedPane(cleanup, t.HerdrServer, workspace, pane)
 		// The placement still records this bridge. Stop-team removes that record
 		// before deleting the bridge; a timed-out runner may still hold its binary.
+		if failure := model.AsError(e); failure.Code == model.ErrorRunnerUnavailable && failure.Details["cause"] == "shell_not_ready" {
+			return failure
+		}
 		return model.NewError(model.ErrorRunnerUnavailable, "runner could not start").WithDetail("failure", model.AsError(e))
 	}
 	return nil
+}
+
+func (i *Integration) waitRunner(ctx context.Context, teamID, pane string) error {
+	waiting, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	deadline := time.Now().Add(15 * time.Second)
+	elapsed := time.Duration(0)
+	for {
+		var ready bool
+		e := i.b.db.Read(waiting, func(tx *store.Tx) error {
+			team, e := tx.GetTeam(teamID)
+			if e != nil {
+				return e
+			}
+			ready = team.Runner.State == model.RunnerStateUp && i.b.fresh(team) && team.Runner.Pane != nil && *team.Runner.Pane == pane
+			return nil
+		})
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if waiting.Err() != nil {
+			return shellNotReady(model.ErrorRunnerUnavailable)
+		}
+		if e != nil || ready {
+			return e
+		}
+		remaining := min(15*time.Second-elapsed, time.Until(deadline))
+		if remaining <= 0 {
+			return shellNotReady(model.ErrorRunnerUnavailable)
+		}
+		pause := min(50*time.Millisecond, remaining)
+		if e := i.b.opts.Wait(waiting, pause); e != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			if waiting.Err() != nil {
+				return shellNotReady(model.ErrorRunnerUnavailable)
+			}
+			return e
+		}
+		elapsed += pause
+	}
 }

@@ -355,7 +355,13 @@ stopped workers stay (stopped, wakeable).
 Then it ensures the Herdr workspace and opens the runner pane, passing a fresh capture of
 the person's `PATH` ([The person's `PATH`](#the-persons-path)). It returns once the runner's
 first heartbeat lands, or after 15 seconds closes the pane, sets the team `stopped` and fails
-with `runner_unavailable`.
+with `runner_unavailable`, `details.cause: shell_not_ready`. The message tells the person
+to open a Herdr pane, answer or resolve their shell's startup questions, and retry.
+Herdr 0.9.5 creates a pane running the person's shell and `pane run` types into it. It
+offers neither exact-argv creation nor a shell-prompt readiness signal; foreground process
+information cannot distinguish an rc-file `read` from an idle prompt. The timeout therefore
+reports unconfirmed startup, not proof of a shell question. Failed starts retain the usual
+pane cleanup; this diagnostic doesn't leave a runner running behind a stopped team.
 
 The runner then launches every spec member in its home mode ([Leases](#leases-and-launches)).
 Pane members get a pane and `herdr agent start`; headless members get a headless lease and no
@@ -945,18 +951,24 @@ re-parses:
    files apply, and an `alias claude="claude --dangerously-skip-permissions"` or a `codex`
    wrapper function, common on dev boxes, would silently change the profile a member runs
    with (Flare). And `herdr agent start --kind` types the kind's canonical name, not a path.
-   So before `agent start`, the broker replaces the pane's shell with a clean one (POSIX:
-   `/bin/sh` reading no rc file; Windows: PowerShell with `-NoProfile`). Its `PATH` starts
-   with a per-launch directory under `launch/<launch id>/` that holds only the harness's
-   executable name, linked to the absolute path the broker resolved at launch (`command -v`
-   on POSIX; on Windows the native `.exe` from rule 4, `Get-Command -CommandType
-   Application`). The runner's `PATH` follows ([The person's `PATH`](#the-persons-path)). On
+   So on POSIX, before `agent start`, the broker replaces the pane's shell with a clean
+   `/bin/sh` reading no rc file. Its `PATH` starts with a per-launch directory under
+   `launch/<launch id>/` that holds only the harness's executable name, linked to the absolute
+   path the broker resolved at launch (`command -v`). Windows uses the native `pane-launch`
+   capsule described below, launching the absolute `.exe` from rule 4 without a replacement
+   PowerShell. The runner's `PATH` follows ([The person's `PATH`](#the-persons-path)). On
    POSIX the clean shell starts through `env -u ENV -u BASH_ENV HISTFILE=`, for three
    reasons:
    - an interactive POSIX `sh` reads the file `ENV` names;
    - bash reads `BASH_ENV`, and exported bash functions (`BASH_FUNC_*`) are dropped too;
    - bash sets a default `HISTFILE` when it's unset, and saves the typed launch lines there
      on exit. An empty one saves nothing (Flare).
+
+   The clean-shell bootstrap is itself typed into the original shell. Its rc-file questions
+   can swallow that command before the clean shell runs. The broker waits at most 20 seconds
+   for the bootstrap's private `shell-ready` marker; absent confirmation, it closes the pane
+   and reports `launch_failed`, `details.cause: shell_not_ready`, with guidance to resolve
+   the shell's startup questions and retry. It never guesses answers to shell questions.
 
    C2d pins the exact commands and verifies them under zsh, bash and fish; Windows is below. If a host can't give that guarantee, the pane launch fails
    (`harness_unavailable`, `details.reason: unresolvable`) rather than running whatever the
@@ -969,11 +981,15 @@ re-parses:
 
    **On Windows the pane launch can't use `herdr agent start`.**
    - Herdr starts every pane as `pwsh -NoExit -Command <its prompt hook>` (the hook emits OSC 9;9 with the cwd), and the person's profile loads.
-   - `agent start` only accepts a pane whose own shell is at its prompt with nothing running under it. A nested shell counts as busy (`agent_pane_busy`), with or without Herdr's prompt hook (verified on ufo). Windows has no `exec` to replace the pane's shell the way POSIX does.
+   - `agent start` checks that the pane's own shell is in the foreground with no other foreground process. This is not proof it has finished its startup files. A nested shell counts as busy (`agent_pane_busy`), with or without Herdr's prompt hook (verified on ufo). Windows has no `exec` to replace the pane's shell the way POSIX does.
 
    So on Windows the broker types one line into the pane's own shell: `<broker> pane-launch <launch id>`.
    - It's plain words and an absolute path, which a profile alias or function can't redirect.
    - That process reads the launch's capsule and starts the harness with its exact argv, so PowerShell never parses an argument.
+   - Before agent detection, the broker waits at most 20 seconds for `pane-launch` to write
+     its private `pane-started` marker. If a profile question swallowed the typed line, the
+     absent marker fails with `launch_failed`, `details.cause: shell_not_ready`, and the pane
+     is closed. This has the same Herdr 0.9.5 limitation and recovery guidance as POSIX.
    - The harness gets the per-launch `PATH` and the pane's console. `pane-launch` ignores Ctrl+C, leaving it to the harness, and exits with the harness's exit code.
    - Herdr detects the agent from its screen as usual. A wrapper in between doesn't matter (verified on ufo).
    - The broker then names it with `herdr agent rename <pane> <agent name>`, once `herdr agent list` shows an agent of the expected kind in that pane. It waits up to 30 seconds for that, and otherwise the launch fails (`launch_failed`, `details.cause: agent_not_detected`).
@@ -1250,6 +1266,8 @@ See [Applying a spec](#applying-a-spec).
 ### get-team
 
 Request: `team`. Result: `spec`, `revision`, `cursor` (to start `watch` from).
+`spec.members` preserves the most recently applied spec's member order. `spec.grid` is
+ordered by source member id, then target member id; each `can` list is alphabetical.
 
 ### start-team
 
@@ -1264,7 +1282,8 @@ stopped team succeeds with `expired: 0`. See [stop-team](#stop-team).
 ### status
 
 Request: `team` (optional; absent means every team). Result: `teams` (`TeamStatus[]`),
-`cursor`.
+`cursor`. Teams are ordered by name, ascending. Each `rounds` list is ordered by writer
+member id, then reviewer member id, ascending (also in `continue-budget`).
 
 `TeamStatus`: `id`, `name`, `pattern`, `revision`, `run`, `state`, `runner` (`state`, `pid`,
 `pane`, `started_at`, `heartbeat_at`), `hops` (`used`, `allowance`, `base`, `exhausted`),
@@ -1284,7 +1303,9 @@ the runner and every member pane.
 
 Request: `team`, `include_removed` (default `false`). Result: `members` (`Member[]`, `human`
 included), `cursor`. The app copies these into its own storage on focus, on watch events, and
-at start and stop.
+at start and stop. Members are ordered by `created_at`, ascending, then by member `id`,
+ascending for ties. This includes `human` and, when requested, removed members; it is
+independent of member name, role, state, and the spec's member order.
 
 ### timeline
 
@@ -1350,6 +1371,8 @@ team and hasn't removed, each with `path`, `branch`, `repo`, `base` (the ref it 
 - `ahead` and `behind`: commits relative to `base`.
 
 `merged`, `ahead` and `behind` are null when the branch is gone.
+Worktrees are ordered by `created_at`, ascending, then by the broker's worktree record id,
+ascending for ties.
 
 `remove-worktrees`: request `team`, `paths` (1–64). It acts only on the listed paths, each on
 its own, and refuses:
@@ -1368,15 +1391,30 @@ which would also drop the person's other missing worktrees. Result: `removed` (`
 `branch`, `branch_outcome`) and `refused` (`path`, `reason`, `message`); each listed path is
 in exactly one. `branch_outcome` is `deleted`, `kept_unmerged` (git refused `-d`, so the
 branch stays and is reported) or `missing` (already gone). Each removal sets the record's
-`removed_at` and emits `worktree.removed`.
+`removed_at` and emits `worktree.removed`. Both result lists preserve the relative order
+of the request's `paths`.
 
 ### start-herdr
 
 Request: `server` (default `default`). Result: `herdr`, `started`, `method` (`detached`,
 `systemd`, `wmi`, or null if it was already running). Errors: `herdr_unavailable`
-(`details.reason: not_installed` or `start_timeout`).
+(`details.reason: not_installed`, `socket_path_too_long`, or `start_timeout`).
 
 - If the server already answers, nothing happens: `started: false`.
+- Before starting on POSIX, the broker computes the socket paths before calling Herdr
+  (`status --json` itself fails when the API path is too long). Herdr 0.9.5 uses
+  `$XDG_CONFIG_HOME/herdr` when `XDG_CONFIG_HOME` is set (including an empty value),
+  otherwise `$HOME/.config/herdr`, or the temporary directory's `herdr` subdirectory when
+  `HOME` is unset. Named sessions add `sessions/<server>/` and bind `herdr.sock` and
+  `herdr-client.sock` there; `default` omits `sessions/<server>/`.
+  Explicit `--session` ignores inherited `HERDR_SOCKET_PATH`; the broker strips `HERDR_*`
+  from its client and server environment. Both socket paths, including their terminating
+  NUL, must fit `sun_path` (108 bytes on Linux, 104 on macOS). An overlong path fails
+  immediately with `herdr_unavailable`, `details.reason: socket_path_too_long`,
+  `details.path` (the first offending socket), `details.length` (UTF-8 bytes), and
+  `details.limit` (maximum path bytes, excluding NUL). Shorten `HOME`, `XDG_CONFIG_HOME`,
+  or the session name. This check precedes detached and systemd starts; Windows named
+  pipes have no Unix socket path limit.
 - On Linux with logind's `KillUserProcesses=yes` (`hello.host.logind`), the broker starts it
   under the user's service manager:
   `systemd-run --user --unit=lugarn-herdr-<server>.service --collect -- <herdr> --session <server> server`

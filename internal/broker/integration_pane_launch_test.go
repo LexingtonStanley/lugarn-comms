@@ -96,6 +96,11 @@ func TestPaneLaunchExactArgvAndExitCode(t *testing.T) {
 				if kind == model.HarnessOpenCode && report.ConfigContent != "" {
 					t.Fatal("inherited config bypassed per-launch config")
 				}
+				marker, e := os.ReadFile(filepath.Join(filepath.Dir(path), "pane-started"))
+				must(t, e)
+				if string(marker) != "ready" {
+					t.Fatal("pane bootstrap was not acknowledged", string(marker))
+				}
 			})
 		}
 	}

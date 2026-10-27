@@ -15,7 +15,7 @@ import (
 // The detached server leads its own session, reads and writes the null
 // device, and runs in the home directory.
 func TestStartServerDetaches(t *testing.T) {
-	home := t.TempDir()
+	home := shortHome(t)
 	t.Setenv("HOME", home)
 	f := newFake(t)
 	res, err := StartServer(testContext(t), f.bin, "lugarn-fake", ServerEnvironment([]string{"PATH=/explicit/login/bin"}))
@@ -53,4 +53,19 @@ func TestStartServerDetaches(t *testing.T) {
 	if cwd, err := os.Readlink(filepath.Join(proc, "cwd")); err != nil || cwd != home {
 		t.Fatalf("cwd = %q, %v; want %q", cwd, err, home)
 	}
+}
+
+// shortHome is a HOME short enough for Herdr's session sockets. macOS's
+// t.TempDir is deep under /var/folders and overflows its 104-byte sun_path.
+func shortHome(t *testing.T) string {
+	t.Helper()
+	home, err := os.MkdirTemp("/tmp", "lh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(home) })
+	if resolved, err := filepath.EvalSymlinks(home); err == nil {
+		home = resolved
+	}
+	return home
 }

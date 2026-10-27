@@ -278,6 +278,9 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	}
 	var agent herdr.Agent
 	if l.i.windowsPanes {
+		if e = l.i.waitPaneMarker(ctx, id, "pane-started"); e != nil {
+			return e
+		}
 		agent, e = l.i.detectWindowsPane(ctx, client, tab.RootPane, *team.HerdrWorkspace, herdr.AgentName(m.Team, m.Name), *m.Harness)
 	} else {
 		if e = l.i.waitShell(ctx, id); e != nil {

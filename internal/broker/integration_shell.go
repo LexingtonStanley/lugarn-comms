@@ -112,21 +112,43 @@ func unresolvable(cause error) *model.Error {
 	return e
 }
 func (i *Integration) waitShell(ctx context.Context, id string) error {
-	path := filepath.Join(i.b.opts.StateDir, "launch", id, "shell-ready")
-	until := time.NewTimer(20 * time.Second)
-	defer until.Stop()
-	tick := time.NewTicker(20 * time.Millisecond)
-	defer tick.Stop()
+	return i.waitPaneMarker(ctx, id, "shell-ready")
+}
+
+// Herdr 0.9.5 exposes neither exact-argv pane creation nor a shell-prompt
+// readiness signal. A foreground shell can still be in an rc-file read. These
+// markers prove our bootstrap ran; pane run itself only acknowledges typing.
+func shellNotReady(code model.ErrorCode) *model.Error {
+	return model.NewError(code, "pane startup was not confirmed; the shell may be asking a startup question. Open a Herdr pane, answer or resolve the shell's startup questions, then retry").WithDetail("cause", "shell_not_ready")
+}
+
+func (i *Integration) waitPaneMarker(ctx context.Context, id, marker string) error {
+	path := filepath.Join(i.b.opts.StateDir, "launch", id, marker)
+	waiting, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	deadline := time.Now().Add(20 * time.Second)
+	elapsed := time.Duration(0)
 	for {
 		if raw, e := os.ReadFile(path); e == nil && string(raw) == "ready" {
 			return nil
 		}
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			return ctx.Err()
-		case <-until.C:
-			return unresolvable(nil)
-		case <-tick.C:
 		}
+		remaining := min(20*time.Second-elapsed, time.Until(deadline))
+		if remaining <= 0 || waiting.Err() != nil {
+			return shellNotReady(model.ErrorLaunchFailed)
+		}
+		pause := min(20*time.Millisecond, remaining)
+		if e := i.b.opts.Wait(waiting, pause); e != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			if waiting.Err() != nil {
+				return shellNotReady(model.ErrorLaunchFailed)
+			}
+			return e
+		}
+		elapsed += pause
 	}
 }
