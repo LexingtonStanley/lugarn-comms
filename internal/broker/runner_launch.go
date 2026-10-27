@@ -287,15 +287,16 @@ func (r *Runner) launchFailed(ctx context.Context, m model.Member, cause error) 
 	return failure
 }
 func (r *Runner) removeLaunchFiles(ctx context.Context, id string) error {
+	if model.ValidateULID(id) != nil {
+		return model.NewError(model.ErrorInternal, "invalid stored launch id")
+	}
+	if _, _, e := r.b.launchRoot(); e != nil {
+		return e
+	}
 	if e := r.opts.Files.Delete(ctx, id); e != nil {
 		return e
 	}
-	for _, suffix := range []string{"", ".token", ".json", ".opencode.json"} {
-		if e := os.RemoveAll(filepath.Join(r.b.opts.StateDir, "launch", id+suffix)); e != nil {
-			return e
-		}
-	}
-	return nil
+	return r.b.removeLaunchArtifacts(ctx, id)
 }
 func (r *Runner) session(tx *store.Tx, m model.Member, id, seal string, source model.SessionSource, launch string, briefed bool) error {
 	if id == "" {
