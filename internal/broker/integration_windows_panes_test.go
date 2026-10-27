@@ -29,7 +29,7 @@ func (h *windowsPaneHerdr) OpenTab(ctx context.Context, w, n, cwd string, env ma
 func (h *windowsPaneHerdr) RunCommand(_ context.Context, pane string, args ...string) error {
 	h.calls = append(h.calls, "run")
 	h.command = append([]string(nil), args...)
-	return nil
+	return h.lifecycleHerdr.RunCommand(context.Background(), pane, args...)
 }
 func (h *windowsPaneHerdr) StartAgent(context.Context, herdr.StartOptions) (herdr.Agent, error) {
 	panic("Windows must never call agent start")

@@ -28,7 +28,7 @@ func (h *lifecycleHerdr) OpenTab(_ context.Context, _ string, _ string, _ string
 func (h *lifecycleHerdr) CloseTab(context.Context, string) error { h.closed++; return nil }
 func (h *lifecycleHerdr) RunCommand(_ context.Context, _ string, args ...string) error {
 	if len(args) > 1 && args[1] == "pane-launch" {
-		return nil
+		return os.WriteFile(filepath.Join(filepath.Dir(h.env["LUGARN_COMMS_PANE_CONFIG"]), "pane-started"), []byte("ready"), 0600)
 	}
 	return os.WriteFile(filepath.Join(filepath.Dir(h.env["LUGARN_COMMS_PANE_CONFIG"]), "shell-ready"), []byte("ready"), 0600)
 }

@@ -93,7 +93,8 @@ func RunPaneLaunch(launch string, stdin io.Reader, stdout, stderr io.Writer) (in
 		return 0, e
 	}
 	var config paneLaunchCapsule
-	if _, e := readPaneCapsule("pane-launch.json", launch, &config); e != nil {
+	path, e := readPaneCapsule("pane-launch.json", launch, &config)
+	if e != nil {
 		return 0, e
 	}
 	if !config.Harness.Valid() || !filepath.IsAbs(config.Binary) || !filepath.IsAbs(config.Workdir) || strings.ContainsAny(config.Binary+config.Workdir, "\x00\r\n") {
@@ -149,6 +150,11 @@ func RunPaneLaunch(launch string, stdin io.Reader, stdout, stderr io.Writer) (in
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 	defer signal.Stop(interrupt)
+	// Distinguish a swallowed bootstrap from a harness that starts but is never
+	// detected. This file lives beside the validated private launch capsule.
+	if e := statedir.WriteSecret(filepath.Join(filepath.Dir(path), "pane-started"), []byte("ready")); e != nil {
+		return 0, e
+	}
 	err := command.Run()
 	var exit *exec.ExitError
 	if errors.As(err, &exit) {
