@@ -5,6 +5,7 @@ package herdr
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -12,6 +13,66 @@ import (
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 )
+
+func TestSessionSocketPath(t *testing.T) {
+	t.Setenv("HOME", "/scratch/home")
+	t.Setenv("XDG_CONFIG_HOME", "/scratch/xdg")
+	t.Setenv("HERDR_CONFIG_PATH", "/ignored/config.toml")
+	t.Setenv("HERDR_SOCKET_PATH", "/ignored/herdr.sock")
+	for _, session := range []string{"default", "lugarn-fake"} {
+		want := "/scratch/xdg/herdr/"
+		if session != "default" {
+			want += "sessions/" + session + "/"
+		}
+		if got := sessionSocketPath(session); got != want+"herdr.sock" {
+			t.Fatal(got, want)
+		}
+	}
+	if e := os.Unsetenv("XDG_CONFIG_HOME"); e != nil {
+		t.Fatal(e)
+	}
+	if got := sessionSocketPath("lugarn-fake"); got != "/scratch/home/.config/herdr/sessions/lugarn-fake/herdr.sock" {
+		t.Fatal(got)
+	}
+	if e := os.Unsetenv("HOME"); e != nil {
+		t.Fatal(e)
+	}
+	if got := sessionSocketPath("default"); got != filepath.Join(os.TempDir(), "herdr", "herdr.sock") {
+		t.Fatal(got)
+	}
+	t.Setenv("XDG_CONFIG_HOME", "/tmp/"+strings.Repeat("./", 60))
+	if err := checkSessionSocketPaths("default"); err == nil {
+		t.Fatal("cleaning dot components hid an overlong socket name")
+	}
+}
+
+func TestLongHomeAndXDGFailBeforeHerdrInvocation(t *testing.T) {
+	for _, useXDG := range []bool{false, true} {
+		t.Run(fmt.Sprint(useXDG), func(t *testing.T) {
+			f := newFake(t)
+			t.Setenv("HOME", "/"+strings.Repeat("h", 108))
+			t.Setenv("XDG_CONFIG_HOME", "/"+strings.Repeat("x", 108))
+			if !useXDG {
+				if e := os.Unsetenv("XDG_CONFIG_HOME"); e != nil {
+					t.Fatal(e)
+				}
+			}
+			for _, systemd := range []bool{false, true} {
+				res, err := StartServer(testContext(t), f.bin, "lugarn-fake", KillUserProcesses(systemd))
+				p := wantProtocol(t, err, model.ErrorHerdrUnavailable, "socket_path_too_long")
+				if res.Started || p.Details["path"] != sessionSocketPath("lugarn-fake") || len(f.calls()) != 0 {
+					t.Fatal(res, p.Details, f.calls())
+				}
+			}
+		})
+	}
+	// A short XDG path takes precedence over even a very long HOME.
+	t.Setenv("HOME", "/"+strings.Repeat("h", 108))
+	t.Setenv("XDG_CONFIG_HOME", "/tmp/lx")
+	if err := checkSessionSocketPaths("lugarn-fake"); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestServerSocketPathLimit(t *testing.T) {
 	limit := len(syscall.RawSockaddrUnix{}.Path) - 1

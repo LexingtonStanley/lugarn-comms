@@ -1385,8 +1385,8 @@ Request: `server` (default `default`). Result: `herdr`, `started`, `method` (`de
 (`details.reason: not_installed`, `socket_path_too_long`, or `start_timeout`).
 
 - If the server already answers, nothing happens: `started: false`.
-- Before starting on POSIX, the broker checks the socket path computed by
-  `herdr --session <server> status --json`. Herdr 0.9.5 puts a named session's sockets at
+- Before starting on POSIX, the broker computes the socket paths before calling Herdr
+  (`status --json` itself fails when the API path is too long). Herdr 0.9.5 puts a named session's sockets at
   `${XDG_CONFIG_HOME:-$HOME/.config}/herdr/sessions/<server>/herdr.sock` and
   `herdr-client.sock` in the same directory; `default` omits `sessions/<server>/`.
   Explicit `--session` ignores inherited `HERDR_SOCKET_PATH`; the broker strips `HERDR_*`

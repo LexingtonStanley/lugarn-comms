@@ -92,6 +92,11 @@ func StartServer(ctx context.Context, bin, session string, opts ...ServerOption)
 	if err := ValidateSession(session); err != nil {
 		return StartResult{}, err
 	}
+	// Herdr status itself fails before printing JSON when sun_path overflows.
+	// Compute its release-build paths before issuing even that read-only call.
+	if err := checkSessionSocketPaths(session); err != nil {
+		return StartResult{}, err
+	}
 	c := New(bin, session)
 	st, err := c.Status(ctx)
 	if err != nil {
