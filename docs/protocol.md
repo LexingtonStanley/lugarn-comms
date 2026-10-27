@@ -1250,6 +1250,8 @@ See [Applying a spec](#applying-a-spec).
 ### get-team
 
 Request: `team`. Result: `spec`, `revision`, `cursor` (to start `watch` from).
+`spec.members` preserves the most recently applied spec's member order. `spec.grid` is
+ordered by source member id, then target member id; each `can` list is alphabetical.
 
 ### start-team
 
@@ -1264,7 +1266,8 @@ stopped team succeeds with `expired: 0`. See [stop-team](#stop-team).
 ### status
 
 Request: `team` (optional; absent means every team). Result: `teams` (`TeamStatus[]`),
-`cursor`.
+`cursor`. Teams are ordered by name, ascending. Each `rounds` list is ordered by writer
+member id, then reviewer member id, ascending (also in `continue-budget`).
 
 `TeamStatus`: `id`, `name`, `pattern`, `revision`, `run`, `state`, `runner` (`state`, `pid`,
 `pane`, `started_at`, `heartbeat_at`), `hops` (`used`, `allowance`, `base`, `exhausted`),
@@ -1284,7 +1287,9 @@ the runner and every member pane.
 
 Request: `team`, `include_removed` (default `false`). Result: `members` (`Member[]`, `human`
 included), `cursor`. The app copies these into its own storage on focus, on watch events, and
-at start and stop.
+at start and stop. Members are ordered by `created_at`, ascending, then by member `id`,
+ascending for ties. This includes `human` and, when requested, removed members; it is
+independent of member name, role, state, and the spec's member order.
 
 ### timeline
 
@@ -1350,6 +1355,8 @@ team and hasn't removed, each with `path`, `branch`, `repo`, `base` (the ref it 
 - `ahead` and `behind`: commits relative to `base`.
 
 `merged`, `ahead` and `behind` are null when the branch is gone.
+Worktrees are ordered by `created_at`, ascending, then by the broker's worktree record id,
+ascending for ties.
 
 `remove-worktrees`: request `team`, `paths` (1–64). It acts only on the listed paths, each on
 its own, and refuses:
@@ -1368,7 +1375,8 @@ which would also drop the person's other missing worktrees. Result: `removed` (`
 `branch`, `branch_outcome`) and `refused` (`path`, `reason`, `message`); each listed path is
 in exactly one. `branch_outcome` is `deleted`, `kept_unmerged` (git refused `-d`, so the
 branch stays and is reported) or `missing` (already gone). Each removal sets the record's
-`removed_at` and emits `worktree.removed`.
+`removed_at` and emits `worktree.removed`. Both result lists preserve the relative order
+of the request's `paths`.
 
 ### start-herdr
 
