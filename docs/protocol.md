@@ -117,16 +117,26 @@ recorded on the member.
 | `shell-home/` | POSIX pane startup home with empty rc files; no credentials | retained with state |
 | `launch/<launch id>/clean-shell.json`, `shell-ready` | POSIX shell bootstrap capsule (including original home selectors) and readiness marker | deleted with the exact launch directory when the launch ends |
 | `launch/<launch id>/runner-launch.json`, `<turn id>.process.json` | Immutable launch description and process birth identity | deleted with the exact launch directory when the launch ends |
-| `launch/<launch id>/pane-launch.json` | Windows native harness executable, exact argv and only the launch's own environment variables (no copied parent environment); owner-only and never logged | deleted with the exact launch directory when the launch ends |
+| `launch/<launch id>/pane-launch.json`, `pane-started` | Windows native harness executable, exact argv and only the launch's own environment variables (no copied parent environment); owner-only and never logged; harness startup marker | deleted with the exact launch directory when the launch ends |
 | `runner/<team id>.json` | Recorded workspace/pane and verified runner process; original POSIX home selectors and optional bridge ownership | retained across runner takeover; removed by stop-team |
 | `sessions/<member id>/<session hash>.json` | Private initialized-session metadata; Codex rollout remains authoritative for cwd | retained for session resume until the member is removed; its sessions directory is then deleted |
 | `login-path.json` | Login-shell PATH capture, shell, timestamp and issue | refreshed after one hour, and on every start-herdr/start-team |
 | `lugarn-runner-<random>/lugarn-comms[.exe]` | Native bridge plus `owner.sha256` (the state-directory hash), only when the broker executable path needs one | removed by stop-team; owned, unrecorded leftovers older than 60 seconds swept at runner start/takeover and stop-team; state directory preferred when plain, otherwise OS temp directory |
 
-Per-launch cleanup lists `launch/` before reading the store, recognizes only the exact
+Per-launch reconciliation lists `launch/` before reading the store, recognizes only the exact
 ULID directory and documented suffixes, and uses `lstat`. Removing a directory never
 follows links inside it. All the files inside that directory share its lifetime. Unknown
-entries use the reconciliation grace period; pointer cleanup never deletes unknown ids.
+entries have a 60-second reconciliation grace period; known ended launches are eligible
+immediately. Pointer cleanup never deletes unknown ids.
+
+Stop, launch failure and reconciliation share idempotent launch removal: a missing entry
+is success. On Windows, access-denied and sharing-violation errors from removing an exact
+launch directory are retried with bounded backoff totaling less than 2 seconds per directory.
+If it is still busy, cleanup logs a diagnostic without values and leaves the remaining
+directory artifacts for a later sweep at runner reconciliation or teardown for that team.
+Deferred directory cleanup does not fail `stop-team` or runner shutdown; launch tokens are
+still revoked in the stop transaction. Other I/O failures and linked cleanup parents remain
+errors. Exact entry links are unlinked without following their targets, as above.
 
 Bridge sweeps leave unmarked directories, other homes' markers and every bridge still
 recorded in a runner placement alone. A Windows executable still in use is retried by
@@ -411,6 +421,9 @@ Works whether or not the runner is up, and is safe to repeat.
 3. Move `queued` and `held` deliveries to `expired` (`team_stopped`). `uncertain` ones stay
    `uncertain`: their fate is still unknown.
 4. Fail open requests with `team_not_running`. Close the runner pane. Set the team `stopped`.
+
+A busy Windows launch directory can remain after a successful stop, following the bounded
+retry and later-sweep rules in [State on the host](#state-on-the-host).
 
 ## Members
 
