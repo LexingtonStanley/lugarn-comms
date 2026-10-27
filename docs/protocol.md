@@ -1621,7 +1621,9 @@ The exit status is the error's exit code.
 One vocabulary for app ops, MCP tools and the CLI: `{ "code", "message", "details" }`.
 `message` is for people and may change; `code` is stable; `details` is an object, empty when
 there's nothing to add. Every error's `message` and `details` exclude environment values,
-full argv and file contents:
+full argv and file contents. The one exception is a harness's own failure reason: it's
+scrubbed as below, but a secret the broker never saw, in a shape it doesn't know, can't be
+caught.
 
 - Request errors identify fields by location and schema keyword, never by value:
   `details.at` is a JSON pointer and `details.keyword` is the failing schema keyword.
@@ -1632,9 +1634,14 @@ full argv and file contents:
   launch's environment override values, secret-named host variables and the launch token
   when available. Values of at least eight characters are scrubbed to `‹redacted›`.
   The secret-name pattern is `(?i)(TOKEN|SECRET|PASSW|API_?KEY|ACCESS_?KEY|PRIVATE_?KEY|AUTH|CREDENTIAL|COOKIE|SESSION)`.
-  The reason is then reduced to one line, with control characters stripped, and at most
-  300 Unicode characters. It comes from the harness's structured error, or the last
-  non-empty stderr line on nonzero exit; never a raw stdout line.
+  The reason is then reduced to one line, with control characters stripped, and exact
+  values are scrubbed again. Token-shaped strings are scrubbed next: OpenAI/Anthropic,
+  GitHub, Slack, AWS access key IDs, Google API keys, JWTs, Bearer credentials and PEM
+  private keys. Shapes must not be preceded by an ASCII letter, digit or underscore; Bearer
+  keeps its scheme word, and PEM blocks run through the matching END marker or the
+  end of the reason. The result is limited to 300 Unicode characters.
+  It comes from the harness's structured error, or the last non-empty stderr line on
+  nonzero exit; never a raw stdout line.
 
 The plan's `unsupported-version` is `unsupported_version` here.
 
