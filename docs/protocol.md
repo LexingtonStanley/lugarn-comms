@@ -463,8 +463,11 @@ state always `running`, no lease, no harness.
 | `stopped`  | No driver. New members start here, with no `stop_reason`.                           |
 
 `stopped → starting → running → stopping → stopped`, and `starting → stopped` with
-`launch_failed`. A member enters `starting` when the runner begins its launch, or when `spawn`
-inserts it. Only the runner moves a member to `running`.
+`launch_failed`. A member enters `starting` when the runner begins its launch, before
+worktree preparation, harness/binary resolution and workdir checks, or when `spawn` inserts
+it. If those checks fail for a stopped member's launch, it emits `member.state_changed`
+`stopped → starting`, then `starting → stopped` with `reason: launch_failed` and the failure
+in `error`. Only the runner moves a member to `running`.
 
 **How a member becomes stopped:**
 
@@ -511,6 +514,10 @@ conditional on it, so work started under an older generation can't land.
 | any        | `none`     | stop-member, `stop`, stop-team                                           | runner, or stop-team's op | `stop` |
 
 Each change emits `lease.changed` with the full member record.
+
+A launch from `stopped` first emits `member.state_changed` `stopped → starting`, before
+its launch checks. A failed check then emits `starting → stopped` with
+`reason: launch_failed` and `error`; it does not skip `starting` or reach `running`.
 
 ### A session before a pane
 
@@ -1530,6 +1537,10 @@ event was written.
 the claimed member is unknown.
 
 `watch` adds three line types that aren't stored: `watch.live`, `heartbeat`, `error`.
+
+For a launch from `stopped`, `member.state_changed` records `stopped → starting` before
+launch checks run. If a check fails, the next state change for that member is
+`starting → stopped`, with `reason: launch_failed` and the failure in `error`.
 
 ### Attention
 
