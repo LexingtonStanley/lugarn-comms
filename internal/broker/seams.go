@@ -2,8 +2,6 @@ package broker
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
@@ -435,13 +433,8 @@ func (b *Broker) StopTeam(ctx context.Context, r wire.StopTeamRequest) (wire.Sto
 	}
 	if b.opts.StateDir != "" {
 		for _, id := range ended {
-			if model.ValidateULID(id) != nil {
-				return out, model.NewError(model.ErrorInternal, "invalid stored launch id")
-			}
-			for _, suffix := range []string{".token", ".json", ".opencode.json", ""} {
-				if e = os.RemoveAll(filepath.Join(b.opts.StateDir, "launch", id+suffix)); e != nil {
-					return out, model.AsError(e)
-				}
+			if e = b.removeLaunchArtifacts(ctx, id); e != nil {
+				return out, model.AsError(e)
 			}
 		}
 	}

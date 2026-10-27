@@ -203,16 +203,12 @@ func (r *Runner) setActivity(tx *store.Tx, m model.Member, a model.Activity) err
 	return r.b.event(tx, &m.Team, model.EventMemberActivityChanged, false, &m.ID, nil, wire.MemberActivityChangedEventData{Member: ref(m), From: current.Activity, To: &a})
 }
 func (r *Runner) cleanLaunchFiles(ctx context.Context) error {
-	root := filepath.Join(r.b.opts.StateDir, "launch")
-	info, e := os.Lstat(root)
-	if e != nil && !os.IsNotExist(e) {
+	root, exists, e := r.b.launchRoot()
+	if e != nil {
 		return e
 	}
 	var entries []os.DirEntry
-	if e == nil {
-		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-			return model.NewError(model.ErrorInternal, "launch path is not a directory")
-		}
+	if exists {
 		entries, e = os.ReadDir(root)
 		if e != nil && !os.IsNotExist(e) {
 			return e
@@ -273,12 +269,7 @@ func (r *Runner) cleanListedLaunchFiles(ctx context.Context, root string, entrie
 		}
 		// Delete only this listed entry. A broad Files.Delete(id) could remove
 		// a fresh sibling file or follow a link through a driver adapter.
-		if link || !directory {
-			e = os.Remove(path)
-		} else {
-			e = os.RemoveAll(path)
-		}
-		if e != nil && !os.IsNotExist(e) {
+		if e = r.b.removeLaunchEntry(ctx, name); e != nil {
 			return e
 		}
 	}

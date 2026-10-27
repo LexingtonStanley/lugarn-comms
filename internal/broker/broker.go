@@ -37,16 +37,17 @@ type Options struct {
 	Git       Git
 	Clock     func() time.Time
 	ID        func() (string, error)
-	// Wait pauses request polling. Cancellation must interrupt it.
+	// Wait pauses polling and cleanup backoff. Cancellation must interrupt it.
 	Wait           func(context.Context, time.Duration) error
 	RequestTimeout time.Duration
 }
 
 // Broker implements the app, tools and authenticator service contracts.
 type Broker struct {
-	integration *Integration
-	db          *store.Store
-	opts        Options
+	integration   *Integration
+	db            *store.Store
+	opts          Options
+	launchCleanup launchCleanup
 }
 
 // New constructs a broker over an already opened store. The caller owns Close.
@@ -84,7 +85,7 @@ func New(db *store.Store, opts Options) *Broker {
 	if opts.Teardown == nil {
 		opts.Teardown = NoopTeardown{}
 	}
-	return &Broker{db: db, opts: opts}
+	return &Broker{db: db, opts: opts, launchCleanup: defaultLaunchCleanup()}
 }
 func ptr[T any](v T) *T                  { return &v }
 func ref(m model.Member) model.MemberRef { return model.MemberRef{ID: m.ID, Name: m.Name} }
