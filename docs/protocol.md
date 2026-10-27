@@ -28,6 +28,14 @@ mechanical cases: enum lists, example validity, SQL enum checks.
 | `lugarn-comms app <op>`                       | the app, over SSH exec     | [App ops](#app-ops)                            |
 | `lugarn-comms run --team <id>`                | the runner pane            | [Teams and runs](#teams-and-runs)              |
 
+## Release archives
+
+Release naming is a contract pinned by the app's installer. `VERSION` is the Git tag
+verbatim, including its `v` prefix. The six targets are `linux`, `darwin` and `windows`,
+each for `amd64` and `arm64`. Archives are `lugarn-comms_${VERSION}_${os}_${arch}.tar.gz`,
+or `.zip` for Windows. Each contains `lugarn-comms` (`lugarn-comms.exe` on Windows) at its
+root alongside `LICENSE.md`, `NOTICE` and `README.md`. `SHA256SUMS` is published with them.
+
 ## Conventions
 
 - JSON is UTF-8. Field names are `snake_case`.
@@ -1475,6 +1483,9 @@ may omit `error` even for `launch_failed`. `details.cause` is an open set: the a
 to this event too. That's how the person learns why a launch failed. The runner's own log
 is in a pane they may never see.
 
+`turn.finished` carries the harness failure reason in `turn.error`; the same
+[Errors](#errors) privacy, scrubbing and length rules apply before the event is written.
+
 Agent-written text in any of these is rendered as plain text.
 
 ## MCP tools
@@ -1544,9 +1555,23 @@ The exit status is the error's exit code.
 
 One vocabulary for app ops, MCP tools and the CLI: `{ "code", "message", "details" }`.
 `message` is for people and may change; `code` is stable; `details` is an object, empty when
-there's nothing to add. An error's `message` and `details` never include environment
-values, full argv or file contents; diagnostics identify only the failing thing's name
-and path. The plan's `unsupported-version` is `unsupported_version` here.
+there's nothing to add. Every error's `message` and `details` exclude environment values,
+full argv and file contents:
+
+- Request errors identify fields by location and schema keyword, never by value:
+  `details.at` is a JSON pointer and `details.keyword` is the failing schema keyword.
+  Strict JSON decoding uses `details.field` for an unknown field or type mismatch,
+  or `details.offset` for a syntax error.
+- Launch and runner errors give names, paths and fixed causes.
+- A harness's own failure reason is passed on only after exact-match scrubbing of the
+  launch's environment override values, secret-named host variables and the launch token
+  when available. Values of at least eight characters are scrubbed to `‹redacted›`.
+  The secret-name pattern is `(?i)(TOKEN|SECRET|PASSW|API_?KEY|ACCESS_?KEY|PRIVATE_?KEY|AUTH|CREDENTIAL|COOKIE|SESSION)`.
+  The reason is then reduced to one line, with control characters stripped, and at most
+  300 Unicode characters. It comes from the harness's structured error, or the last
+  non-empty stderr line on nonzero exit; never a raw stdout line.
+
+The plan's `unsupported-version` is `unsupported_version` here.
 
 | Code                  | Exit | Meaning                                                                                     |
 | --------------------- | ---- | ------------------------------------------------------------------------------------------- |
