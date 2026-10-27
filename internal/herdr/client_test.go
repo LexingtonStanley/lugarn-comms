@@ -561,3 +561,28 @@ func TestHerdrErrorsNeverExposeProcessPayload(t *testing.T) {
 		t.Fatal("command argument leaked")
 	}
 }
+
+func TestFutureHerdrCodesRemainIdentifiers(t *testing.T) {
+	for _, tc := range []struct {
+		code string
+		keep bool
+	}{
+		{"future_launch_refused", true}, {"a", true}, {"a" + strings.Repeat("_", 63), true},
+		{"a" + strings.Repeat("_", 64), false}, {"UpperCase", false}, {"bad code", false}, {"bad\ncode", false}, {"", false},
+	} {
+		t.Run(tc.code, func(t *testing.T) {
+			failure := fromHerdr("agent start", tc.code, "PRIVATE_HERDR_MESSAGE").Protocol()
+			got, ok := failure.Details["herdr_code"]
+			if tc.keep {
+				if !ok || got != tc.code {
+					t.Fatal(failure.Details)
+				}
+			} else if ok {
+				t.Fatal("malformed code retained", got)
+			}
+			if failure.Details["cause"] != "herdr_failed" || failure.Details["herdr_message"] != nil {
+				t.Fatal(failure.Details)
+			}
+		})
+	}
+}

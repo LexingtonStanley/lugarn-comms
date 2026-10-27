@@ -2,6 +2,7 @@ package herdr
 
 import (
 	"errors"
+	"regexp"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 )
@@ -45,7 +46,7 @@ const (
 type Error struct {
 	// Op is the Herdr command, such as "agent prompt".
 	Op string
-	// Code is a known Herdr error code, or empty for an unknown/absent code.
+	// Code is Herdr's identifier, or empty for a malformed/absent code.
 	Code string
 	// Message is reserved; child output is never retained.
 	Message string
@@ -95,12 +96,12 @@ func kindOf(err error) kind {
 // the workspace, the pane or the harness didn't come up.
 var launchOps = map[string]bool{"workspace create": true, "tab create": true, "agent start": true}
 
+var herdrCodePattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+
 // fromHerdr classifies an error Herdr reported.
 func fromHerdr(op, code, message string) *Error {
-	// Unknown codes and messages may echo arguments or environment values.
-	switch code {
-	case CodeServerNotRunning, "server_unavailable", CodeAgentNotFound, CodeAgentNotRunning, CodeAgentPaneNotFound, CodePaneNotFound, CodeWorkspaceNotFound, CodeTabNotFound, CodeAgentBlocked, CodeAgentNotReady, CodeAgentPaneBusy, CodeAgentNameTaken, CodeInvalidAgentName, CodeAgentPromptStalled, CodeEmptyAgentPrompt, CodeTimeout, "invalid_agent_timeout":
-	default:
+	// Codes are identifiers, including future Herdr codes. Messages are payload.
+	if !herdrCodePattern.MatchString(code) {
 		code = ""
 	}
 	e := &Error{Op: op, Code: code}
