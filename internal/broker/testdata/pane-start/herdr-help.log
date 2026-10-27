@@ -1,0 +1,536 @@
+$ herdr --version
+herdr 0.9.5
+
+$ herdr workspace create --help
+Create a workspace
+
+Usage: herdr workspace create [OPTIONS]
+
+Options:
+      --cwd <PATH>
+
+
+      --label <TEXT>
+
+
+      --env <KEY=VALUE>
+          Set an environment variable for the launched process
+
+      --focus
+
+
+      --no-focus
+
+
+$ herdr tab create --help
+Create a tab
+
+Usage: herdr tab create [OPTIONS]
+
+Options:
+      --workspace <WORKSPACE_ID>
+
+
+      --cwd <PATH>
+
+
+      --label <TEXT>
+
+
+      --env <KEY=VALUE>
+          Set an environment variable for the launched process
+
+      --focus
+
+
+      --no-focus
+
+
+$ herdr pane split --help
+Split a pane
+
+Usage: herdr pane split [OPTIONS] [PANE_ID]
+
+Arguments:
+  [PANE_ID]
+
+
+Options:
+      --pane <ID>
+
+
+      --current
+
+
+      --direction <DIRECTION>
+          [possible values: right, down]
+
+      --ratio <FLOAT>
+
+
+      --cwd <PATH>
+
+
+      --env <KEY=VALUE>
+          Set an environment variable for the launched process
+
+      --right-click <TARGET>
+          [possible values: herdr, pane]
+
+      --focus
+
+
+      --no-focus
+
+
+$ herdr pane run --help
+Run a command in a pane
+
+Usage: herdr pane run <PANE_ID> <COMMAND>...
+
+Arguments:
+  <PANE_ID>
+
+
+  <COMMAND>...
+
+
+$ herdr pane get --help
+Show a pane
+
+Usage: herdr pane get <pane_id>
+
+Arguments:
+  <pane_id>
+
+
+$ herdr pane process-info --help
+Show pane process information
+
+Usage: herdr pane process-info [OPTIONS]
+
+Options:
+      --pane <ID>
+
+
+      --current
+
+
+$ herdr agent start --help
+Start a supported interactive agent in an existing pane
+
+Usage: herdr agent start <NAME> --kind <KIND> --pane <ID> [OPTIONS] [-- [AGENT_ARG]...]
+
+Arguments:
+  <NAME>
+
+
+  [AGENT_ARG]...
+
+
+Options:
+      --kind <KIND>
+          Supported agent kind and canonical executable
+
+          [possible values: pi, claude, codex, gemini, cursor, devin, agy, cline, omp, mastracode, opencode, copilot, kimi, kiro, droid, amp, grok, hermes, kilo, qodercli, qwen, letta, maki, muse]
+
+      --pane <ID>
+          Existing pane at an interactive shell prompt
+
+      --timeout <MS>
+          Wait for interactive readiness (default: 30000; max: 300000)
+
+The pane must be at its interactive shell prompt. Success means the expected agent was detected in the same terminal and is ready for input.
+
+next: herdr agent prompt <TARGET> <TEXT> --wait
+
+
+$ herdr agent get --help
+Show an agent
+
+Usage: herdr agent get <target>
+
+Arguments:
+  <target>
+
+
+$ herdr agent explain --help
+Explain agent detection state
+
+Usage: herdr agent explain [OPTIONS] [TARGET]
+
+Arguments:
+  [TARGET]
+
+
+Options:
+      --file <PATH>
+
+
+      --agent <LABEL>
+
+
+      --json
+
+
+      --format <FORMAT>
+          [possible values: text, json]
+
+  -v, --verbose
+
+
+$ herdr agent wait --help
+Wait until an agent reaches one of the requested states
+
+Usage: herdr agent wait <TARGET> [OPTIONS]
+
+Arguments:
+  <TARGET>
+
+
+Options:
+      --until <STATUS>
+          State to match; repeat for more than one state
+
+          [possible values: idle, working, blocked, done, unknown]
+
+      --timeout <MS>
+          Fail after this many milliseconds
+
+Without --until, matches idle, done, or blocked. Use --until unknown explicitly when needed. Without --timeout, waits indefinitely.
+
+
+$ herdr api schema --json  # selected definitions, protocol 22
+request WorkspaceCreateParams
+{
+  "properties": {
+    "cwd": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "env": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "focus": {
+      "default": false,
+      "type": "boolean"
+    },
+    "label": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_workspace_id": {
+      "description": "Workspace whose focused pane supplies the `follow` cwd policy.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "type": "object"
+}
+request TabCreateParams
+{
+  "properties": {
+    "cwd": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "env": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "focus": {
+      "default": false,
+      "type": "boolean"
+    },
+    "label": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "workspace_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "type": "object"
+}
+request PaneSplitParams
+{
+  "properties": {
+    "cwd": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "direction": {
+      "$ref": "#/schemas/request/$defs/SplitDirection"
+    },
+    "env": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "focus": {
+      "default": false,
+      "type": "boolean"
+    },
+    "ratio": {
+      "format": "float",
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "right_click": {
+      "$ref": "#/schemas/request/$defs/PaneRightClickTarget",
+      "default": "herdr"
+    },
+    "target_pane_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "workspace_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "direction"
+  ],
+  "type": "object"
+}
+success_response PaneInfo
+{
+  "properties": {
+    "agent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agent_session": {
+      "anyOf": [
+        {
+          "$ref": "#/schemas/success_response/$defs/AgentSessionInfo"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "agent_status": {
+      "$ref": "#/schemas/success_response/$defs/AgentStatus"
+    },
+    "cwd": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "display_agent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "focused": {
+      "type": "boolean"
+    },
+    "foreground_cwd": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "label": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pane_id": {
+      "type": "string"
+    },
+    "restore_error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "revision": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "scroll": {
+      "anyOf": [
+        {
+          "$ref": "#/schemas/success_response/$defs/PaneScrollInfo"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state_labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "tab_id": {
+      "type": "string"
+    },
+    "terminal_id": {
+      "type": "string"
+    },
+    "terminal_title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "terminal_title_stripped": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tokens": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "maxProperties": 32,
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9_-]{1,32}$"
+      },
+      "type": "object"
+    },
+    "workspace_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "pane_id",
+    "terminal_id",
+    "workspace_id",
+    "tab_id",
+    "focused",
+    "agent_status",
+    "revision"
+  ],
+  "type": "object"
+}
+success_response PaneProcessInfo
+{
+  "properties": {
+    "foreground_process_group_id": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "foreground_processes": {
+      "items": {
+        "$ref": "#/schemas/success_response/$defs/PaneProcessInfoProcess"
+      },
+      "type": "array"
+    },
+    "pane_id": {
+      "type": "string"
+    },
+    "shell_pid": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "tty": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "pane_id"
+  ],
+  "type": "object"
+}
+success_response PaneProcessInfoProcess
+{
+  "properties": {
+    "argv": {
+      "items": {
+        "type": "string"
+      },
+      "type": [
+        "array",
+        "null"
+      ]
+    },
+    "argv0": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "cmdline": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "cwd": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "pid": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "pid",
+    "name"
+  ],
+  "type": "object"
+}

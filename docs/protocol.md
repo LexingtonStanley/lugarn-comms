@@ -1402,9 +1402,11 @@ Request: `server` (default `default`). Result: `herdr`, `started`, `method` (`de
 
 - If the server already answers, nothing happens: `started: false`.
 - Before starting on POSIX, the broker computes the socket paths before calling Herdr
-  (`status --json` itself fails when the API path is too long). Herdr 0.9.5 puts a named session's sockets at
-  `${XDG_CONFIG_HOME:-$HOME/.config}/herdr/sessions/<server>/herdr.sock` and
-  `herdr-client.sock` in the same directory; `default` omits `sessions/<server>/`.
+  (`status --json` itself fails when the API path is too long). Herdr 0.9.5 uses
+  `$XDG_CONFIG_HOME/herdr` when `XDG_CONFIG_HOME` is set (including an empty value),
+  otherwise `$HOME/.config/herdr`, or the temporary directory's `herdr` subdirectory when
+  `HOME` is unset. Named sessions add `sessions/<server>/` and bind `herdr.sock` and
+  `herdr-client.sock` there; `default` omits `sessions/<server>/`.
   Explicit `--session` ignores inherited `HERDR_SOCKET_PATH`; the broker strips `HERDR_*`
   from its client and server environment. Both socket paths, including their terminating
   NUL, must fit `sun_path` (108 bytes on Linux, 104 on macOS). An overlong path fails

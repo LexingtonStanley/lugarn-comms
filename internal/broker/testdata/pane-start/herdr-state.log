@@ -1,0 +1,17 @@
+$ herdr --session lugarn-test-b097811de21c pane process-info --pane w1:p1
+{"id":"cli:pane:process_info","result":{"process_info":{"foreground_process_group_id":464932,"foreground_processes":[{"argv":["/usr/bin/zsh"],"cmdline":"/usr/bin/zsh","cwd":"/tmp/lc-9zuthms_","name":"zsh","pid":464932}],"pane_id":"w1:p1","shell_pid":464932},"type":"pane_process_info"}}
+exit=0
+$ herdr --session lugarn-test-b097811de21c pane get w1:p1
+{"id":"cli:pane:get","result":{"pane":{"agent_status":"unknown","cwd":"/tmp/lc-9zuthms_","focused":true,"foreground_cwd":"/tmp/lc-9zuthms_","pane_id":"w1:p1","revision":0,"scroll":{"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":40},"tab_id":"w1:t1","terminal_id":"term_65ec7887069061","workspace_id":"w1"},"type":"pane_info"}}
+exit=0
+$ herdr --session lugarn-test-b097811de21c agent get w1:p1
+{"error":{"code":"agent_not_found","message":"agent target w1:p1 not found"},"id":"cli:agent:get"}
+exit=1
+$ herdr --session lugarn-test-b097811de21c agent explain w1:p1 --json
+{"error":{"code":"agent_not_found","message":"agent target w1:p1 not found"},"id":"cli:agent:explain"}
+exit=1
+$ herdr --session lugarn-test-b097811de21c server stop
+exit=0
+$ herdr --session lugarn-test-b097811de21c session delete lugarn-test-b097811de21c
+deleted session lugarn-test-b097811de21c
+exit=0

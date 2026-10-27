@@ -1,0 +1,83 @@
+ok    app-ops.v1.schema.json: valid draft 2020-12
+ok    common.v1.schema.json: valid draft 2020-12
+ok    mcp-tools.v1.schema.json: valid draft 2020-12
+ok    team-spec.v1.schema.json: valid draft 2020-12
+ok    app-ops/apply-team--revision-conflict.response.json
+ok    app-ops/apply-team.request.json
+ok    app-ops/apply-team.response.json
+ok    app-ops/continue-budget--rounds.request.json
+ok    app-ops/continue-budget.request.json
+ok    app-ops/continue-budget.response.json
+ok    app-ops/hello--windows.response.json
+ok    app-ops/hello.request.json
+ok    app-ops/hello.response.json
+ok    app-ops/hold--release.request.json
+ok    app-ops/hold--release.response.json
+ok    app-ops/hold.request.json
+ok    app-ops/hold.response.json
+ok    app-ops/members.request.json
+ok    app-ops/members.response.json
+ok    app-ops/open-terminal--lease-conflict.response.json
+ok    app-ops/open-terminal.request.json
+ok    app-ops/open-terminal.response.json
+ok    app-ops/remove-worktrees.request.json
+ok    app-ops/remove-worktrees.response.json
+ok    app-ops/resolve-delivery.request.json
+ok    app-ops/resolve-delivery.response.json
+ok    app-ops/send--all.request.json
+ok    app-ops/send.request.json
+ok    app-ops/send.response.json
+ok    app-ops/start-herdr.request.json
+ok    app-ops/start-herdr.response.json
+ok    app-ops/start-team--herdr-down.response.json
+ok    app-ops/start-team.request.json
+ok    app-ops/start-team.response.json
+ok    app-ops/status.request.json
+ok    app-ops/status.response.json
+ok    app-ops/timeline--launch-failed.response.json
+ok    app-ops/timeline.request.json
+ok    app-ops/timeline.response.json
+ok    app-ops/watch--bad-cursor.ndjson (1 lines)
+ok    app-ops/watch.ndjson (8 lines)
+ok    app-ops/watch.request.json
+ok    app-ops/worktrees.request.json
+ok    app-ops/worktrees.response.json
+ok    mcp/inbox.input.json
+ok    mcp/inbox.output.json
+ok    mcp/reply.input.json
+ok    mcp/reply.output.json
+ok    mcp/send--denied.error.json
+ok    mcp/send--held.output.json
+ok    mcp/send--human-too-long.error.json
+ok    mcp/send.input.json
+ok    mcp/send.output.json
+ok    mcp/spawn--cap-reached.error.json
+ok    mcp/spawn--profile-too-high.error.json
+ok    mcp/spawn.input.json
+ok    mcp/spawn.output.json
+ok    mcp/stop.input.json
+ok    mcp/stop.output.json
+ok    mcp/team.input.json
+ok    mcp/team.output.json
+ok    team-spec/manager-workers.json
+ok    team-spec/orchestrator.json
+ok    team-spec/pipeline.json
+ok    team-spec/writer-reviewer.json
+ok    rejects: grid edge with wake but not message
+ok    rejects: member named human
+ok    rejects: spawn enabled without a worker brief
+ok    rejects: member host set in v1
+ok    rejects: per_recipient other than 1
+ok    rejects: send with both to and all
+ok    rejects: timeline with both before and after
+ok    rejects: continue-budget writer without kind rounds and reviewer
+ok    rejects: unknown request field
+ok    rejects: agent send to all
+ok    rejects: agent text to human over 8000 code points
+ok    rejects: hold with both ttl_seconds and release
+ok    rejects: hold ttl over 120 s
+ok    rejects: remove-worktrees with no paths
+ok    rejects: launch failure with null error
+ok    docs/protocol.md enum table matches the schemas (46 enums)
+
+4 schemas, 61 example files, 0 failure(s)

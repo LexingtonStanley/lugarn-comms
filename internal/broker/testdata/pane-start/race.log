@@ -1,0 +1,18 @@
+$ go test -race -json ./internal/broker ./internal/herdr ./internal/store
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/store	(cached)
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/herdr	11.497s
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/broker	58.886s
+exit=0
+{('tests', 'pass'): 332, ('tests', 'skip'): 10, ('packages', 'pass'): 3}
+Top-level test passes: 201
+Existing conditional/helper skips:
+github.com/LexingtonStanley/lugarn-comms/internal/store TestConcurrentWriterProcess
+github.com/LexingtonStanley/lugarn-comms/internal/herdr TestLiveCodexPaneLeavesNoDaemon
+github.com/LexingtonStanley/lugarn-comms/internal/herdr TestLiveHerdr
+github.com/LexingtonStanley/lugarn-comms/internal/herdr TestLiveServerSurvivesSessionEnd
+github.com/LexingtonStanley/lugarn-comms/internal/herdr TestLiveSystemdServer
+github.com/LexingtonStanley/lugarn-comms/internal/broker TestIntegrationLiveCodexWorkdir
+github.com/LexingtonStanley/lugarn-comms/internal/broker TestIntegrationLiveFlows
+github.com/LexingtonStanley/lugarn-comms/internal/broker TestIntegrationLiveLoginPath
+github.com/LexingtonStanley/lugarn-comms/internal/broker TestIntegrationLiveOpenCodeBaseline
+github.com/LexingtonStanley/lugarn-comms/internal/broker TestIntegrationLiveShellPinning

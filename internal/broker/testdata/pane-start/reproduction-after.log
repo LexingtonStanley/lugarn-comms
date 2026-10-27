@@ -1,0 +1,65 @@
+after HOME=/tmp/lp-9ofrkpwt SHELL=/usr/bin/zsh session=lugarn-test-aca81cffda41
+.zshrc:
+print -r -- "STARTUP_QUESTION: answer ready"
+read -r answer
+print -r -- "STARTUP_ANSWER=$answer"
+PS1="SHELL_READY> "
+
+$ herdr --session lugarn-test-aca81cffda41 status --json
+{"client":{"version":"0.9.5","channel":"stable","protocol":22,"endpoint_protocol_generation":1,"endpoint_capabilities":["surface_interest","presentation_effects_fence","health_check"],"remote_host_bridge":true,"remote_bridge_idle_timeout":true,"binary":"/home/lexde/.local/bin/herdr","session":"lugarn-test-aca81cffda41"},"server":{"status":"running","running":true,"version":"0.9.5","protocol":22,"capabilities":{"live_handoff":true,"detached_server_daemon":true,"endpoint_protocol_generation":1,"surface_interest":true,"health_check":true,"ssh_agent_registration":true},"compatible":true,"endpoint_compatible":true,"socket":"/tmp/lp-9ofrkpwt/.config/herdr/sessions/lugarn-test-aca81cffda41/herdr.sock","session":"lugarn-test-aca81cffda41","restart_needed":false,"server_binary_stale":false},"update":{"restart_needed":false,"server_binary_stale":false}}
+exit=0
+$ herdr --session lugarn-test-aca81cffda41 workspace create --cwd /tmp/lp-9ofrkpwt --label startup-evidence --no-focus
+{"id":"cli:workspace:create","result":{"root_pane":{"agent_status":"unknown","cwd":"/tmp/lp-9ofrkpwt","focused":true,"foreground_cwd":"/tmp/lp-9ofrkpwt","pane_id":"w1:p1","revision":0,"scroll":{"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":40},"tab_id":"w1:t1","terminal_id":"term_65ec7af2f79341","workspace_id":"w1"},"tab":{"agent_status":"unknown","focused":true,"label":"1","number":1,"pane_count":1,"tab_id":"w1:t1","workspace_id":"w1"},"type":"workspace_created","workspace":{"active_tab_id":"w1:t1","agent_status":"unknown","focused":true,"label":"startup-evidence","number":1,"pane_count":1,"tab_count":1,"workspace_id":"w1"}}}
+exit=0
+$ herdr --session lugarn-test-aca81cffda41 pane read w1:p1 --source recent-unwrapped --lines 10
+STARTUP_QUESTION: answer readyexit=0
+$ herdr --session lugarn-test-aca81cffda41 pane process-info --pane w1:p1
+{"id":"cli:pane:process_info","result":{"process_info":{"foreground_process_group_id":517133,"foreground_processes":[{"argv":["/usr/bin/zsh"],"cmdline":"/usr/bin/zsh","cwd":"/tmp/lp-9ofrkpwt","name":"zsh","pid":517133}],"pane_id":"w1:p1","shell_pid":517133},"type":"pane_process_info"}}
+exit=0
+$ herdr --session lugarn-test-aca81cffda41 pane run w1:p1 /usr/bin/touch /tmp/lp-9ofrkpwt/runner-was-executed
+exit=0
+$ herdr --session lugarn-test-aca81cffda41 pane read w1:p1 --source recent-unwrapped --lines 12
+STARTUP_QUESTION: answer ready
+/usr/bin/touch /tmp/lp-9ofrkpwt/runner-was-executed
+STARTUP_ANSWER=/usr/bin/touch /tmp/lp-9ofrkpwt/runner-was-executed
+SHELL_READY>exit=0
+typed command executed = False
+$ herdr --session lugarn-test-aca81cffda41 pane process-info --pane w1:p1
+{"id":"cli:pane:process_info","result":{"process_info":{"foreground_process_group_id":517133,"foreground_processes":[{"argv":["/usr/bin/zsh"],"cmdline":"/usr/bin/zsh","cwd":"/tmp/lp-9ofrkpwt","name":"zsh","pid":517133}],"pane_id":"w1:p1","shell_pid":517133},"type":"pane_process_info"}}
+exit=0
+$ /tmp/lugarn-pane-after app apply-team
+{"protocol":1,"op":"apply-team","ok":true,"result":{"team":{"id":"pane-repro","name":"pane-repro","pattern":"custom","revision":1,"run":0,"state":"stopped","runner":{"state":"down","pid":null,"pane":null,"started_at":null,"heartbeat_at":null},"hops":{"used":0,"allowance":16,"base":16,"exhausted":false},"rounds":[],"counts":{"members":1,"running":0,"headless_turns":0,"queued":0,"held":0,"uncertain":0},"started_at":null,"stopped_at":null,"last_app_contact_at":"2026-10-27T00:39:51.772Z"},"warnings":[]}}
+exit=0
+$ herdr --session lugarn-test-aca81cffda41 pane list
+{"id":"cli:pane:list","result":{"panes":[{"agent_status":"unknown","cwd":"/tmp/lp-9ofrkpwt","focused":true,"foreground_cwd":"/tmp/lp-9ofrkpwt","pane_id":"w1:p1","revision":0,"scroll":{"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":40},"tab_id":"w1:t1","terminal_id":"term_65ec7af2f79341","workspace_id":"w1"},{"agent_status":"unknown","cwd":"/tmp/lp-9ofrkpwt/state","focused":false,"foreground_cwd":"/tmp/lp-9ofrkpwt/state","pane_id":"w2:p1","revision":0,"scroll":{"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":40},"tab_id":"w2:t1","terminal_id":"term_65ec7af3dcd6c2","workspace_id":"w2"}],"type":"pane_list"}}
+exit=0
+$ herdr --session lugarn-test-aca81cffda41 pane read w2:p1 --source recent-unwrapped --lines 15
+/tmp/lugarn-pane-after run --team pane-repro
+STARTUP_QUESTION: answer ready
+STARTUP_ANSWER=/tmp/lugarn-pane-after run --team pane-repro
+SHELL_READY>exit=0
+$ /tmp/lugarn-pane-after app start-team
+{"protocol":1,"op":"start-team","ok":false,"error":{"code":"runner_unavailable","message":"pane startup was not confirmed; the shell may be asking a startup question. Open a Herdr pane, answer or resolve the shell's startup questions, then retry","details":{"cause":"shell_not_ready"}}}
+exit=32 elapsed=15.079s
+$ /tmp/lugarn-pane-after app status
+{"protocol":1,"op":"status","ok":true,"result":{"teams":[{"id":"pane-repro","name":"pane-repro","pattern":"custom","revision":1,"run":1,"state":"stopped","runner":{"state":"down","pid":null,"pane":null,"started_at":null,"heartbeat_at":null},"hops":{"used":0,"allowance":16,"base":16,"exhausted":false},"rounds":[],"counts":{"members":1,"running":0,"headless_turns":0,"queued":0,"held":0,"uncertain":0},"started_at":"2026-10-27T00:39:51.803Z","stopped_at":"2026-10-27T00:40:06.852Z","last_app_contact_at":"2026-10-27T00:39:51.772Z"}],"cursor":"129a1d1e84fe1c284acf7ced12fd0728.5"}}
+exit=0
+Recovery: removed the scratch startup question and retried start-team
+$ /tmp/lugarn-pane-after app start-team
+{"protocol":1,"op":"start-team","ok":true,"result":{"team":{"id":"pane-repro","name":"pane-repro","pattern":"custom","revision":1,"run":2,"state":"running","runner":{"state":"up","pid":518594,"pane":"w3:p1","started_at":"2026-10-27T00:40:06.977Z","heartbeat_at":"2026-10-27T00:40:06.977Z"},"hops":{"used":0,"allowance":16,"base":16,"exhausted":false},"rounds":[],"counts":{"members":1,"running":0,"headless_turns":0,"queued":0,"held":0,"uncertain":0},"started_at":"2026-10-27T00:40:06.916Z","stopped_at":null,"last_app_contact_at":"2026-10-27T00:39:51.772Z"},"already_running":false}}
+exit=0
+$ herdr --session lugarn-test-aca81cffda41 pane process-info --pane w3:p1
+{"id":"cli:pane:process_info","result":{"process_info":{"foreground_process_group_id":518594,"foreground_processes":[{"argv":["/tmp/lugarn-pane-after","run","--team","pane-repro"],"cmdline":"/tmp/lugarn-pane-after run --team pane-repro","cwd":"/tmp/lp-9ofrkpwt/state","name":"lugarn-pane-aft","pid":518594},{"argv":["/home/lexde/.opencode/bin/opencode","--version"],"cmdline":"/home/lexde/.opencode/bin/opencode --version","cwd":"/tmp/lp-9ofrkpwt/state","name":"opencode","pid":518612}],"pane_id":"w3:p1","shell_pid":518588},"type":"pane_process_info"}}
+exit=0
+Runner inherited selected rootEnv values = {"LUGARN_COMMS_HOME": "/tmp/lp-9ofrkpwt/state", "LUGARN_COMMS_POINTER_HOME": "/tmp/lp-9ofrkpwt", "PATH": "/tmp/lp-9ofrkpwt/bin:/home/lexde/.local/go/bin:/home/lexde/.codex/packages/standalone/releases/0.164.0-x86_64-unknown-linux-musl/codex-path:/home/lexde/.opencode/bin:/home/lexde/.codex/tmp/arg0-linux/codex-arg07i5baO:/home/lexde/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"}
+$ /tmp/lugarn-pane-after app stop-team
+{"protocol":1,"op":"stop-team","ok":true,"result":{"team":{"id":"pane-repro","name":"pane-repro","pattern":"custom","revision":1,"run":2,"state":"stopped","runner":{"state":"down","pid":null,"pane":null,"started_at":"2026-10-27T00:40:06.977Z","heartbeat_at":"2026-10-27T00:40:06.977Z"},"hops":{"used":0,"allowance":16,"base":16,"exhausted":false},"rounds":[],"counts":{"members":1,"running":0,"headless_turns":0,"queued":0,"held":0,"uncertain":0},"started_at":"2026-10-27T00:40:06.916Z","stopped_at":"2026-10-27T00:40:07.362Z","last_app_contact_at":"2026-10-27T00:39:51.772Z"},"expired":0}}
+exit=0
+$ herdr --session lugarn-test-aca81cffda41 pane get w3:p1
+{"error":{"code":"pane_not_found","message":"pane w3:p1 not found"},"id":"cli:pane:get"}
+exit=1
+$ herdr --session lugarn-test-aca81cffda41 server stop
+exit=0
+$ herdr --session lugarn-test-aca81cffda41 session delete lugarn-test-aca81cffda41
+deleted session lugarn-test-aca81cffda41
+exit=0

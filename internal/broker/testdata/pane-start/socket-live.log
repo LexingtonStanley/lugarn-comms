@@ -1,0 +1,22 @@
+overlong-api HOME=/tmp/ls-g_fzfezv/hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+$ /tmp/lugarn-pane-after app start-herdr
+{"protocol": 1, "op": "start-herdr", "server": "lugarn-test-e7f96b41c34a"}
+{"protocol":1,"op":"start-herdr","ok":false,"error":{"code":"herdr_unavailable","message":"Herdr's socket path is too long; use a shorter HOME, XDG_CONFIG_HOME or session name","details":{"length":166,"limit":107,"path":"/tmp/ls-g_fzfezv/hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh/.config/herdr/sessions/lugarn-test-e7f96b41c34a/herdr.sock","reason":"socket_path_too_long"}}}
+exit=33 elapsed=0.064s
+$ herdr --session lugarn-test-e7f96b41c34a status --json
+Error: Custom { kind: InvalidInput, error: "local socket name length exceeds capacity of sun_path of sockaddr_un" }
+exit=1
+$ herdr --session lugarn-test-e7f96b41c34a session delete lugarn-test-e7f96b41c34a
+deleted session lugarn-test-e7f96b41c34a
+exit=0
+overlong-client-only HOME=/tmp/ls-mw37ioex/hhhhhhhhhhhhhhhhhhhhhhhhhhhh
+$ /tmp/lugarn-pane-after app start-herdr
+{"protocol": 1, "op": "start-herdr", "server": "lugarn-test-fb7fafb1b92d"}
+{"protocol":1,"op":"start-herdr","ok":false,"error":{"code":"herdr_unavailable","message":"Herdr's socket path is too long; use a shorter HOME, XDG_CONFIG_HOME or session name","details":{"length":111,"limit":107,"path":"/tmp/ls-mw37ioex/hhhhhhhhhhhhhhhhhhhhhhhhhhhh/.config/herdr/sessions/lugarn-test-fb7fafb1b92d/herdr-client.sock","reason":"socket_path_too_long"}}}
+exit=33 elapsed=0.057s
+$ herdr --session lugarn-test-fb7fafb1b92d status --json
+{"client":{"version":"0.9.5","channel":"stable","protocol":22,"endpoint_protocol_generation":1,"endpoint_capabilities":["surface_interest","presentation_effects_fence","health_check"],"remote_host_bridge":true,"remote_bridge_idle_timeout":true,"binary":"/home/lexde/.local/bin/herdr","session":"lugarn-test-fb7fafb1b92d"},"server":{"status":"not_running","running":false,"version":null,"protocol":null,"capabilities":null,"compatible":null,"endpoint_compatible":null,"socket":"/tmp/ls-mw37ioex/hhhhhhhhhhhhhhhhhhhhhhhhhhhh/.config/herdr/sessions/lugarn-test-fb7fafb1b92d/herdr.sock","session":"lugarn-test-fb7fafb1b92d","restart_needed":false,"server_binary_stale":false},"update":{"restart_needed":false,"server_binary_stale":false}}
+exit=0
+$ herdr --session lugarn-test-fb7fafb1b92d session delete lugarn-test-fb7fafb1b92d
+deleted session lugarn-test-fb7fafb1b92d
+exit=0

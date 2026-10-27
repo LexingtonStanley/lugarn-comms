@@ -1,0 +1,51 @@
+before HOME=/tmp/lp-f6anuiun SHELL=/usr/bin/zsh session=lugarn-test-b46b0dec7d9d
+.zshrc:
+print -r -- "STARTUP_QUESTION: answer ready"
+read -r answer
+print -r -- "STARTUP_ANSWER=$answer"
+PS1="SHELL_READY> "
+
+$ herdr --session lugarn-test-b46b0dec7d9d status --json
+{"client":{"version":"0.9.5","channel":"stable","protocol":22,"endpoint_protocol_generation":1,"endpoint_capabilities":["surface_interest","presentation_effects_fence","health_check"],"remote_host_bridge":true,"remote_bridge_idle_timeout":true,"binary":"/home/lexde/.local/bin/herdr","session":"lugarn-test-b46b0dec7d9d"},"server":{"status":"running","running":true,"version":"0.9.5","protocol":22,"capabilities":{"live_handoff":true,"detached_server_daemon":true,"endpoint_protocol_generation":1,"surface_interest":true,"health_check":true,"ssh_agent_registration":true},"compatible":true,"endpoint_compatible":true,"socket":"/tmp/lp-f6anuiun/.config/herdr/sessions/lugarn-test-b46b0dec7d9d/herdr.sock","session":"lugarn-test-b46b0dec7d9d","restart_needed":false,"server_binary_stale":false},"update":{"restart_needed":false,"server_binary_stale":false}}
+exit=0
+$ herdr --session lugarn-test-b46b0dec7d9d workspace create --cwd /tmp/lp-f6anuiun --label startup-evidence --no-focus
+{"id":"cli:workspace:create","result":{"root_pane":{"agent_status":"unknown","cwd":"/tmp/lp-f6anuiun","focused":true,"foreground_cwd":"/tmp/lp-f6anuiun","pane_id":"w1:p1","revision":0,"scroll":{"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":40},"tab_id":"w1:t1","terminal_id":"term_65ec79209d7f41","workspace_id":"w1"},"tab":{"agent_status":"unknown","focused":true,"label":"1","number":1,"pane_count":1,"tab_id":"w1:t1","workspace_id":"w1"},"type":"workspace_created","workspace":{"active_tab_id":"w1:t1","agent_status":"unknown","focused":true,"label":"startup-evidence","number":1,"pane_count":1,"tab_count":1,"workspace_id":"w1"}}}
+exit=0
+$ herdr --session lugarn-test-b46b0dec7d9d pane read w1:p1 --source recent-unwrapped --lines 10
+STARTUP_QUESTION: answer readyexit=0
+$ herdr --session lugarn-test-b46b0dec7d9d pane process-info --pane w1:p1
+{"id":"cli:pane:process_info","result":{"process_info":{"foreground_process_group_id":474060,"foreground_processes":[{"argv":["/usr/bin/zsh"],"cmdline":"/usr/bin/zsh","cwd":"/tmp/lp-f6anuiun","name":"zsh","pid":474060}],"pane_id":"w1:p1","shell_pid":474060},"type":"pane_process_info"}}
+exit=0
+$ herdr --session lugarn-test-b46b0dec7d9d pane run w1:p1 /usr/bin/touch /tmp/lp-f6anuiun/runner-was-executed
+exit=0
+$ herdr --session lugarn-test-b46b0dec7d9d pane read w1:p1 --source recent-unwrapped --lines 12
+STARTUP_QUESTION: answer ready
+/usr/bin/touch /tmp/lp-f6anuiun/runner-was-executed
+STARTUP_ANSWER=/usr/bin/touch /tmp/lp-f6anuiun/runner-was-executed
+SHELL_READY>exit=0
+typed command executed = False
+$ herdr --session lugarn-test-b46b0dec7d9d pane process-info --pane w1:p1
+{"id":"cli:pane:process_info","result":{"process_info":{"foreground_process_group_id":474060,"foreground_processes":[{"argv":["/usr/bin/zsh"],"cmdline":"/usr/bin/zsh","cwd":"/tmp/lp-f6anuiun","name":"zsh","pid":474060}],"pane_id":"w1:p1","shell_pid":474060},"type":"pane_process_info"}}
+exit=0
+$ /tmp/lugarn-pane-before app apply-team
+{"protocol":1,"op":"apply-team","ok":true,"result":{"team":{"id":"pane-repro","name":"pane-repro","pattern":"custom","revision":1,"run":0,"state":"stopped","runner":{"state":"down","pid":null,"pane":null,"started_at":null,"heartbeat_at":null},"hops":{"used":0,"allowance":16,"base":16,"exhausted":false},"rounds":[],"counts":{"members":1,"running":0,"headless_turns":0,"queued":0,"held":0,"uncertain":0},"started_at":null,"stopped_at":null,"last_app_contact_at":"2026-10-27T00:31:42.806Z"},"warnings":[{"code":"harness_unavailable","member":"pane-worker","message":"worker's harness codex isn't available on this host (unsupported_version)"}]}}
+exit=0
+$ herdr --session lugarn-test-b46b0dec7d9d pane list
+{"id":"cli:pane:list","result":{"panes":[{"agent_status":"unknown","cwd":"/tmp/lp-f6anuiun","focused":true,"foreground_cwd":"/tmp/lp-f6anuiun","pane_id":"w1:p1","revision":0,"scroll":{"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":40},"tab_id":"w1:t1","terminal_id":"term_65ec79209d7f41","workspace_id":"w1"},{"agent_status":"unknown","cwd":"/tmp/lp-f6anuiun/state","focused":false,"foreground_cwd":"/tmp/lp-f6anuiun/state","pane_id":"w2:p1","revision":0,"scroll":{"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":40},"tab_id":"w2:t1","terminal_id":"term_65ec792190b132","workspace_id":"w2"}],"type":"pane_list"}}
+exit=0
+$ herdr --session lugarn-test-b46b0dec7d9d pane read w2:p1 --source recent-unwrapped --lines 15
+/tmp/lugarn-pane-before run --team pane-repro
+STARTUP_QUESTION: answer ready
+STARTUP_ANSWER=/tmp/lugarn-pane-before run --team pane-repro
+SHELL_READY>exit=0
+$ /tmp/lugarn-pane-before app start-team
+{"protocol":1,"op":"start-team","ok":false,"error":{"code":"runner_unavailable","message":"runner could not start","details":{"failure":{"code":"runner_unavailable","message":"runner did not heartbeat within 15 seconds","details":{}}}}}
+exit=32 elapsed=15.123s
+$ /tmp/lugarn-pane-before app status
+{"protocol":1,"op":"status","ok":true,"result":{"teams":[{"id":"pane-repro","name":"pane-repro","pattern":"custom","revision":1,"run":1,"state":"stopped","runner":{"state":"down","pid":null,"pane":null,"started_at":null,"heartbeat_at":null},"hops":{"used":0,"allowance":16,"base":16,"exhausted":false},"rounds":[],"counts":{"members":1,"running":0,"headless_turns":0,"queued":0,"held":0,"uncertain":0},"started_at":"2026-10-27T00:31:42.844Z","stopped_at":"2026-10-27T00:31:57.928Z","last_app_contact_at":"2026-10-27T00:31:42.806Z"}],"cursor":"0462530d5eab324bedc73cfa277b16b5.5"}}
+exit=0
+$ herdr --session lugarn-test-b46b0dec7d9d server stop
+exit=0
+$ herdr --session lugarn-test-b46b0dec7d9d session delete lugarn-test-b46b0dec7d9d
+deleted session lugarn-test-b46b0dec7d9d
+exit=0
