@@ -1711,7 +1711,10 @@ show `message` for an unknown reason or cause. Some errors carry neither field.
 - **Protocol:** an integer, `1`. Every request carries it. `hello` negotiates it; every other op
   refuses a protocol the broker doesn't speak with `unsupported_version`. Within protocol 1,
   changes are additive (new optional request fields, new response fields, new event types,
-  new enum values only where clients are told to tolerate them: `capabilities`, `warnings`).
+  new enum values only where clients are told to tolerate them: `capabilities`, `warnings`,
+  and error `code`). A newer protocol-1 broker may add an error code matching
+  `^[a-z][a-z0-9_]{0,63}$`. A client must treat an unknown code as a failure and show its
+  `message`, and should treat the outcome of a state-changing op as unknown.
   Anything else is protocol 2.
 - **Team spec:** `version: 1`. `hello.schemas.team_spec` lists the versions the broker
   accepts; others get `unsupported_version`.
@@ -1779,6 +1782,8 @@ v1 keeps everything. No table is pruned.
 
 Every enum, with its full value list in schema order. `scripts/validate-schemas.py` checks this
 table against the schemas, and `scripts/check-migrations.py` checks the SQL against them.
+`ErrorCode` lists the known codes; wire Error records also accept future codes as described
+under [Versioning and compatibility](#versioning-and-compatibility).
 
 | Enum               | Values | Used in |
 | ------------------ | ------ | ------- |

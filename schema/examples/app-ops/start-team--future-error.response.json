@@ -1,0 +1,10 @@
+{
+  "protocol": 1,
+  "op": "start-team",
+  "ok": false,
+  "error": {
+    "code": "future_start_failure",
+    "message": "A newer broker reported a start failure; refresh the team status to determine the outcome.",
+    "details": {}
+  }
+}

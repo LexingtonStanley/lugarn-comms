@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "future_spawn_failure",
+    "message": "A newer broker reported a spawn failure; refresh the roster to determine the outcome.",
+    "details": {}
+  }
+}

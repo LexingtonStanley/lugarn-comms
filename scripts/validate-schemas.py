@@ -11,7 +11,7 @@ Checks, in order:
        mcp/<tool>[--x].input.json       mcp-tools.v1  #/$defs/<Tool>Input
        mcp/<tool>[--x].output.json      mcp-tools.v1  #/$defs/<Tool>Output
        mcp/<tool>[--x].error.json       mcp-tools.v1  #/$defs/ToolError
-  3. A few documents that must be rejected are rejected (conditional rules actually bite).
+  3. Compatibility cases are accepted and invalid documents are rejected.
   4. The enum table in docs/protocol.md ("## Enums") lists exactly the enums the schemas
      define, with exactly the same values.
 
@@ -133,7 +133,7 @@ for tool in tools:
         if not (EXAMPLES / "mcp" / f"{tool}.{part}.json").exists():
             fail(f"mcp/{tool}.{part}.json is missing")
 
-# 3. Documents that must be rejected --------------------------------------------------------
+# 3. Compatibility and rejection cases -----------------------------------------------------
 spec_ok = json.loads((EXAMPLES / "team-spec" / "writer-reviewer.json").read_text())
 
 
@@ -193,6 +193,30 @@ event["data"]["error"] = None
 check(event, event_v, "state change with null error")
 event["data"]["reason"] = "launch_failed"
 must_reject(event, event_v, "launch failure with null error")
+
+# Future protocol-1 error codes must work everywhere the shared Error is used,
+# including durable launch attention events, not just top-level app responses.
+future_response = json.loads((EXAMPLES / "app-ops" / "start-team--future-error.response.json").read_text())
+future_event = json.loads((EXAMPLES / "app-ops" / "timeline--launch-failed.response.json").read_text())["result"]["events"][0]
+for label, instance, error, v in [
+    ("app response", future_response, future_response["error"],
+     validator_for("app-ops.v1.schema.json", "/$defs/Response")),
+    ("watch error", {"type": "error", "at": "2026-10-26T14:05:30.210Z", "error": {}}, None,
+     validator_for("app-ops.v1.schema.json", "/$defs/WatchLine")),
+    ("MCP tool error", {"error": {}}, None,
+     validator_for("mcp-tools.v1.schema.json", "/$defs/ToolError")),
+    ("launch event", future_event, future_event["data"]["error"], event_v),
+]:
+    if error is None:
+        error = instance["error"]
+        error.update(message="Future broker failure", details={})
+    for code in ("a", "future_failure_2", "a" * 64):
+        error["code"] = code
+        if check(instance, v, f"{label} with future code of length {len(code)}"):
+            ok(f"accepts: {label} with future code of length {len(code)}")
+    for code in ("", "Future_failure", "9failure", "future-failure", "a" * 65, None, 1):
+        error["code"] = code
+        must_reject(instance, v, f"{label} with invalid error code {code!r}")
 
 # 4. Enum table in docs/protocol.md ---------------------------------------------------------
 schema_enums: dict[str, list[str]] = {}
