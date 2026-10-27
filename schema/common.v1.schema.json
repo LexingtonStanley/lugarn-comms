@@ -438,6 +438,7 @@
       ]
     },
     "ErrorCode": {
+      "description": "Known error codes. This list documents current broker values; wire Error.code also accepts future protocol-1 codes.",
       "type": "string",
       "enum": [
         "internal",
@@ -469,7 +470,15 @@
       "type": "object",
       "properties": {
         "code": {
-          "$ref": "#/$defs/ErrorCode"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            }
+          ]
         },
         "message": {
           "type": "string",

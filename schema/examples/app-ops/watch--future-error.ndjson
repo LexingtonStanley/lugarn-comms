@@ -1,0 +1,1 @@
+{"type":"error","at":"2026-10-26T14:05:30.210Z","error":{"code":"future_watch_failure","message":"A newer broker reported a watch failure; reconnect after refreshing the team status.","details":{}}}

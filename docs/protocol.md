@@ -339,7 +339,8 @@ is fresh.
 
 ### start-team
 
-Fails with `herdr_unavailable` if the team's Herdr server isn't running; the app offers
+Fails with `herdr_unavailable` if Herdr isn't installed (`details.reason: not_installed`)
+or the team's Herdr server isn't running (`details.reason: not_running`); the app offers
 **Start Herdr**. Starting a running team succeeds with `already_running: true`.
 
 In one transaction it bumps the run, resets the hop budget and review rounds, and sets the
@@ -361,6 +362,10 @@ means `details.cause: runner_no_heartbeat` (the runner started but never heartbe
 another process, or unavailable process information leaves startup unconfirmed and reports
 `details.cause: shell_not_ready`. The latter message suggests resolving shell startup questions.
 The process inspection is bounded to 2 additional seconds before pane cleanup.
+If a shell-safe native runner bridge cannot be made, `runner_unavailable` instead has
+`details.reason: unresolvable`. Other runner command failures may carry a nested Error in
+`details.failure`; a stale heartbeat refusal has neither a reason nor a cause.
+The unimplemented launcher seam uses `details.reason: not_built`.
 Herdr 0.9.5 creates a pane running the configured shell (or `SHELL`) and `pane run` types into
 it. It offers neither exact-argv creation nor a shell-prompt readiness signal; foreground
 process information cannot distinguish an rc-file `read` from an idle prompt.
@@ -385,7 +390,9 @@ Documents known folder. Profile questions can still consume the typed command, w
 same timeout diagnosis. Failed starts retain the usual pane cleanup; the diagnostic doesn't
 leave a runner running behind a stopped team.
 
-The runner then launches every spec member in its home mode ([Leases](#leases-and-launches)).
+The runner then launches every spec member concurrently in its home mode
+([Leases](#leases-and-launches)). Each member's own events are ordered; the relative order
+of different members' events in one start is not fixed.
 Pane members get a pane and `herdr agent start`; headless members get a headless lease and no
 process until they have something to do. A pane-mode member on Codex or OpenCode first runs
 one headless turn with its brief alone, and gets its task in the pane
@@ -458,8 +465,11 @@ state always `running`, no lease, no harness.
 | `stopped`  | No driver. New members start here, with no `stop_reason`.                           |
 
 `stopped → starting → running → stopping → stopped`, and `starting → stopped` with
-`launch_failed`. A member enters `starting` when the runner begins its launch, or when `spawn`
-inserts it. Only the runner moves a member to `running`.
+`launch_failed`. A member enters `starting` when the runner begins its launch, before
+worktree preparation, harness/binary resolution and workdir checks, or when `spawn` inserts
+it. If those checks fail for a stopped member's launch, it emits `member.state_changed`
+`stopped → starting`, then `starting → stopped` with `reason: launch_failed` and the failure
+in `error`. Only the runner moves a member to `running`.
 
 **How a member becomes stopped:**
 
@@ -506,6 +516,10 @@ conditional on it, so work started under an older generation can't land.
 | any        | `none`     | stop-member, `stop`, stop-team                                           | runner, or stop-team's op | `stop` |
 
 Each change emits `lease.changed` with the full member record.
+
+A launch from `stopped` first emits `member.state_changed` `stopped → starting`, before
+its launch checks. A failed check then emits `starting → stopped` with
+`reason: launch_failed` and `error`; it does not skip `starting` or reach `running`.
 
 ### A session before a pane
 
@@ -1426,6 +1440,7 @@ of the request's `paths`.
 Request: `server` (default `default`). Result: `herdr`, `started`, `method` (`detached`,
 `systemd`, `wmi`, or null if it was already running). Errors: `herdr_unavailable`
 (`details.reason: not_installed`, `socket_path_too_long`, or `start_timeout`).
+The unimplemented start-herdr seam uses `details.reason: not_running`.
 
 - If the server already answers, nothing happens: `started: false`.
 - Before starting on POSIX, the broker computes the socket paths before calling Herdr
@@ -1480,6 +1495,10 @@ Request: `team` (optional; absent means every team, plus host-level events), `af
 4. It ends with exit 0 when stdin closes or stdout breaks. A failure, including an invalid
    request, is one `error` line, then exit with the error's code.
 
+Replay and live events follow the store's event sequence. Members launch concurrently:
+each member's own events are ordered, but the relative order of different members' events
+within one start is not fixed across runs.
+
 `cursor_invalid` means the cursor came from another host or database (or is ahead of it). The
 app then resyncs: `status`, `members`, the timeline's tail, and a fresh `watch`. v1 never
 prunes events, so a valid cursor never expires.
@@ -1496,7 +1515,9 @@ Every event is a row in the store's `events` table, which is also the audit log.
 ```
 
 `timeline` says whether the event is a timeline item. `data` is a snapshot taken when the
-event was written.
+event was written. Events are emitted in store sequence order. Within one start, members
+launch concurrently, so each member's own events are ordered, while events for different
+members can interleave in any relative order; clients must not assume spec or roster order.
 
 | Type                      | `data`                                                    | Timeline                       | Written by                     |
 | ------------------------- | --------------------------------------------------------- | ------------------------------ | ------------------------------ |
@@ -1525,6 +1546,10 @@ the claimed member is unknown.
 
 `watch` adds three line types that aren't stored: `watch.live`, `heartbeat`, `error`.
 
+For a launch from `stopped`, `member.state_changed` records `stopped → starting` before
+launch checks run. If a check fails, the next state change for that member is
+`starting → stopped`, with `reason: launch_failed` and the failure in `error`.
+
 ### Attention
 
 The broker doesn't keep an attention list; the app derives its Inbox items from events:
@@ -1541,8 +1566,8 @@ The broker doesn't keep an attention list; the app derives its Inbox items from 
 | A trust question or other dialog  | `member.activity_changed` to `blocked`                          | activity leaving `blocked`                           |
 
 `member.state_changed`'s `error` is the failure when `reason` is `launch_failed`: an `Error`
-(`code`, `message`, `details`, with `details.cause` naming what failed, such as
-`workdir_missing`, `resume_picker` or `unresolvable`), else absent or null. Older brokers
+(`code`, `message`, `details`, with `details.cause` naming what failed; see the complete
+current list under [Errors](#errors)), else absent or null. Older brokers
 may omit `error` even for `launch_failed`. `details.cause` is an open set: the app shows
 `error.message` for any cause it does not know. The [Errors](#errors) privacy rule applies
 to this event too. That's how the person learns why a launch failed. The runner's own log
@@ -1647,11 +1672,11 @@ The plan's `unsupported-version` is `unsupported_version` here.
 
 | Code                  | Exit | Meaning                                                                                     |
 | --------------------- | ---- | ------------------------------------------------------------------------------------------- |
-| `internal`            | 1    | A bug or an unexpected failure. `details.cause` when there is one.                          |
-| `invalid_request`     | 2    | Malformed JSON, a schema violation, a semantic check (`details.errors`), an illegal action  |
-| `unauthenticated`     | 3    | No token, a wrong token, or one from an ended launch                                        |
+| `internal`            | 1    | A bug or an unexpected failure. Fixed `details.cause`: `herdr_failed`; the unimplemented runner driver seam uses `details.reason: not_built`. |
+| `invalid_request`     | 2    | Malformed JSON, a schema violation, a semantic check (`details.errors`), an illegal action. Herdr argument checks use `details.reason`: `not_utf8`, `nul_byte`, `env_name`, `herdr_agent_name`, `herdr_session_name`, `unquotable`, `prompt_size`. |
+| `unauthenticated`     | 3    | No token, a wrong token, or one from an ended launch (`details.reason: launch_ended` on the last). |
 | `unsupported_version` | 4    | Protocol, spec version or store version the binary doesn't support (`details.supported`)    |
-| `not_found`           | 10   | No such team, message or request                                                            |
+| `not_found`           | 10   | No such team, message or request; a vanished Herdr agent or pane has `details.reason: gone`. |
 | `unknown_member`      | 11   | No live member by that name (agents) or id (app)                                            |
 | `denied`              | 20   | The grid refuses (`details.action`, `details.message_id`), or `stop` on another's worker (`details.reason: not_spawner`) |
 | `spawn_disabled`      | 21   | The caller can't spawn                                                                      |
@@ -1659,24 +1684,37 @@ The plan's `unsupported-version` is `unsupported_version` here.
 | `harness_not_allowed` | 23   | Not in the spawner's harnesses                                                              |
 | `profile_too_high`    | 24   | Above the effective highest profile (`details.requested`, `details.highest`)                |
 | `nesting_not_allowed` | 25   | A spawned worker tried to spawn                                                             |
-| `name_taken`          | 26   | A live member or another team already has the name                                          |
+| `name_taken`          | 26   | A live member or another team already has the name; a store uniqueness conflict has `details.cause: name_taken`. |
 | `team_not_running`    | 30   | The op needs a running team                                                                 |
 | `team_running`        | 31   | The change needs the team stopped (`details.fields`)                                        |
-| `runner_unavailable`  | 32   | The runner's heartbeat is stale, or it didn't start                                         |
-| `herdr_unavailable`   | 33   | Herdr isn't installed, or its server isn't running or didn't start (`details.reason`: `not_installed`, `not_running`, `start_timeout`) |
-| `harness_unavailable` | 34   | The harness isn't installed, its version is unsupported, or on Windows only a shim was found (`details.reason`: `not_installed`, `unsupported_version`, `shim_only`) |
-| `launch_failed`       | 35   | A worktree, pane or harness launch failed (`details.cause`)                                 |
-| `lease_conflict`      | 40   | The lease isn't in the expected state or generation, the member has an open request, or another runner holds the team |
+| `runner_unavailable`  | 32   | The runner's heartbeat is stale, or it didn't start. `details.cause`: `shell_not_ready`, `runner_no_heartbeat`; `details.reason`: `unresolvable` (native bridge), `not_built` (unimplemented launcher seam). A stale heartbeat has neither; other command failures may have a nested Error in `details.failure`. |
+| `herdr_unavailable`   | 33   | Herdr isn't installed, or its server isn't running or didn't start (`details.reason`: `not_installed`, `not_running`, `socket_path_too_long`, `start_timeout`). |
+| `harness_unavailable` | 34   | The harness isn't installed, its version is unsupported, on Windows only a shim was found, or its pinned native launch cannot be guaranteed (`details.reason`: `not_installed`, `unsupported_version`, `shim_only`, `unresolvable`). |
+| `launch_failed`       | 35   | A worktree, pane or harness launch failed. `details.cause`: `git_unavailable`, `worktree_create_failed`, `repository at a filesystem root`, `worktree paths taken`, `workdir_missing`, `workdir_changed`, `rollout_missing`, `resume_picker`, `shell_not_ready`, `bootstrap_no_marker`, `agent_not_detected`, `herdr_failed`, `unresolvable`, `launch_failed`, or a retained reason as described below. |
+| `lease_conflict`      | 40   | The lease isn't in the expected state or generation, the member has an open request, or another runner holds the team. Store conflicts use `details.cause`: `open_request`, `live_turn`. |
 | `revision_conflict`   | 41   | `if_revision` isn't the current revision                                                    |
 | `cursor_invalid`      | 42   | The cursor is from another host or database                                                 |
 | `timeout`             | 43   | A bounded wait ran out (`details.member` for spawn)                                         |
+
+Launch failure normalization preserves an existing `details.cause`; if none exists, it
+copies `details.reason` to `details.cause`, or uses `launch_failed` when neither exists.
+The retained reasons are `not_installed`, `not_running`, `gone`, `unsupported_version`,
+`shim_only`, `unresolvable`, `not_utf8`, `nul_byte`, `env_name`, `herdr_agent_name`,
+`herdr_session_name`, `unquotable`, `prompt_size`, and `not_built` (unimplemented pane driver).
+When present, `details.reason` is
+retained too. `unresolvable` always becomes the cause; a different original cause is kept in
+`details.underlying_cause`. These are the current broker values, not a closed set: clients
+show `message` for an unknown reason or cause. Some errors carry neither field.
 
 ## Versioning and compatibility
 
 - **Protocol:** an integer, `1`. Every request carries it. `hello` negotiates it; every other op
   refuses a protocol the broker doesn't speak with `unsupported_version`. Within protocol 1,
   changes are additive (new optional request fields, new response fields, new event types,
-  new enum values only where clients are told to tolerate them: `capabilities`, `warnings`).
+  new enum values only where clients are told to tolerate them: `capabilities`, `warnings`,
+  and error `code`). A newer protocol-1 broker may add an error code matching
+  `^[a-z][a-z0-9_]{0,63}$`. A client must treat an unknown code as a failure and show its
+  `message`, and should treat the outcome of a state-changing op as unknown.
   Anything else is protocol 2.
 - **Team spec:** `version: 1`. `hello.schemas.team_spec` lists the versions the broker
   accepts; others get `unsupported_version`.
@@ -1744,6 +1782,8 @@ v1 keeps everything. No table is pruned.
 
 Every enum, with its full value list in schema order. `scripts/validate-schemas.py` checks this
 table against the schemas, and `scripts/check-migrations.py` checks the SQL against them.
+`ErrorCode` lists the known codes; wire Error records also accept future codes as described
+under [Versioning and compatibility](#versioning-and-compatibility).
 
 | Enum               | Values | Used in |
 | ------------------ | ------ | ------- |
