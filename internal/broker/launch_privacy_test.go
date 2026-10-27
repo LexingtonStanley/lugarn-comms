@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -157,6 +158,129 @@ func TestHeadlessFailurePrivacyBeforeLaunch(t *testing.T) {
 			var output bytes.Buffer
 			fmt.Fprintln(&output, err)
 			assertPrivateFailure(t, b, err, output.String())
+		})
+	}
+}
+
+const publicTurnReason = "error: unknown option '--standalone'"
+const hostTurnSecret = "SENTINEL_HOST_API_KEY_PRIVATE"
+
+func init() {
+	integrationHelpers["headless-private-failure"] = func() int {
+		mode := os.Getenv("LUGARN_PRIVATE_FAILURE_MODE")
+		reason := publicTurnReason
+		if mode != "plain" {
+			token, _ := os.ReadFile(os.Getenv("LUGARN_COMMS_TOKEN_FILE"))
+			reason = os.Getenv("PRIVATE_TEST") + " " + os.Getenv("LUGARN_PRIVATE_API_KEY") + " " + strings.TrimSpace(string(token)) + " " + reason
+		}
+		switch mode {
+		case "claude":
+			_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"type": "result", "is_error": true, "result": reason})
+		case "codex":
+			_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"type": "turn.failed", "error": map[string]any{"message": reason}})
+		case "opencode":
+			_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"type": "error", "error": map[string]any{"data": map[string]any{"message": reason}}})
+		default:
+			fmt.Fprintln(os.Stderr, "earlier stderr line")
+			fmt.Fprintln(os.Stderr, reason)
+			fmt.Fprintln(os.Stderr)
+		}
+		return 7
+	}
+}
+
+func TestHeadlessFailureReasonSurvivesWithSecretsScrubbed(t *testing.T) {
+	for _, mode := range []string{"claude", "codex", "opencode", "stderr", "plain"} {
+		t.Run(mode, func(t *testing.T) {
+			b, _ := setup(t)
+			ctx := context.Background()
+			t.Setenv("LUGARN_PRIVATE_API_KEY", hostTurnSecret)
+			binary, e := os.Executable()
+			must(t, e)
+			kind := model.HarnessCodex
+			if mode == "claude" {
+				kind = model.HarnessClaude
+			} else if mode == "opencode" {
+				kind = model.HarnessOpenCode
+				b.opts.Probe = openCodeProbe{}
+			}
+			must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+				return tx.UpdateMember("writer", store.MemberPatch{Harness: ptr(&kind)}, b.now())
+			}))
+			runnerReady(t, b)
+			i, e := NewIntegration(b, IntegrationOptions{Binary: binary, HomeDir: t.TempDir(), ExtraEnv: map[string]string{
+				"LUGARN_INTEGRATION_HELPER": "headless-private-failure", "LUGARN_PRIVATE_FAILURE_MODE": mode, "PRIVATE_TEST": launchSecret,
+			}})
+			must(t, e)
+			r := i.Runner("t", RunnerOptions{Binary: func(model.Harness) (string, error) { return binary, nil }, Processes: &fakeProcesses{alive: true, birth: "fake"}})
+			must(t, r.acquire(ctx))
+			var member *model.Member
+			must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; member, e = tx.GetMember("writer"); return e }))
+			member, e = r.launchHeadless(ctx, *member, model.LeaseCauseStart)
+			must(t, e)
+			// This is the launch's own token, created in this test's scratch state.
+			token, e := os.ReadFile(filepath.Join(b.opts.StateDir, "launch", *member.Lease.Launch+".token"))
+			must(t, e)
+			sendToWriter(t, b, "test failure diagnostics")
+			must(t, r.runTurn(ctx, *member))
+			want := publicTurnReason
+			if mode != "plain" {
+				want = "‹redacted› ‹redacted› ‹redacted› " + want
+			}
+			var turnError string
+			must(t, b.db.Read(ctx, func(tx *store.Tx) error {
+				turns, e := tx.ListTurns("writer", 10)
+				if e != nil {
+					return e
+				}
+				if len(turns) != 1 || turns[0].Status != model.TurnStatusFailed || turns[0].Error == nil {
+					t.Fatalf("missing failed turn: %+v", turns)
+				}
+				turnError = *turns[0].Error
+				if turnError != want {
+					t.Fatalf("reason = %q, want %q", turnError, want)
+				}
+				events, e := tx.ReplayEvents(0, ptr("t"), 0)
+				if e != nil {
+					return e
+				}
+				found := false
+				for _, event := range events {
+					for _, secret := range []string{launchSecret, hostTurnSecret, strings.TrimSpace(string(token))} {
+						if bytes.Contains(event.Data, []byte(secret)) {
+							t.Fatal("secret entered durable event", event.Type)
+						}
+					}
+					if event.Type == model.EventTurnFinished {
+						var data struct {
+							Turn model.Turn `json:"turn"`
+						}
+						must(t, json.Unmarshal(event.Data, &data))
+						if data.Turn.Error == nil || *data.Turn.Error != want {
+							t.Fatal("event lost useful failure reason")
+						}
+						found = true
+					}
+				}
+				if !found {
+					t.Fatal("missing turn.finished event")
+				}
+				return nil
+			}))
+			var output bytes.Buffer
+			old := log.Writer()
+			log.SetOutput(&output)
+			defer log.SetOutput(old)
+			b.opts.Wait = func(context.Context, time.Duration) error { return nil }
+			r.paneRetry(ctx, *member, model.NewError(model.ErrorLaunchFailed, turnError))
+			for _, secret := range []string{launchSecret, hostTurnSecret, strings.TrimSpace(string(token))} {
+				if strings.Contains(output.String(), secret) {
+					t.Fatal("secret entered runner log")
+				}
+			}
+			if !strings.Contains(output.String(), publicTurnReason) {
+				t.Fatal("logger lost failure reason")
+			}
 		})
 	}
 }

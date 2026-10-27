@@ -47,24 +47,19 @@ func Status(o Outcome) model.TurnStatus {
 // Parser consumes one JSON event at a time. Unknown events are ignored. It is
 // intentionally single-consumer; a running Handle owns its parser.
 type Parser struct {
-	harness   model.Harness
-	outcome   Outcome
-	malformed string
-	completed bool
-	messageID string
+	harness         model.Harness
+	outcome         Outcome
+	malformed       string
+	completed       bool
+	messageID       string
+	reportedFailure bool
+	scrub           failureScrubber
 }
 
 func NewParser(h model.Harness, sessionID string) *Parser {
-	return &Parser{harness: h, outcome: Outcome{SessionID: sessionID}}
+	return &Parser{harness: h, outcome: Outcome{SessionID: sessionID}, scrub: newFailureScrubber(nil, nil, "")}
 }
 
-func oneLine(s string) string {
-	s = strings.Join(strings.Fields(s), " ")
-	if len(s) > 2000 {
-		s = s[:2000]
-	}
-	return s
-}
 func object(v any) map[string]any { m, _ := v.(map[string]any); return m }
 func str(v any) string            { s, _ := v.(string); return s }
 func integer(v any) *int64 {
@@ -108,7 +103,7 @@ func contentText(v any) string {
 
 func (p *Parser) fail(s string) {
 	if p.outcome.Error == "" {
-		p.outcome.Error = oneLine(s)
+		p.outcome.Error = p.scrub(s)
 	}
 }
 func (p *Parser) session(id string) {
@@ -149,11 +144,29 @@ func (p *Parser) Line(line []byte) *Event {
 		if typ == "result" {
 			p.session(str(e["session_id"]))
 			p.completed = true
-			if text := str(e["result"]); text != "" {
-				p.outcome.FinalText = text
+			failed := e["is_error"] == true
+			reason := ""
+			if failed {
+				reason = str(e["result"])
 			}
-			if e["is_error"] == true {
-				p.fail("Claude reported a failed result")
+			if reason == "" {
+				var reasons []string
+				entries, _ := e["errors"].([]any)
+				for _, entry := range entries {
+					if text := str(entry); text != "" {
+						reasons = append(reasons, text)
+					}
+				}
+				if len(reasons) > 0 {
+					failed = true
+					reason = strings.Join(reasons, "; ")
+				}
+			}
+			if failed {
+				p.reportedFailure = true
+				p.fail(reason)
+			} else if text := str(e["result"]); text != "" {
+				p.outcome.FinalText = text
 			}
 			u := object(e["usage"])
 			p.setUsage(u, "cache_read_input_tokens", "reasoning_tokens")
@@ -187,7 +200,12 @@ func (p *Parser) Line(line []byte) *Event {
 			p.setUsage(object(e["usage"]), "cached_input_tokens", "reasoning_output_tokens")
 		}
 		if typ == "turn.failed" || typ == "error" {
-			p.fail("Codex reported a failed turn")
+			p.reportedFailure = true
+			reason := str(object(e["error"])["message"])
+			if reason == "" {
+				reason = str(e["message"])
+			}
+			p.fail(reason)
 		}
 	case model.HarnessOpenCode:
 		if typ != "step_start" && typ != "text" && typ != "step_finish" && typ != "error" {
@@ -214,7 +232,13 @@ func (p *Parser) Line(line []byte) *Event {
 			p.addOpenCodeUsage(part)
 		}
 		if typ == "error" || e["error"] != nil {
-			p.fail("OpenCode reported a failed turn")
+			p.reportedFailure = true
+			failure := object(e["error"])
+			reason := str(object(failure["data"])["message"])
+			if reason == "" {
+				reason = str(failure["name"])
+			}
+			p.fail(reason)
 		}
 	}
 	if ack && !p.outcome.Acknowledged {
@@ -276,19 +300,31 @@ func (p *Parser) Finish(exitCode int, cancelled, timedOut bool, stderr string) O
 	o.Cancelled = cancelled
 	o.TimedOut = timedOut
 	if !cancelled && !timedOut {
+		if o.Error == "" && exitCode != 0 {
+			lines := strings.Split(stderr, "\n")
+			for i := len(lines) - 1; i >= 0; i-- {
+				if line := p.scrub(lines[i]); line != "" {
+					o.Error = line
+					break
+				}
+			}
+			if o.Error == "" {
+				o.Error = fmt.Sprintf("harness exited %d", exitCode)
+			}
+		}
+		if o.Error == "" && p.reportedFailure {
+			o.Error = "harness reported a failed turn"
+		}
 		if o.Error == "" && !o.Acknowledged {
 			o.Error = "harness ended before acknowledgement"
 		}
 		if o.Error == "" && !p.completed && strings.TrimSpace(o.FinalText) == "" {
 			o.Error = "harness ended without a final response"
 		}
-		if o.Error == "" && exitCode != 0 {
-			o.Error = fmt.Sprintf("harness exited %d", exitCode)
-		}
 		if o.Error != "" && p.malformed != "" {
 			o.Error += "; " + p.malformed
 		}
 	}
-	o.Error = oneLine(o.Error)
+	o.Error = p.scrub(o.Error)
 	return o
 }

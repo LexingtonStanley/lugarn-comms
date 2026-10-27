@@ -2,9 +2,11 @@ package harness
 
 import (
 	"bufio"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 )
@@ -119,5 +121,65 @@ func TestStatus(t *testing.T) {
 		if got := Status(tc.o); got != tc.want {
 			t.Fatalf("%+v: %s", tc.o, got)
 		}
+	}
+}
+
+func TestFailureReasonSources(t *testing.T) {
+	for _, tc := range []struct {
+		name               string
+		h                  model.Harness
+		line, stderr, want string
+		exit               int
+	}{
+		{"claude result", model.HarnessClaude, `{"type":"result","is_error":true,"result":"auth failed"}`, "ignored stderr", "auth failed", 1},
+		{"claude errors without flag", model.HarnessClaude, `{"type":"result","errors":["auth failed"]}`, "", "auth failed", 0},
+		{"claude errors", model.HarnessClaude, `{"type":"result","is_error":true,"errors":["no credits",{"message":"ignored"},"try later"]}`, "", "no credits; try later", 0},
+		{"codex error", model.HarnessCodex, `{"type":"turn.failed","error":{"message":"rate limited"},"message":"ignored"}`, "", "rate limited", 1},
+		{"codex message", model.HarnessCodex, `{"type":"error","message":"auth failed"}`, "", "auth failed", 0},
+		{"opencode data", model.HarnessOpenCode, `{"type":"error","error":{"data":{"message":"no credits"},"name":"ignored"}}`, "", "no credits", 1},
+		{"opencode name", model.HarnessOpenCode, `{"type":"error","error":{"name":"UnknownFlagError"}}`, "", "UnknownFlagError", 0},
+		{"stderr before ack", model.HarnessCodex, `{"type":"future"}`, "old line\nerror: unknown option '--standalone'\n  \n\x00", "error: unknown option '--standalone'", 1},
+		{"no raw fallback", model.HarnessCodex, `{"type":"error","payload":"PRIVATE_RAW_LINE"}`, "", "harness reported a failed turn", 0},
+		{"no opencode raw fallback", model.HarnessOpenCode, `{"type":"error","error":{"payload":"PRIVATE_RAW_LINE"}}`, "", "harness reported a failed turn", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := NewParser(tc.h, "")
+			p.Line([]byte(tc.line))
+			out := p.Finish(tc.exit, false, false, tc.stderr)
+			if out.Error != tc.want || Status(out) != model.TurnStatusFailed {
+				t.Fatalf("got %+v, want error %q", out, tc.want)
+			}
+		})
+	}
+}
+func TestStructuredFailureIsScrubbedBeforeOutcome(t *testing.T) {
+	for _, h := range []model.Harness{model.HarnessClaude, model.HarnessCodex, model.HarnessOpenCode} {
+		t.Run(string(h), func(t *testing.T) {
+			p := NewParser(h, "")
+			p.scrub = newFailureScrubber(map[string]string{"VALUE": "private-value"}, nil, "")
+			reason := "private-value " + strings.Repeat("狐", 400)
+			var event map[string]any
+			switch h {
+			case model.HarnessClaude:
+				event = map[string]any{"type": "result", "is_error": true, "result": reason}
+			case model.HarnessCodex:
+				event = map[string]any{"type": "turn.failed", "error": map[string]any{"message": reason}}
+			case model.HarnessOpenCode:
+				event = map[string]any{"type": "error", "error": map[string]any{"data": map[string]any{"message": reason}}}
+			}
+			raw, e := json.Marshal(event)
+			if e != nil {
+				t.Fatal(e)
+			}
+			p.Line(raw)
+			// Check the stored parser outcome too, before Finish can sanitize anything.
+			if strings.Contains(p.outcome.Error+p.outcome.FinalText, "private-value") {
+				t.Fatal("unscrubbed reason entered outcome")
+			}
+			out := p.Finish(1, false, false, "")
+			if !strings.HasPrefix(out.Error, "‹redacted› ") || utf8.RuneCountInString(out.Error) != 300 {
+				t.Fatal(out.Error)
+			}
+		})
 	}
 }

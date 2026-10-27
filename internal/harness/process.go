@@ -47,6 +47,7 @@ type Handle struct {
 	cancelled    bool
 	timedOut     bool
 	controlError string
+	scrub        failureScrubber
 	outcome      Outcome
 }
 
@@ -122,7 +123,12 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 	}
 	cmd := exec.Command(binary, args...)
 	cmd.Dir = l.WorkDir
-	cmd.Env = mergeEnv(os.Environ(), overrides, l.Harness == model.HarnessOpenCode)
+	hostEnv := os.Environ()
+	cmd.Env = mergeEnv(hostEnv, overrides, l.Harness == model.HarnessOpenCode)
+	// Read only this launch's own broker-generated token, never provider auth.
+	// Some test/direct callers do not create a token file.
+	launchToken, _ := os.ReadFile(l.TokenPath())
+	scrub := newFailureScrubber(overrides, hostEnv, strings.TrimSpace(string(launchToken)))
 	cmd.Stdin = strings.NewReader(prompt)
 	// Bound pipe-drain time if a descendant keeps an inherited handle open.
 	cmd.WaitDelay = time.Second
@@ -131,8 +137,9 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 		return nil, model.NewError(model.ErrorLaunchFailed, "cannot create process group").WithDetails(model.ErrorLocation(err))
 	}
 	events := make(chan Event, 1)
-	h := &Handle{JobName: group.jobName(), cmd: cmd, group: group, done: make(chan struct{}), Events: events}
+	h := &Handle{JobName: group.jobName(), cmd: cmd, group: group, done: make(chan struct{}), Events: events, scrub: scrub}
 	p := NewParser(l.Harness, l.SessionID)
+	p.scrub = scrub
 	stream := &eventWriter{parser: p, emit: func(e Event) { events <- e }, abort: func() { h.stop(false, false) }}
 	stderr := &tailWriter{}
 	cmd.Stdout = stream
@@ -168,12 +175,12 @@ func (d Driver) Start(ctx context.Context, l Launch, prompt string) (*Handle, er
 		// Normal root exit must not strand descendants, even though Windows
 		// jobs intentionally do not kill when their last handle is closed.
 		if err := group.finish(); err != nil && h.controlError == "" {
-			h.controlError = oneLine(err.Error())
+			h.controlError = h.scrub(err.Error())
 		}
 		group.close()
 		h.outcome = p.Finish(exit, h.cancelled, h.timedOut, string(stderr.data))
 		if h.controlError != "" {
-			h.outcome.Error = oneLine(h.outcome.Error + "; process cleanup: " + h.controlError)
+			h.outcome.Error = h.scrub(h.outcome.Error + "; process cleanup: " + h.controlError)
 		}
 		h.finished = true
 		close(events)
@@ -201,7 +208,7 @@ func (h *Handle) stop(cancelled, timedOut bool) {
 		h.timedOut = h.timedOut || timedOut
 	}
 	if err := h.group.kill(); err != nil && h.controlError == "" {
-		h.controlError = oneLine(err.Error())
+		h.controlError = h.scrub(err.Error())
 	}
 }
 
