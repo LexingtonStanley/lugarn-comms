@@ -101,3 +101,64 @@ func TestSpawnLaunchFailureEvent(t *testing.T) {
 	must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; m, e = tx.GetLiveMember("t", "broken"); return e }))
 	assertLaunchFailureEvent(t, b, m.ID, "unresolvable")
 }
+
+func TestHeadlessLaunchChecksFailFromStarting(t *testing.T) {
+	for _, check := range []string{"worktree", "binary", "workdir"} {
+		t.Run(check, func(t *testing.T) {
+			b, _ := setup(t)
+			ctx := context.Background()
+			must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+				return tx.SetMemberState("writer", model.MemberStateStopped, nil, nil, nil, b.now())
+			}))
+			runnerReady(t, b)
+			r := NewRunner(b, "t", RunnerOptions{Files: fakeLaunchFiles{}, Binary: func(model.Harness) (string, error) { return "fake", nil }})
+			must(t, r.acquire(ctx))
+			var m *model.Member
+			must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; m, e = tx.GetMember("writer"); return e }))
+			failure := model.NewError(model.ErrorHarnessUnavailable, "launch check failed").WithDetail("cause", check)
+			switch check {
+			case "worktree":
+				r.prepareMember = func(_ context.Context, m model.Member) (*model.Member, error) {
+					if m.State != model.MemberStateStarting {
+						t.Fatal("worktree preparation preceded starting", m.State)
+					}
+					return nil, failure
+				}
+			case "binary":
+				r.opts.Binary = func(model.Harness) (string, error) { return "", failure }
+			case "workdir":
+				m.Workdir = ptr(t.TempDir() + "/missing")
+				r.prepareMember = func(_ context.Context, current model.Member) (*model.Member, error) {
+					current.Workdir = m.Workdir
+					return &current, nil
+				}
+			}
+			_, err := r.launchHeadless(ctx, *m, model.LeaseCauseStart)
+			code(t, err, model.ErrorLaunchFailed)
+			must(t, b.db.Read(ctx, func(tx *store.Tx) error {
+				events, e := tx.ReplayEvents(0, ptr("t"), 0)
+				if e != nil {
+					return e
+				}
+				var transitions []wire.MemberStateChangedEventData
+				for _, event := range events {
+					if event.Type == model.EventMemberStateChanged {
+						var data wire.MemberStateChangedEventData
+						must(t, model.DecodeStrict(event.Data, &data))
+						if data.Member.ID == m.ID {
+							transitions = append(transitions, data)
+						}
+					}
+				}
+				if len(transitions) != 2 || transitions[0].From != model.MemberStateStopped || transitions[0].To != model.MemberStateStarting || transitions[0].Member.State != model.MemberStateStarting || transitions[1].From != model.MemberStateStarting || transitions[1].To != model.MemberStateStopped || transitions[1].Reason == nil || *transitions[1].Reason != model.StopReasonLaunchFailed || transitions[1].Error == nil {
+					t.Fatalf("launch transitions: %+v", transitions)
+				}
+				current, e := tx.GetMember(m.ID)
+				if e == nil && (current.State != model.MemberStateStopped || current.Lease.Driver != model.DriverNone) {
+					t.Fatal(current)
+				}
+				return e
+			}))
+		})
+	}
+}
