@@ -390,7 +390,9 @@ Documents known folder. Profile questions can still consume the typed command, w
 same timeout diagnosis. Failed starts retain the usual pane cleanup; the diagnostic doesn't
 leave a runner running behind a stopped team.
 
-The runner then launches every spec member in its home mode ([Leases](#leases-and-launches)).
+The runner then launches every spec member concurrently in its home mode
+([Leases](#leases-and-launches)). Each member's own events are ordered; the relative order
+of different members' events in one start is not fixed.
 Pane members get a pane and `herdr agent start`; headless members get a headless lease and no
 process until they have something to do. A pane-mode member on Codex or OpenCode first runs
 one headless turn with its brief alone, and gets its task in the pane
@@ -1493,6 +1495,10 @@ Request: `team` (optional; absent means every team, plus host-level events), `af
 4. It ends with exit 0 when stdin closes or stdout breaks. A failure, including an invalid
    request, is one `error` line, then exit with the error's code.
 
+Replay and live events follow the store's event sequence. Members launch concurrently:
+each member's own events are ordered, but the relative order of different members' events
+within one start is not fixed across runs.
+
 `cursor_invalid` means the cursor came from another host or database (or is ahead of it). The
 app then resyncs: `status`, `members`, the timeline's tail, and a fresh `watch`. v1 never
 prunes events, so a valid cursor never expires.
@@ -1509,7 +1515,9 @@ Every event is a row in the store's `events` table, which is also the audit log.
 ```
 
 `timeline` says whether the event is a timeline item. `data` is a snapshot taken when the
-event was written.
+event was written. Events are emitted in store sequence order. Within one start, members
+launch concurrently, so each member's own events are ordered, while events for different
+members can interleave in any relative order; clients must not assume spec or roster order.
 
 | Type                      | `data`                                                    | Timeline                       | Written by                     |
 | ------------------------- | --------------------------------------------------------- | ------------------------------ | ------------------------------ |
