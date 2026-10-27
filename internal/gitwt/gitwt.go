@@ -42,7 +42,7 @@ func checkGitVersion(output string) error {
 		return err
 	}
 	if version.major < 2 || version.major == 2 && version.minor < 20 {
-		return fmt.Errorf("%w: git --version reported %q", ErrGitTooOld, strings.TrimSpace(output))
+		return fmt.Errorf("%w: git version %d.%d", ErrGitTooOld, version.major, version.minor)
 	}
 	return nil
 }
@@ -54,16 +54,16 @@ type gitVersion struct {
 func parseGitVersion(output string) (gitVersion, error) {
 	fields := strings.Fields(output)
 	if len(fields) < 3 || fields[0] != "git" || fields[1] != "version" {
-		return gitVersion{}, fmt.Errorf("unrecognized git version output: %q", strings.TrimSpace(output))
+		return gitVersion{}, errors.New("unrecognized git version output")
 	}
 	parts := strings.Split(fields[2], ".")
 	if len(parts) < 2 {
-		return gitVersion{}, fmt.Errorf("unrecognized git version output: %q", strings.TrimSpace(output))
+		return gitVersion{}, errors.New("unrecognized git version output")
 	}
 	major, majorErr := strconv.Atoi(parts[0])
 	minor, minorErr := strconv.Atoi(parts[1])
 	if majorErr != nil || minorErr != nil || major < 0 || minor < 0 {
-		return gitVersion{}, fmt.Errorf("unrecognized git version output: %q", strings.TrimSpace(output))
+		return gitVersion{}, errors.New("unrecognized git version output")
 	}
 	return gitVersion{major: major, minor: minor}, nil
 }
@@ -359,7 +359,12 @@ func git(ctx context.Context, repo string, args ...string) ([]byte, error) {
 		return nil, ctx.Err()
 	}
 	if err != nil {
-		return nil, fmt.Errorf("git %s: %w: %s", args[0], err, strings.TrimSpace(string(out)))
+		// RepoInfo needs this classification, but child output can contain private
+		// configuration or environment values. Preserve only the fixed diagnosis.
+		if strings.Contains(string(out), "not a git repository") || strings.Contains(string(out), "must be run in a work tree") {
+			err = errors.Join(err, errors.New("not a git repository"))
+		}
+		return nil, fmt.Errorf("git %s in %s: %w", args[0], repo, err)
 	}
 	return out, nil
 }

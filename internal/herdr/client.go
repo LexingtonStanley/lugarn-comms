@@ -126,13 +126,13 @@ func (c *Client) result(ctx context.Context, timeout time.Duration, op string, o
 	}
 	var env envelope
 	if err := json.Unmarshal(stdout, &env); err != nil || len(env.Result) == 0 {
-		return clientError(op, kindOther, fmt.Sprintf("unexpected output: %.200q", stdout))
+		return clientError(op, kindOther, "unexpected Herdr output")
 	}
 	if out == nil {
 		return nil
 	}
 	if err := json.Unmarshal(env.Result, out); err != nil {
-		return clientError(op, kindOther, "unexpected result: "+err.Error())
+		return clientError(op, kindOther, "unexpected Herdr result")
 	}
 	return nil
 }

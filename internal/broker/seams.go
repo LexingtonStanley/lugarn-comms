@@ -219,10 +219,17 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 		}
 		return b.event(tx, &t.ID, model.EventTeamStateChanged, true, nil, nil, wire.TeamStateChangedEventData{Team: out.Team, From: model.TeamStateStopped, To: model.TeamStateStarting})
 	})
-	if e != nil || out.AlreadyRunning {
+	if e != nil {
 		return out, e
 	}
-	if e = b.opts.Launcher.Launch(ctx, started); e != nil {
+	e = b.cleanRemovedSessions(ctx, r.Team)
+	if out.AlreadyRunning {
+		return out, e
+	}
+	if e == nil {
+		e = b.opts.Launcher.Launch(ctx, started)
+	}
+	if e != nil {
 		launchErr := model.AsError(e)
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
@@ -439,9 +446,7 @@ func (b *Broker) StopTeam(ctx context.Context, r wire.StopTeamRequest) (wire.Sto
 		}
 	}
 	if externalErr != nil {
-		// AsError unwraps to the first protocol leaf and would discard the
-		// teardown step/target and any other failures from errors.Join.
-		return out, model.NewError(model.ErrorInternal, "team teardown failed").WithDetail("cause", externalErr.Error())
+		return out, model.NewError(model.ErrorInternal, "team teardown failed").WithDetail("cleanup", model.AsError(externalErr))
 	}
 	return out, nil
 }

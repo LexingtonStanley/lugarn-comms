@@ -58,16 +58,16 @@ func wmiCreate(ctx context.Context, argv []string, dir string) (int, error) {
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
-		return 0, clientError("server", kindOther, fmt.Sprintf("Win32_Process.Create: %v: %s", err, strings.TrimSpace(stderr.String())))
+		return 0, clientError("server", kindOther, "Win32_Process.Create failed")
 	}
 	fields := strings.Fields(string(out))
 	if len(fields) != 2 {
-		return 0, clientError("server", kindOther, fmt.Sprintf("Win32_Process.Create: unexpected output %q", out))
+		return 0, clientError("server", kindOther, "Win32_Process.Create: unexpected output")
 	}
 	rv, err1 := strconv.Atoi(fields[0])
 	pid, err2 := strconv.Atoi(fields[1])
 	if err1 != nil || err2 != nil {
-		return 0, clientError("server", kindOther, fmt.Sprintf("Win32_Process.Create: unexpected output %q", out))
+		return 0, clientError("server", kindOther, "Win32_Process.Create: unexpected output")
 	}
 	if rv != 0 {
 		return 0, clientError("server", kindOther, fmt.Sprintf("Win32_Process.Create returned %d (%s)", rv, wmiReturn(rv)))

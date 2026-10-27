@@ -2076,8 +2076,7 @@
             "member",
             "from",
             "to",
-            "reason",
-            "error"
+            "reason"
           ],
           "additionalProperties": false,
           "allOf": [

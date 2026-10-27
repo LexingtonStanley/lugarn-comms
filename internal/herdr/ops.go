@@ -174,7 +174,7 @@ func (c *Client) RunCommand(ctx context.Context, pane string, argv ...string) er
 	for i, a := range argv {
 		if !word.MatchString(a) || (i == 0 && strings.HasPrefix(a, "-")) {
 			return model.NewError(model.ErrorInvalidRequest, "a pane command word needs shell quoting").
-				WithDetails(map[string]any{"reason": "unquotable", "word": a})
+				WithDetails(map[string]any{"reason": "unquotable"})
 		}
 	}
 	// pane run prints nothing on success; it acknowledges admission, not execution.

@@ -153,7 +153,7 @@ func (r *Runner) runPreparedTurn(ctx context.Context, w *runnerTurn) (err error)
 	m := w.member
 	binary, e := r.opts.Binary(*m.Harness)
 	if e != nil {
-		return r.completeTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
+		return r.completeTurn(ctx, w, TurnOutcome{Error: model.AsError(e).Error()}, false)
 	}
 	if ctx.Err() != nil {
 		return nil
@@ -168,17 +168,17 @@ func (r *Runner) runPreparedTurn(ctx context.Context, w *runnerTurn) (err error)
 			return e
 		})
 		if e != nil {
-			return r.completeTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
+			return r.completeTurn(ctx, w, TurnOutcome{Error: model.AsError(e).Error()}, false)
 		}
 	}
 	desc, e = r.effectiveLaunch(desc)
 	if e != nil {
-		return r.completeTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
+		return r.completeTurn(ctx, w, TurnOutcome{Error: model.AsError(e).Error()}, false)
 	}
 	if stat, err := os.Stat(desc.Workdir); err != nil || !stat.IsDir() {
 		message := "workdir is not a directory"
 		if err != nil {
-			message = err.Error()
+			message = "member workdir is missing"
 		}
 		return r.completeTurn(ctx, w, TurnOutcome{Error: message}, false)
 	}
@@ -186,7 +186,7 @@ func (r *Runner) runPreparedTurn(ctx context.Context, w *runnerTurn) (err error)
 	h, e := r.opts.Headless.Start(startup, desc, w.prompt)
 	cancelStartup()
 	if e != nil {
-		return r.completeTurn(ctx, w, TurnOutcome{Error: e.Error()}, false)
+		return r.completeTurn(ctx, w, TurnOutcome{Error: model.AsError(e).Error()}, false)
 	}
 	r.mu.Lock()
 	r.handles[m.ID] = h
@@ -224,9 +224,9 @@ func (r *Runner) runPreparedTurn(ctx context.Context, w *runnerTurn) (err error)
 		case <-exited:
 		case <-timeout.C:
 			releaseHandle = false // Keep it reachable by stop/CancelTurn for a retry.
-			failure := model.NewError(model.ErrorInternal, "started harness did not exit during failure cleanup").WithDetail("cause", err.Error())
+			failure := model.NewError(model.ErrorInternal, "started harness did not exit during failure cleanup").WithDetail("failure", model.AsError(err))
 			if cancelErr != nil {
-				failure.WithDetail("cancel_error", cancelErr.Error())
+				failure.WithDetail("cancel_error", model.AsError(cancelErr))
 			}
 			err = failure
 		}

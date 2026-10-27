@@ -143,7 +143,7 @@ func TestTransactionErrorsAndRollback(t *testing.T) {
 	plain := errors.New("plain")
 	err := s.Write(ctx, func(tx *Tx) error { return plain })
 	var protocolErr *model.Error
-	if !errors.As(err, &protocolErr) || protocolErr.Code != model.ErrorInternal || protocolErr.Details["cause"] != "plain" {
+	if !errors.As(err, &protocolErr) || protocolErr.Code != model.ErrorInternal || len(protocolErr.Details) != 0 {
 		t.Fatalf("wrapped error = %#v", err)
 	}
 	team := testTeam()

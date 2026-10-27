@@ -282,7 +282,10 @@ func (r *Runner) cleanListedLaunchFiles(ctx context.Context, root string, entrie
 			return e
 		}
 	}
-	return r.cleanPointerFiles(ended)
+	if e := r.cleanPointerFiles(ended); e != nil {
+		return e
+	}
+	return r.b.cleanRemovedSessions(ctx, r.team)
 }
 
 func cleanupLaunchName(name string) (id string, directory, ok bool) {

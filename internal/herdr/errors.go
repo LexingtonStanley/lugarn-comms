@@ -2,6 +2,7 @@ package herdr
 
 import (
 	"errors"
+	"regexp"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 )
@@ -40,25 +41,21 @@ const (
 )
 
 // Error is a failed Herdr call. It unwraps to the mapped protocol error, so
-// model.AsError(err) returns it, with Herdr's code and message in Details.
+// model.AsError(err) returns it, with Herdr's known code and operation in
+// Details. Child output is private.
 type Error struct {
 	// Op is the Herdr command, such as "agent prompt".
 	Op string
-	// Code is Herdr's own error code, or empty when Herdr didn't give one.
+	// Code is Herdr's identifier, or empty for a malformed/absent code.
 	Code string
-	// Message is Herdr's own message, or what the client saw instead.
+	// Message is reserved; child output is never retained.
 	Message string
 
 	kind     kind
 	protocol *model.Error
 }
 
-func (e *Error) Error() string {
-	if e.Code != "" {
-		return "herdr " + e.Op + ": " + e.Code + ": " + e.Message
-	}
-	return "herdr " + e.Op + ": " + e.Message
-}
+func (e *Error) Error() string { return e.protocol.Error() }
 
 // Unwrap returns the protocol error.
 func (e *Error) Unwrap() error { return e.protocol }
@@ -99,9 +96,15 @@ func kindOf(err error) kind {
 // the workspace, the pane or the harness didn't come up.
 var launchOps = map[string]bool{"workspace create": true, "tab create": true, "agent start": true}
 
+var herdrCodePattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+
 // fromHerdr classifies an error Herdr reported.
 func fromHerdr(op, code, message string) *Error {
-	e := &Error{Op: op, Code: code, Message: message}
+	// Codes are identifiers, including future Herdr codes. Messages are payload.
+	if !herdrCodePattern.MatchString(code) {
+		code = ""
+	}
+	e := &Error{Op: op, Code: code}
 	switch code {
 	case CodeServerNotRunning, "server_unavailable":
 		e.kind = kindNotRunning
@@ -119,11 +122,11 @@ func fromHerdr(op, code, message string) *Error {
 
 // clientError is a failure the client saw rather than one Herdr reported.
 func clientError(op string, k kind, message string) *Error {
-	return (&Error{Op: op, Message: message, kind: k}).mapped()
+	return (&Error{Op: op, kind: k}).mapped()
 }
 
 func (e *Error) mapped() *Error {
-	details := map[string]any{"herdr_op": e.Op, "herdr_message": e.Message}
+	details := map[string]any{"herdr_op": e.Op}
 	if e.Code != "" {
 		details["herdr_code"] = e.Code
 	}
@@ -141,7 +144,7 @@ func (e *Error) mapped() *Error {
 	case kindTimeout:
 		if launchOps[e.Op] {
 			// agent start's readiness wait: the harness never came up.
-			details["cause"] = e.Message
+			details["cause"] = "herdr_failed"
 			p = model.NewError(model.ErrorLaunchFailed, "herdr "+e.Op+" timed out")
 		} else {
 			p = model.NewError(model.ErrorTimeout, "Herdr's wait ran out")
@@ -149,7 +152,7 @@ func (e *Error) mapped() *Error {
 	case kindInvalid:
 		p = model.NewError(model.ErrorInvalidRequest, "Herdr refused the request")
 	default:
-		details["cause"] = e.Message
+		details["cause"] = "herdr_failed"
 		if launchOps[e.Op] {
 			p = model.NewError(model.ErrorLaunchFailed, "herdr "+e.Op+" failed")
 		} else {

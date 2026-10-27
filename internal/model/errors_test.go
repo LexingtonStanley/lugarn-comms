@@ -56,7 +56,7 @@ func TestAsError(t *testing.T) {
 	}
 	unknown := errors.New("disk failed")
 	got := AsError(unknown)
-	if got.Code != ErrorInternal || !reflect.DeepEqual(got.Details, map[string]any{"cause": "disk failed"}) {
+	if got.Code != ErrorInternal || !reflect.DeepEqual(got.Details, map[string]any{}) {
 		t.Errorf("unknown error: %#v", got)
 	}
 }

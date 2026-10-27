@@ -2,6 +2,7 @@ package herdr
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"reflect"
@@ -117,7 +118,7 @@ func TestUnavailable(t *testing.T) {
 	f.on("agent list", fails("server_not_running", "no herdr server is running at /x/herdr.sock"))
 	_, err = f.client().Agents(ctx)
 	p := wantProtocol(t, err, model.ErrorHerdrUnavailable, "not_running")
-	if p.Details["herdr_code"] != "server_not_running" || !strings.Contains(p.Details["herdr_message"].(string), "no herdr server") {
+	if p.Details["herdr_code"] != "server_not_running" || p.Details["herdr_message"] != nil {
 		t.Fatalf("details = %v", p.Details)
 	}
 	if !IsUnavailable(err) || IsGone(err) {
@@ -151,12 +152,12 @@ func TestCallerCancellationIsReturned(t *testing.T) {
 	}
 }
 
-func TestSyntaxErrorKeepsHerdrText(t *testing.T) {
+func TestSyntaxErrorDiscardsHerdrText(t *testing.T) {
 	f := newFake(t)
 	f.on("agent list", response{Stderr: "error: argument 6 is not valid UTF-8\nrun 'herdr --help' for usage\n", Exit: 2})
 	_, err := f.client().Agents(testContext(t))
 	p := wantProtocol(t, err, model.ErrorInternal, "")
-	if !strings.Contains(p.Details["cause"].(string), "not valid UTF-8") {
+	if p.Details["cause"] != "herdr_failed" || p.Details["herdr_message"] != nil {
 		t.Fatalf("details = %v", p.Details)
 	}
 }
@@ -523,5 +524,65 @@ func TestRenameDetectedAgent(t *testing.T) {
 	}
 	if len(f.calls()) != before {
 		t.Fatal("ran Herdr for invalid name")
+	}
+}
+
+func TestHerdrErrorsNeverExposeProcessPayload(t *testing.T) {
+	const sentinel = "SENTINEL_HERDR_ENV_ARGV_OUTPUT"
+	t.Setenv("LUGARN_PRIVATE_TEST", sentinel)
+	for _, answer := range []response{
+		{Stderr: sentinel, Exit: 2},
+		fails("timeout", sentinel),
+		fails(sentinel, sentinel),
+		{Stdout: sentinel},
+		{Stdout: `{"result":{"agents":"` + sentinel + `"}}`},
+	} {
+		f := newFake(t)
+		f.on("agent list", answer)
+		_, err := f.client().Agents(testContext(t))
+		if err == nil {
+			t.Fatal("wanted failure")
+		}
+		raw, e := json.Marshal(model.AsError(err))
+		if e != nil {
+			t.Fatal(e)
+		}
+		if strings.Contains(err.Error()+string(raw), sentinel) {
+			t.Fatal("Herdr error leaked output")
+		}
+	}
+	f := newFake(t)
+	err := f.client().RunCommand(testContext(t), "pane", sentinel+" word")
+	raw, e := json.Marshal(model.AsError(err))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if err == nil || strings.Contains(string(raw), sentinel) {
+		t.Fatal("command argument leaked")
+	}
+}
+
+func TestFutureHerdrCodesRemainIdentifiers(t *testing.T) {
+	for _, tc := range []struct {
+		code string
+		keep bool
+	}{
+		{"future_launch_refused", true}, {"a", true}, {"a" + strings.Repeat("_", 63), true},
+		{"a" + strings.Repeat("_", 64), false}, {"UpperCase", false}, {"bad code", false}, {"bad\ncode", false}, {"", false},
+	} {
+		t.Run(tc.code, func(t *testing.T) {
+			failure := fromHerdr("agent start", tc.code, "PRIVATE_HERDR_MESSAGE").Protocol()
+			got, ok := failure.Details["herdr_code"]
+			if tc.keep {
+				if !ok || got != tc.code {
+					t.Fatal(failure.Details)
+				}
+			} else if ok {
+				t.Fatal("malformed code retained", got)
+			}
+			if failure.Details["cause"] != "herdr_failed" || failure.Details["herdr_message"] != nil {
+				t.Fatal(failure.Details)
+			}
+		})
 	}
 }

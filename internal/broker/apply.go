@@ -231,6 +231,9 @@ func (b *Broker) ApplyTeam(ctx context.Context, r wire.ApplyTeamRequest) (wire.A
 		out.Warnings = p.Warnings
 		return b.event(tx, &s.ID, model.EventTeamApplied, true, nil, nil, wire.TeamAppliedEventData{Team: out.Team})
 	})
+	if e == nil {
+		e = b.cleanRemovedSessions(ctx, r.Spec.ID)
+	}
 	return out, e
 }
 func (b *Broker) storeEdges(tx *store.Tx, team string, edges []model.GridEdge) ([]store.GridEdge, error) {

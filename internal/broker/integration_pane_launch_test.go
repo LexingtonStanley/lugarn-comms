@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -132,6 +134,57 @@ func TestPaneLaunchCapsuleConfinement(t *testing.T) {
 			t.Setenv("LUGARN_COMMS_PANE_CONFIG", path)
 			if _, e := RunPaneLaunch(id, strings.NewReader(""), io.Discard, io.Discard); e == nil {
 				t.Fatal("accepted capsule outside the launch")
+			}
+		})
+	}
+}
+
+func TestWindowsPaneCapsuleContainsOnlyLaunchEnvironment(t *testing.T) {
+	const sentinel = "parent-environment-must-not-be-copied"
+	t.Setenv("LUGARN_PARENT_SECRET", sentinel)
+	for _, kind := range []model.Harness{model.HarnessClaude, model.HarnessCodex, model.HarnessOpenCode} {
+		t.Run(string(kind), func(t *testing.T) {
+			b, _ := setup(t)
+			binary, e := os.Executable()
+			must(t, e)
+			i, e := NewIntegration(b, IntegrationOptions{Binary: binary, HomeDir: t.TempDir()})
+			must(t, e)
+			l := harness.Launch{Harness: kind, Profile: model.ProfileReadOnly, StateDir: b.opts.StateDir, WorkDir: t.TempDir(), LaunchID: cleanupID(t), MemberID: "writer", Binary: binary, SessionID: "00000000-0000-4000-8000-000000000001", Version: "2.1.4", ExtraEnv: map[string]string{"LAUNCH_ONLY": "explicit"}}
+			if kind != model.HarnessClaude {
+				l.SessionID = ""
+			}
+			_, _, e = i.prepareWindowsPane(l, binary, []string{"exact arg", ""})
+			must(t, e)
+			path := filepath.Join(l.StateDir, "launch", l.LaunchID, "pane-launch.json")
+			raw, e := os.ReadFile(path)
+			must(t, e)
+			if strings.Contains(string(raw), sentinel) || strings.Contains(string(raw), "LUGARN_PARENT_SECRET") {
+				t.Fatal("copied parent environment")
+			}
+			var capsule paneLaunchCapsule
+			must(t, json.Unmarshal(raw, &capsule))
+			expected := []string{"LAUNCH_ONLY", "LUGARN_COMMS_HOME", "LUGARN_COMMS_MEMBER", "LUGARN_COMMS_PANE_CONFIG", "LUGARN_COMMS_POINTER_HOME", "LUGARN_COMMS_TOKEN_FILE", "NO_COLOR", "PATH", "PWD"}
+			if kind == model.HarnessOpenCode {
+				expected = append(expected, "OPENCODE_CONFIG", "OPENCODE_DISABLE_AUTOUPDATE")
+			}
+			got := make([]string, 0, len(capsule.Env))
+			for key := range capsule.Env {
+				got = append(got, key)
+			}
+			sort.Strings(got)
+			sort.Strings(expected)
+			if !reflect.DeepEqual(got, expected) {
+				t.Fatalf("environment keys = %v, want %v", got, expected)
+			}
+			if !reflect.DeepEqual(capsule.Args, []string{"exact arg", ""}) {
+				t.Fatal("changed argv")
+			}
+			if runtime.GOOS != "windows" {
+				info, e := os.Stat(path)
+				must(t, e)
+				if info.Mode().Perm() != 0600 {
+					t.Fatal(info.Mode())
+				}
 			}
 		})
 	}

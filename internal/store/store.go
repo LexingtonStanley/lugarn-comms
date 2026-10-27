@@ -432,11 +432,11 @@ func mapSQLiteError(err error) error {
 		if sqliteErr.Code()&0xff == 19 {
 			switch {
 			case strings.Contains(message, "members_live_name"), strings.Contains(message, "members.team_id, members.name"), strings.Contains(message, "teams.name"):
-				return model.NewError(model.ErrorNameTaken, "name is already in use").WithDetail("cause", message)
+				return model.NewError(model.ErrorNameTaken, "name is already in use").WithDetail("cause", "name_taken")
 			case strings.Contains(message, "requests_one_open"), strings.Contains(message, "requests.member_id"):
-				return model.NewError(model.ErrorLeaseConflict, "member already has an open request").WithDetail("cause", message)
+				return model.NewError(model.ErrorLeaseConflict, "member already has an open request").WithDetail("cause", "open_request")
 			case strings.Contains(message, "turns_one_live"), strings.Contains(message, "turns.member_id"):
-				return model.NewError(model.ErrorLeaseConflict, "member already has a live turn").WithDetail("cause", message)
+				return model.NewError(model.ErrorLeaseConflict, "member already has a live turn").WithDetail("cause", "live_turn")
 			}
 		}
 	}

@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -62,7 +63,7 @@ func TestIntegrationTeardownEndsOwnedLaunchArtifacts(t *testing.T) {
 	}))
 	var team *store.Team
 	must(t, b.db.Read(ctx, func(tx *store.Tx) error { var e error; team, e = tx.GetTeam("t"); return e }))
-	if e := i.Close(ctx, *team, []model.Member{m}); !errors.Is(e, client.err) || !strings.Contains(e.Error(), "close runner pane root-owned: server disappeared") {
+	if e := i.Close(ctx, *team, []model.Member{m}); !errors.Is(e, client.err) || !strings.Contains(string(teardownJSON(t, e)), "close runner pane root-owned") {
 		t.Fatalf("missing step/target or collected error: %v", e)
 	}
 	if len(client.closed) != 1 || client.closed[0] != "root-owned" {
@@ -73,4 +74,11 @@ func TestIntegrationTeardownEndsOwnedLaunchArtifacts(t *testing.T) {
 			t.Fatalf("artifact remains: %s: %v", path, e)
 		}
 	}
+}
+
+func teardownJSON(t *testing.T, err error) []byte {
+	t.Helper()
+	raw, e := json.Marshal(model.AsError(err))
+	must(t, e)
+	return raw
 }

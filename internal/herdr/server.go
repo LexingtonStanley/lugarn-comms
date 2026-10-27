@@ -156,9 +156,9 @@ func waitForServer(ctx context.Context, c *Client, res StartResult, exited func(
 }
 
 func startFailed(pid int, message string) error {
-	e := &Error{Op: "server", Message: message, kind: kindNotRunning}
+	e := &Error{Op: "server", kind: kindNotRunning}
 	e.protocol = model.NewError(model.ErrorHerdrUnavailable, "the Herdr server didn't start").
-		WithDetails(map[string]any{"reason": "start_timeout", "herdr_op": "server", "herdr_message": message, "pid": pid})
+		WithDetails(map[string]any{"reason": "start_timeout", "herdr_op": "server", "pid": pid})
 	return e
 }
 

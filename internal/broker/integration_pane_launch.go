@@ -227,7 +227,7 @@ func (i *Integration) detectWindowsPane(ctx context.Context, client HerdrAPI, pa
 	}
 	failure := model.NewError(model.ErrorLaunchFailed, "Herdr did not detect the pane agent").WithDetail("cause", "agent_not_detected")
 	if last != nil {
-		failure.WithDetail("observation_error", last.Error())
+		failure.WithDetail("observation_error", model.AsError(last))
 	}
 	return herdr.Agent{}, failure
 }

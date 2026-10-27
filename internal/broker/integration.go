@@ -100,6 +100,7 @@ func (i *Integration) Runner(team string, opts RunnerOptions) *Runner {
 	r.checkPane = lifecycle.checkPane
 	r.prepareMember = func(ctx context.Context, m model.Member) (*model.Member, error) { return i.prepareWorktree(ctx, r, m) }
 	r.onAcquire = func(ctx context.Context) error {
+		i.sweepRunnerBridges()
 		placement, e := i.placement(team)
 		if e != nil {
 			return e
