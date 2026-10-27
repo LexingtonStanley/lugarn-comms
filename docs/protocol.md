@@ -1632,9 +1632,14 @@ full argv and file contents:
   launch's environment override values, secret-named host variables and the launch token
   when available. Values of at least eight characters are scrubbed to `‹redacted›`.
   The secret-name pattern is `(?i)(TOKEN|SECRET|PASSW|API_?KEY|ACCESS_?KEY|PRIVATE_?KEY|AUTH|CREDENTIAL|COOKIE|SESSION)`.
-  The reason is then reduced to one line, with control characters stripped, and at most
-  300 Unicode characters. It comes from the harness's structured error, or the last
-  non-empty stderr line on nonzero exit; never a raw stdout line.
+  The reason is then reduced to one line, with control characters stripped, and exact
+  values are scrubbed again. Token-shaped strings are scrubbed next: OpenAI/Anthropic,
+  GitHub, Slack, AWS access key IDs, Google API keys, JWTs, Bearer credentials and PEM
+  private keys. Shapes must not be preceded by an ASCII letter, digit or underscore; Bearer
+  keeps its scheme word, and PEM blocks run through the matching END marker or the
+  end of the reason. The result is limited to 300 Unicode characters.
+  It comes from the harness's structured error, or the last non-empty stderr line on
+  nonzero exit; never a raw stdout line.
 
 The plan's `unsupported-version` is `unsupported_version` here.
 
