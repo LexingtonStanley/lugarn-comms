@@ -55,14 +55,14 @@
           "driver": "pane",
           "generation": 1,
           "launch": "01M5W85T2CP1XPA7Z3DJ8FSSZ5",
-          "pane": "pane-12"
+          "pane": "w1:p2"
         },
         "last_driver": "pane",
         "held_until": null,
         "herdr": {
           "server": "default",
-          "workspace": "lugarn-auth-rewrite",
-          "agent": "auth-rewrite-lead"
+          "workspace": "w1",
+          "agent": "lead-frxn4a"
         },
         "session": "7d0c1e52-8f3a-4b6e-9a21-5c4f0b9e2d17",
         "sessions": [
