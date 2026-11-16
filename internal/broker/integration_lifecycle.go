@@ -288,7 +288,9 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	workspace := *team.HerdrWorkspace
 	var tab herdr.Tab
 	if team.Placement == "workspaces" {
-		ws, err := client.CreateWorkspace(ctx, m.Name, *m.Workdir, env)
+		// Label the member's workspace with its Herdr agent name, so two teams'
+		// "writer" workspaces read "writer" and "writer-2", like their agents.
+		ws, err := client.CreateWorkspace(ctx, *starting.HerdrName, *m.Workdir, env)
 		e = err
 		workspace = ws.ID
 		tab = herdr.Tab{ID: ws.RootTab, Workspace: ws.ID, RootPane: ws.RootPane}
@@ -338,6 +340,10 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 		agent, e = client.StartAgent(ctx, herdr.StartOptions{Name: *starting.HerdrName, Harness: *m.Harness, Pane: tab.RootPane, Args: args})
 	}
 	if e != nil {
+		// Name the clash so the app can say which Herdr agent holds the name.
+		if pe := model.AsError(e); pe.Code == model.ErrorNameTaken {
+			pe.WithDetail("name", *starting.HerdrName)
+		}
 		return e
 	}
 	if *m.Harness == model.HarnessClaude && agent.Activity != model.ActivityBlocked && starting.Session != nil {

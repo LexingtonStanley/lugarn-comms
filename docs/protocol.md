@@ -95,8 +95,9 @@ a conflicting launch fails with `name_taken` rather than taking over an agent.
 
 The chosen name is recorded permanently as `Member.herdr_name`, before starting the
 harness, and reused on every later launch, including after a member-name edit. If that
-recorded name is occupied, the launch fails (`name_taken`); it does not silently choose
-a different identity. Removed members and forgotten teams release their reservation.
+recorded name is occupied, the launch fails (`name_taken`, with `details.name`); it does
+not silently choose a different identity. The person frees the name in Herdr (renames or
+closes the other agent) and starts the member again; there is no rename op in v0.1.2. Removed members and forgotten teams release their reservation.
 Migration 2 records the old derived `<member, cut to 25>-<6-character hash tag>` name
 for every existing agent member that has no recorded name, including never-launched
 members. Existing recorded names are retained. Nothing on Herdr is renamed.
@@ -318,7 +319,7 @@ whole current grid, and limits with defaults filled in.
 
 `herdr.placement: "tabs"` is the default: the runner has a team workspace, and each
 pane member gets its own tab there. `"workspaces"` gives each pane member a separate
-workspace labelled with the member's name. The runner retains a team workspace, labelled
+workspace labelled with the member's Herdr name (`writer`, `writer-2`), matching its agent. The runner retains a team workspace, labelled
 with `display_name` or `name`, so its lifetime is independent of any one member. Headless
 members create no workspace until opened in a terminal.
 
@@ -1412,7 +1413,7 @@ workspace/pane/terminal IDs are 1–128 ASCII letters, digits, `_`, `:`, `-`, st
 an alphanumeric. No shell option, control, relative folder or invalid resume ID is used.
 Bindings must exactly match current Herdr workspace/pane/agent/harness/folder relationships.
 A pane already tracked by this store fails with `lease_conflict`; a reserved agent name
-fails with `name_taken`. Ordinary apply validation and revision errors also apply, as do
+fails with `name_taken` (`details.name`). Ordinary apply validation and revision errors also apply, as do
 `not_found`, `herdr_unavailable` and `invalid_request`. The whole store write is atomic.
 
 ### bring-onto-comms
@@ -2202,6 +2203,8 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     pane member its own workspace. The runner keeps a team workspace to avoid coupling its
     lifetime to a member. Edits apply to future launches, so a settings edit cannot disrupt
     a running conversation. Each member persists its actual workspace for safe teardown.
+    A member's workspace is labelled with its Herdr name, so two teams' `writer`s read
+    `writer` and `writer-2` in the workspace list as in the agent list (Nova's review).
 75. **Adoption:** a create-only `adopt-team` operation atomically records a validated spec and
     bindings. External members keep ordinary `origin: spec`, plus an optional `external`
     record, avoiding a new origin/state enum for older v1 clients. Their lease is `none`,

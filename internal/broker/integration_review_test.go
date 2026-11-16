@@ -114,7 +114,11 @@ func TestNameSnapshotFailureDoesNotRotateLease(t *testing.T) {
 func TestNameClashAtStartFailsWithoutRenamingOrTakeover(t *testing.T) {
 	h := &reviewHerdr{startErr: model.NewError(model.ErrorNameTaken, "external race")}
 	_, l, m := reviewPaneSetup(t, h)
-	code(t, l.Open(context.Background(), m, model.LeaseCauseOpenTerminal), model.ErrorNameTaken)
+	err := l.Open(context.Background(), m, model.LeaseCauseOpenTerminal)
+	code(t, err, model.ErrorNameTaken)
+	if got := model.AsError(err).Details["name"]; got != "writer" {
+		t.Fatalf("name_taken details name = %v, want writer", got)
+	}
 	after, e := l.current(context.Background(), m.ID)
 	must(t, e)
 	if len(h.starts) != 1 || h.starts[0].Name != "writer" || after.HerdrName == nil || *after.HerdrName != "writer" || after.StopReason == nil || *after.StopReason != model.StopReasonLaunchFailed {
@@ -122,6 +126,37 @@ func TestNameClashAtStartFailsWithoutRenamingOrTakeover(t *testing.T) {
 	}
 	if h.closed != 1 || len(h.closedPanes) != 0 {
 		t.Fatal(h.closedPanes)
+	}
+}
+
+type placementHerdr struct {
+	reviewHerdr
+	labels []string
+}
+
+func (h *placementHerdr) CreateWorkspace(_ context.Context, label string, _ string, vars map[string]string) (herdr.Workspace, error) {
+	h.lifecycleHerdr.env = vars
+	h.labels = append(h.labels, label)
+	return herdr.Workspace{ID: "workspace-member", Label: label, RootTab: "tab-owned", RootPane: "pane-owned"}, nil
+}
+
+// A member's own workspace carries its Herdr name, so two teams' writers read
+// "writer" and "writer-2" in the workspace list as well as the agent list.
+func TestWorkspacePlacementLabelsWithHerdrName(t *testing.T) {
+	h := &placementHerdr{}
+	h.list = func(context.Context) ([]herdr.Agent, error) { return []herdr.Agent{{Name: "writer"}}, nil }
+	b, l, m := reviewPaneSetup(t, h)
+	must(t, b.db.Write(context.Background(), func(tx *store.Tx) error {
+		return tx.UpdateTeam("t", store.TeamPatch{Placement: ptr("workspaces")}, b.now())
+	}))
+	must(t, l.Open(context.Background(), m, model.LeaseCauseOpenTerminal))
+	if !slices.Equal(h.labels, []string{"writer-2"}) || len(h.starts) != 1 || h.starts[0].Name != "writer-2" {
+		t.Fatal(h.labels, h.starts)
+	}
+	after, e := l.current(context.Background(), m.ID)
+	must(t, e)
+	if after.Herdr == nil || after.Herdr.Workspace == nil || *after.Herdr.Workspace != "workspace-member" {
+		t.Fatal(after.Herdr)
 	}
 }
 

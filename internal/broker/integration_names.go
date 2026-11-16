@@ -36,5 +36,5 @@ func (i *Integration) reserveAgentName(tx *store.Tx, t *store.Team, m model.Memb
 			return name, nil
 		}
 	}
-	return "", model.NewError(model.ErrorNameTaken, "no free Herdr agent name")
+	return "", model.NewError(model.ErrorNameTaken, "no free Herdr agent name").WithDetail("name", m.Name)
 }

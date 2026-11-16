@@ -129,7 +129,7 @@ func (b *Broker) AdoptTeam(ctx context.Context, r wire.AdoptTeamRequest) (wire.A
 				return e
 			}
 			if names[v.Agent] {
-				return model.NewError(model.ErrorNameTaken, "Herdr name is reserved by another member")
+				return model.NewError(model.ErrorNameTaken, "Herdr name is reserved by another member").WithDetail("name", v.Agent)
 			}
 			if e = tx.PutExternalMember(id, v); e != nil {
 				return e
