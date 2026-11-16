@@ -33,7 +33,7 @@ func readSchema(t *testing.T, name string) schemaNode {
 var commonRecords = map[string]any{
 	"Error": Error{}, "MemberRef": MemberRef{}, "Worktree": Worktree{},
 	"Lease": Lease{}, "MemberSession": MemberSession{}, "HerdrPlacement": HerdrPlacement{},
-	"Member": Member{}, "Delivery": Delivery{}, "Message": Message{}, "Usage": Usage{},
+	"ExternalMember": ExternalMember{}, "Member": Member{}, "Delivery": Delivery{}, "Message": Message{}, "Usage": Usage{},
 	"Turn": Turn{}, "Request": Request{}, "Hops": Hops{}, "Rounds": Rounds{},
 	"Runner": Runner{}, "TeamStatus": TeamStatus{}, "HerdrInfo": HerdrInfo{}, "HarnessInfo": HarnessInfo{},
 }
@@ -106,7 +106,7 @@ func checkRecordFields(t *testing.T, typ reflect.Type, def schemaNode) {
 			switch ref {
 			case "Timestamp":
 				wantName = "Time"
-			case "OpaqueId", "Ulid", "TeamName", "MemberName", "AgentName", "SessionId", "Path", "Text":
+			case "OpaqueId", "Ulid", "TeamName", "MemberName", "AgentName", "SessionId", "Path", "Text", "DisplayName", "HerdrAgentName", "HerdrID":
 				wantName = "string"
 			}
 			if ft.Name() != wantName {
@@ -148,6 +148,9 @@ func checkRecordEmission(t *testing.T, typ reflect.Type, def schemaNode) {
 	for name, property := range def.Properties {
 		raw, ok := fields[name]
 		if !ok {
+			if !slices.Contains(def.Required, name) {
+				continue
+			}
 			t.Errorf("%s omitted required record field %s", typ, name)
 			continue
 		}
@@ -161,6 +164,7 @@ func checkRecordEmission(t *testing.T, typ reflect.Type, def schemaNode) {
 func TestSchemaDefaultParity(t *testing.T) {
 	defaults := map[string]any{
 		"HerdrSettings.server":          DefaultHerdrServer,
+		"HerdrSettings.placement":       DefaultHerdrPlacement,
 		"Limits.hop_budget":             DefaultHopBudget,
 		"Limits.review_rounds":          DefaultReviewRounds,
 		"Limits.per_recipient":          DefaultPerRecipient,

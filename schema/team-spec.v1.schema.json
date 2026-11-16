@@ -11,6 +11,7 @@
         "version": { "const": 1 },
         "id": { "$ref": "common.v1.schema.json#/$defs/OpaqueId" },
         "name": { "$ref": "common.v1.schema.json#/$defs/TeamName" },
+        "display_name": { "$ref": "common.v1.schema.json#/$defs/DisplayName" },
         "pattern": { "$ref": "common.v1.schema.json#/$defs/Pattern" },
         "herdr": { "$ref": "#/$defs/HerdrSettings" },
         "limits": { "$ref": "#/$defs/Limits" },
@@ -31,6 +32,7 @@
     "HerdrSettings": {
       "type": "object",
       "properties": {
+        "placement": { "type": "string", "enum": ["tabs", "workspaces"], "default": "tabs" },
         "server": {
           "description": "The Herdr server the team runs on. Default `default`.",
           "type": "string",

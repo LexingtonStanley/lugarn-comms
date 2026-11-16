@@ -460,6 +460,7 @@ ENUM_COLUMNS = {
     ("members", "state"): "MemberState",
     ("members", "stop_reason"): "StopReason",
     ("members", "activity"): "Activity",
+    ("external_members", "activity"): "Activity",
     ("members", "last_driver"): "Mode",
     ("members", "removed_reason"): "RemovedReason",
     ("spawn_settings", "mode"): "Mode",
@@ -482,7 +483,7 @@ ENUM_COLUMNS = {
     ("requests", "error_code"): "ErrorCode",
     ("events", "type"): "EventType",
 }
-tables = {m.group(1): m.group(2) for m in re.finditer(r"CREATE TABLE (\w+) \((.*?)\n\)", sql_text, re.S)}
+tables = dict(db.execute("SELECT name, sql FROM sqlite_master WHERE type = 'table'"))
 seen = set()
 for (table, column), enum in ENUM_COLUMNS.items():
     body = tables.get(table)
@@ -501,6 +502,12 @@ for (table, column), enum in ENUM_COLUMNS.items():
 # Any other simple enum CHECK in the SQL must be in the map, so nothing goes unchecked.
 for table, body in tables.items():
     for m in re.finditer(r"CHECK \(\s*(\w+)\s+IN\s*\(\s*'", body):
+        if (table, m.group(1)) == ("teams", "placement"):
+            values = re.findall(r"'([^']*)'", re.search(r"CHECK \(placement IN \(([^)]*)\)\)", body).group(1))
+            expected = json.loads((ROOT / "schema/team-spec.v1.schema.json").read_text())["$defs"]["HerdrSettings"]["properties"]["placement"]["enum"]
+            if values != expected:
+                fail("placement SQL and schema differ")
+            continue
         if (table, m.group(1)) not in ENUM_COLUMNS:
             fail(f"enum check: {table}.{m.group(1)} has an enum CHECK that isn't mapped to a schema enum")
 if len(seen) == len(ENUM_COLUMNS):

@@ -112,7 +112,7 @@ func (r *Runner) acquire(ctx context.Context) error {
 		if e != nil {
 			return e
 		}
-		if t.State != model.TeamStateStarting && t.State != model.TeamStateRunning {
+		if t.Forgotten || (t.State != model.TeamStateStarting && t.State != model.TeamStateRunning) {
 			return model.NewError(model.ErrorTeamNotRunning, "runner needs a starting or running team")
 		}
 		if t.Runner.State == model.RunnerStateUp && r.b.fresh(t) {

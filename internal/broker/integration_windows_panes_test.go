@@ -46,7 +46,7 @@ func (h *windowsPaneHerdr) Agents(context.Context) ([]herdr.Agent, error) {
 }
 func (h *windowsPaneHerdr) RenameAgent(_ context.Context, pane, name string) error {
 	h.calls = append(h.calls, "rename")
-	if pane != "pane-owned" || name != herdr.AgentName("t", "writer") {
+	if pane != "pane-owned" || name != "writer" {
 		panic("named another pane or member")
 	}
 	return nil
@@ -65,7 +65,7 @@ func TestWindowsPaneFlowListsThenRenames(t *testing.T) {
 	l := &integrationLifecycle{i: i, r: r}
 	b.opts.Wait = func(context.Context, time.Duration) error { return nil }
 	must(t, l.Open(context.Background(), m, model.LeaseCauseOpenTerminal))
-	if !reflect.DeepEqual(client.calls, []string{"tab", "run", "list", "list", "rename"}) {
+	if !reflect.DeepEqual(client.calls, []string{"list", "tab", "run", "list", "rename"}) {
 		t.Fatal(client.calls)
 	}
 	if len(client.command) != 3 || client.command[1] != "pane-launch" || model.ValidateULID(client.command[2]) != nil {

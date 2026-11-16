@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -335,7 +336,7 @@ func TestStartAgentFailures(t *testing.T) {
 		timeout bool
 	}{
 		{fails("agent_pane_busy", "agent target pane w1:p7 is not an available shell"), model.ErrorLaunchFailed, false},
-		{fails("agent_name_taken", "agent name alpha-cx is already used"), model.ErrorLaunchFailed, false},
+		{fails("agent_name_taken", "agent name alpha-cx is already used"), model.ErrorNameTaken, false},
 		{fails("timeout", "timed out waiting for agent startup"), model.ErrorLaunchFailed, true},
 		{fails("agent_pane_not_found", "agent target pane w1:p99 not found"), model.ErrorNotFound, false},
 		{fails("server_not_running", "no server"), model.ErrorHerdrUnavailable, false},
@@ -595,4 +596,111 @@ func TestPaneProcessInfo(t *testing.T) {
 		t.Fatal(info, err)
 	}
 	wantArgs(t, onlyCall(t, f), "pane", "process-info", "--pane", "w1:p2")
+}
+
+// Captured from the isolated lugarn-150 run; ensure adoption's terminal and
+// relationship checks consume Herdr 0.9.5's real output shape.
+func TestHerdr150AdoptionFixtures(t *testing.T) {
+	raw, err := os.ReadFile("../broker/testdata/herdr-150/adopt-before.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshots map[string]struct {
+		Result json.RawMessage `json:"result"`
+	}
+	if err = json.Unmarshal(raw, &snapshots); err != nil {
+		t.Fatal(err)
+	}
+	f := newFake(t)
+	f.on("agent list", ok(string(snapshots["agent"].Result)))
+	agents, err := f.client().Agents(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var alpha Agent
+	for _, a := range agents {
+		if a.Name == "alpha" {
+			alpha = a
+		}
+	}
+	if alpha.Kind != "pi" || alpha.Activity != model.ActivityIdle || alpha.Workspace == "" || alpha.Cwd == "" {
+		t.Fatal(alpha)
+	}
+	f.on("workspace list", ok(string(snapshots["workspace"].Result)))
+	workspaces, err := f.client().Workspaces(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundWorkspace := false
+	for _, w := range workspaces {
+		if w.ID == alpha.Workspace {
+			foundWorkspace = true
+		}
+	}
+	if !foundWorkspace {
+		t.Fatal("workspace list lost adopted workspace", workspaces)
+	}
+	f.on("pane list", ok(string(snapshots["pane"].Result)))
+	panes, err := f.client().Panes(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundPane := false
+	for _, p := range panes {
+		if p.ID == alpha.Pane {
+			foundPane = true
+			if p.Terminal == "" || p.Tab != alpha.Tab || p.Workspace != alpha.Workspace || p.Cwd != alpha.Cwd {
+				t.Fatal(p, alpha)
+			}
+		}
+	}
+	if !foundPane {
+		t.Fatal("pane list lost adopted pane", panes)
+	}
+	var listing struct {
+		Panes []json.RawMessage `json:"panes"`
+	}
+	if err = json.Unmarshal(snapshots["pane"].Result, &listing); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range listing.Panes {
+		var p wirePane
+		if err = json.Unmarshal(raw, &p); err != nil {
+			t.Fatal(err)
+		}
+		if p.PaneID != alpha.Pane {
+			continue
+		}
+		f.on("pane get", ok(`{"pane":`+string(raw)+`}`))
+		pane, err := f.client().Pane(testContext(t), alpha.Pane)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pane.Terminal == "" || pane.Tab != alpha.Tab || pane.Workspace != alpha.Workspace || pane.Cwd != alpha.Cwd {
+			t.Fatal(pane, alpha)
+		}
+		return
+	}
+	t.Fatal("fixture lacks adopted pane")
+}
+
+func TestExternalListsNameTheirServer(t *testing.T) {
+	t.Run("workspaces", func(t *testing.T) {
+		f := newFake(t)
+		f.on("workspace list", ok(`{"workspaces":[]}`))
+		_, err := f.client().Workspaces(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantArgs(t, onlyCall(t, f), "workspace", "list")
+	})
+	t.Run("panes", func(t *testing.T) {
+		f := newFake(t)
+		f.on("pane list", ok(`{"panes":[]}`))
+		_, err := f.client().Panes(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantArgs(t, onlyCall(t, f), "pane", "list")
+	})
 }

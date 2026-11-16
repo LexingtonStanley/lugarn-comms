@@ -4,6 +4,9 @@ package wire
 type OpName string
 
 const (
+	OpNameAdoptTeam       OpName = "adopt-team"
+	OpNameBringOntoComms  OpName = "bring-onto-comms"
+	OpNameForgetTeam      OpName = "forget-team"
 	OpNameHello           OpName = "hello"
 	OpNameApplyTeam       OpName = "apply-team"
 	OpNameGetTeam         OpName = "get-team"
@@ -26,7 +29,7 @@ const (
 )
 
 func (OpName) Values() []OpName {
-	return []OpName{OpNameHello, OpNameApplyTeam, OpNameGetTeam, OpNameStartTeam, OpNameStopTeam, OpNameStatus, OpNameMembers, OpNameTimeline, OpNameSend, OpNameContinueBudget, OpNameResolveDelivery, OpNameHold, OpNameOpenTerminal, OpNameReturnHeadless, OpNameStopMember, OpNameWorktrees, OpNameRemoveWorktrees, OpNameStartHerdr, OpNameWatch}
+	return []OpName{OpNameAdoptTeam, OpNameBringOntoComms, OpNameForgetTeam, OpNameHello, OpNameApplyTeam, OpNameGetTeam, OpNameStartTeam, OpNameStopTeam, OpNameStatus, OpNameMembers, OpNameTimeline, OpNameSend, OpNameContinueBudget, OpNameResolveDelivery, OpNameHold, OpNameOpenTerminal, OpNameReturnHeadless, OpNameStopMember, OpNameWorktrees, OpNameRemoveWorktrees, OpNameStartHerdr, OpNameWatch}
 }
 func (v OpName) Valid() bool {
 	for _, item := range v.Values() {

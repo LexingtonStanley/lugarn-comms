@@ -87,3 +87,15 @@ func (s errorService) ToolStop(context.Context, service.Caller, wire.StopInput) 
 func (s errorService) Authenticate(context.Context, string, *service.Token, model.Face) (service.Caller, error) {
 	return service.Caller{}, s.err
 }
+
+func (s errorService) AdoptTeam(context.Context, wire.AdoptTeamRequest) (wire.ApplyTeamResult, error) {
+	return wire.ApplyTeamResult{}, s.err
+}
+
+func (s errorService) BringOntoComms(context.Context, wire.BringOntoCommsRequest) (wire.BringOntoCommsResult, error) {
+	return wire.BringOntoCommsResult{}, s.err
+}
+
+func (s errorService) ForgetTeam(context.Context, wire.ForgetTeamRequest) (wire.ForgetTeamResult, error) {
+	return wire.ForgetTeamResult{}, s.err
+}

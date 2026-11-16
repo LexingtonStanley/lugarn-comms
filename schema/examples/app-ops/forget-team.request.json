@@ -1,0 +1,6 @@
+{
+  "protocol": 1,
+  "op": "forget-team",
+  "team": "adopted",
+  "if_revision": 1
+}

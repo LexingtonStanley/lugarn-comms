@@ -22,7 +22,7 @@ const memberColumns = `m.id, m.team_id, m.name, m.kind, m.role, m.origin, m.posi
  m.session_id, m.herdr_agent, m.created_at, m.updated_at, m.started_at, m.stopped_at,
  m.removed_at, m.removed_reason, spawner.name, w.path, w.branch, w.removed_at,
  l.driver, l.generation, l.launch_id, l.pane_id, h.held_until, h.released_at,
- t.herdr_server, t.herdr_workspace`
+ t.herdr_server, COALESCE(m.herdr_workspace, t.herdr_workspace), m.herdr_workspace`
 
 func scanMember(row scanner) (*StoredMember, error) {
 	var result StoredMember
@@ -33,6 +33,7 @@ func scanMember(row scanner) (*StoredMember, error) {
 	var leaseDriver, leaseLaunch, leasePane, heldUntil, holdReleased, herdrWorkspace sql.NullString
 	var created, updated string
 	var herdrServer string
+	var memberWorkspace sql.NullString
 	var started, stopped, removed sql.NullString
 	var removedReason sql.NullString
 	var spawnedRun, position, generation sql.NullInt64
@@ -42,10 +43,13 @@ func scanMember(row scanner) (*StoredMember, error) {
 		&session, &herdrAgent, &created, &updated, &started, &stopped, &removed,
 		&removedReason, &spawnerName, &worktreePath, &worktreeBranch, &worktreeRemoved,
 		&leaseDriver, &generation, &leaseLaunch, &leasePane, &heldUntil, &holdReleased,
-		&herdrServer, &herdrWorkspace)
+		&herdrServer, &herdrWorkspace, &memberWorkspace)
 	if err != nil {
 		return nil, err
 	}
+	result.HerdrAgent = stringPtr(herdrAgent)
+	result.HerdrWorkspace = stringPtr(memberWorkspace)
+	m.HerdrName = stringPtr(herdrAgent)
 	m.Kind = model.MemberKind(kind.String)
 	m.Origin = model.MemberOrigin(origin.String)
 	m.State = model.MemberState(state.String)
@@ -239,6 +243,11 @@ func (tx *Tx) ListMembers(teamID string, includeRemoved bool) ([]model.Member, e
 }
 
 func (tx *Tx) loadMemberExtras(m *StoredMember) error {
+	external, err := tx.GetExternalMember(m.Member.ID)
+	if err != nil {
+		return err
+	}
+	m.Member.External = external
 	sessions, err := tx.ListMemberSessions(m.Member.ID)
 	if err != nil {
 		return err
@@ -290,6 +299,9 @@ func (tx *Tx) UpdateMember(id string, patch MemberPatch, at model.Time) error {
 	}
 	if patch.LastDriver != nil {
 		add("last_driver", dbPtr(*patch.LastDriver))
+	}
+	if patch.HerdrWorkspace != nil {
+		add("herdr_workspace", dbPtr(*patch.HerdrWorkspace))
 	}
 	if patch.HerdrAgent != nil {
 		add("herdr_agent", dbPtr(*patch.HerdrAgent))

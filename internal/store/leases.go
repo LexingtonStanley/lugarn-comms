@@ -253,3 +253,25 @@ func (tx *Tx) MarkSessionBriefed(memberID string, ordinal int64, at model.Time) 
 	}
 	return requireRows(result, notFound("member session"))
 }
+
+// PaneContext gives CLI-only pi a durable provenance seal without inventing a
+// harness session ID. Call in the delivery's immediate transaction.
+func (tx *Tx) PaneContext(launch string) (seal string, briefed bool, err error) {
+	var value sql.NullString
+	if err = tx.queryRow("SELECT pane_seal, pane_briefed FROM launches WHERE id = ?", launch).Scan(&value, &briefed); err != nil {
+		return "", false, asError(err)
+	}
+	if value.Valid {
+		return value.String, briefed, nil
+	}
+	seal, err = model.NewSeal()
+	if err != nil {
+		return "", false, err
+	}
+	_, err = tx.exec("UPDATE launches SET pane_seal = ? WHERE id = ?", seal, launch)
+	return seal, briefed, err
+}
+func (tx *Tx) MarkPaneBriefed(launch string) error {
+	_, err := tx.exec("UPDATE launches SET pane_briefed = 1 WHERE id = ?", launch)
+	return err
+}

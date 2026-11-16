@@ -14,6 +14,19 @@ import (
 func TestEveryOpDispatch(t *testing.T) {
 	fake := &service.Fake{}
 	called := ""
+	fake.AdoptTeamFunc = func(context.Context, wire.AdoptTeamRequest) (wire.ApplyTeamResult, error) {
+		called = "adopt-team"
+		return wire.ApplyTeamResult{}, nil
+	}
+	fake.BringOntoCommsFunc = func(context.Context, wire.BringOntoCommsRequest) (wire.BringOntoCommsResult, error) {
+		called = "bring-onto-comms"
+		return wire.BringOntoCommsResult{}, nil
+	}
+	fake.ForgetTeamFunc = func(context.Context, wire.ForgetTeamRequest) (wire.ForgetTeamResult, error) {
+		called = "forget-team"
+		return wire.ForgetTeamResult{}, nil
+	}
+
 	fake.HelloFunc = func(context.Context, wire.HelloRequest) (wire.HelloResult, error) {
 		called = "hello"
 		return wire.HelloResult{}, nil

@@ -10,6 +10,10 @@ import (
 
 // App is the typed interface used by app ops. Implementations return *model.Error errors.
 type App interface {
+	AdoptTeam(context.Context, wire.AdoptTeamRequest) (wire.ApplyTeamResult, error)
+	BringOntoComms(context.Context, wire.BringOntoCommsRequest) (wire.BringOntoCommsResult, error)
+	ForgetTeam(context.Context, wire.ForgetTeamRequest) (wire.ForgetTeamResult, error)
+
 	Hello(context.Context, wire.HelloRequest) (wire.HelloResult, error)
 	ApplyTeam(context.Context, wire.ApplyTeamRequest) (wire.ApplyTeamResult, error)
 	GetTeam(context.Context, wire.GetTeamRequest) (wire.GetTeamResult, error)

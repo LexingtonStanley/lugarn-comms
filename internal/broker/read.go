@@ -34,7 +34,7 @@ func (b *Broker) Hello(ctx context.Context, r wire.HelloRequest) (wire.HelloResu
 	}
 	out = wire.HelloResult{Broker: wire.HelloResultBroker{Version: version.Version, Commit: ptr(version.Commit), Protocol: 1, Protocols: []int64{1}}, Schemas: wire.HelloResultSchemas{TeamSpec: []int64{1}, Store: int64(b.db.Version())}, Capabilities: []string{"watch", "resolve-delivery", "hold", "worktrees"}, Host: wire.HelloResultHost{ID: b.db.HostID(), OS: h.OS, Arch: h.Arch, Hostname: h.Hostname, StateDir: b.opts.StateDir}, Herdr: herdr, Harnesses: b.opts.Probe.Harnesses(ctx)}
 	if b.integration != nil {
-		out.Capabilities = append(out.Capabilities, "spawn", "open-terminal", "return-headless", "start-herdr")
+		out.Capabilities = append(out.Capabilities, "spawn", "open-terminal", "return-headless", "start-herdr", "herdr-names", "herdr-placement", "adopt-team", "bring-onto-comms", "forget-team")
 	}
 	out.Host.Path.Inherited = os.Getenv("PATH")
 	if p := b.opts.LoginPath; p != nil {
@@ -76,6 +76,9 @@ func (b *Broker) Status(ctx context.Context, r wire.StatusRequest) (wire.StatusR
 }
 func (b *Broker) Members(ctx context.Context, r wire.MembersRequest) (wire.MembersResult, error) {
 	var out wire.MembersResult
+	if e := b.refreshExternal(ctx, r.Team); e != nil {
+		return out, e
+	}
 	if e := b.contact(ctx, &r.Team); e != nil {
 		return out, e
 	}

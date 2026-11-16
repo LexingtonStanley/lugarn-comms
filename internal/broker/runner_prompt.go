@@ -16,6 +16,13 @@ func (r *Runner) prompt(tx *store.Tx, t *store.Team, m model.Member, items []sto
 	}
 	grid := policy.NewGrid(edges)
 	needsBrief := m.Session == nil
+	if m.Session == nil && m.Harness != nil && *m.Harness == model.HarnessPi && m.Lease != nil && m.Lease.Launch != nil {
+		_, briefed, e := tx.PaneContext(*m.Lease.Launch)
+		if e != nil {
+			return "", e
+		}
+		needsBrief = !briefed
+	}
 	if m.Session != nil {
 		s, e := tx.GetMemberSession(m.ID, *m.Session)
 		if e != nil {

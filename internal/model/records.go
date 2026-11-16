@@ -41,6 +41,8 @@ type HerdrPlacement struct {
 // Member is the common.v1 Member record.
 type Member struct {
 	ID            string          `json:"id"`
+	HerdrName     *string         `json:"herdr_name,omitempty"`
+	External      *ExternalMember `json:"external,omitempty"`
 	Team          string          `json:"team"`
 	Name          string          `json:"name"`
 	Kind          MemberKind      `json:"kind"`
@@ -174,6 +176,9 @@ type Runner struct {
 
 // TeamStatus is the common.v1 TeamStatus record.
 type TeamStatus struct {
+	DisplayName      *string    `json:"display_name,omitempty"`
+	Adopted          *bool      `json:"adopted,omitempty"`
+	Forgotten        *bool      `json:"forgotten,omitempty"`
 	ID               string     `json:"id"`
 	Name             string     `json:"name"`
 	Pattern          Pattern    `json:"pattern"`
@@ -215,4 +220,16 @@ type TeamCounts struct {
 	Queued        int64 `json:"queued"`
 	Held          int64 `json:"held"`
 	Uncertain     int64 `json:"uncertain"`
+}
+
+// ExternalMember describes a tracked pane that has no broker identity or lease.
+// Session is a validated resume id, not a claim that the broker launched it.
+type ExternalMember struct {
+	Terminal  string   `json:"terminal"`
+	Pane      string   `json:"pane"`
+	Workspace string   `json:"workspace"`
+	Agent     string   `json:"agent"`
+	Session   *string  `json:"session"`
+	Activity  Activity `json:"activity"`
+	Available bool     `json:"available"`
 }

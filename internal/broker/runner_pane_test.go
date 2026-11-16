@@ -285,3 +285,48 @@ func TestRunnerReconcilePaneObservationCountsTowardThrottle(t *testing.T) {
 		t.Fatalf("idle pane was observed again immediately after reconcile: %d", p.observations)
 	}
 }
+
+func TestPiPaneDeliveryWithoutInventedSession(t *testing.T) {
+	p := &panesStub{activity: model.ActivityIdle, active: true}
+	b, r, m := paneFixture(t, p)
+	ctx := context.Background()
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		if e := tx.UpdateMember(m.ID, store.MemberPatch{Harness: ptr(ptr(model.HarnessPi))}, b.now()); e != nil {
+			return e
+		}
+		if e := tx.SetMemberSession(m.ID, nil, b.now()); e != nil {
+			return e
+		}
+		current, e := tx.GetMember(m.ID)
+		if e == nil {
+			m = *current
+		}
+		return e
+	}))
+	var seal string
+	for n := 0; n < 2; n++ {
+		sendToWriter(t, b, "pi delivery")
+		must(t, r.runPane(ctx, m))
+		must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+			got, briefed, e := tx.PaneContext(*m.Lease.Launch)
+			if e != nil {
+				return e
+			}
+			if !briefed || (seal != "" && seal != got) {
+				t.Fatalf("seal/brief changed: %s %v", got, briefed)
+			}
+			seal = got
+			current, e := tx.GetMember(m.ID)
+			if e == nil && current.Session != nil {
+				t.Fatal("invented pi session")
+			}
+			return e
+		}))
+	}
+	if len(p.prompts) != 2 || !strings.Contains(p.prompts[0], "Real Lugarn headers") || strings.Contains(p.prompts[1], "Real Lugarn headers") {
+		t.Fatal(p.prompts)
+	}
+	if !strings.Contains(p.prompts[1], "seal "+seal) {
+		t.Fatal("seal lost across deliveries")
+	}
+}

@@ -221,14 +221,21 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 			}
 			current = *v
 		}
-		if current.Session == nil {
-			return invalid("pane delivery needs a known session; C2d must complete session-before-a-pane")
+		if current.Session == nil && current.Harness != nil && *current.Harness == model.HarnessPi {
+			seal, _, e = tx.PaneContext(*current.Lease.Launch)
+			if e != nil {
+				return e
+			}
+		} else {
+			if current.Session == nil {
+				return invalid("pane delivery needs a known session; complete session-before-a-pane")
+			}
+			session, e := tx.GetMemberSession(m.ID, *current.Session)
+			if e != nil {
+				return e
+			}
+			seal = session.Seal
 		}
-		session, e := tx.GetMemberSession(m.ID, *current.Session)
-		if e != nil {
-			return e
-		}
-		seal = session.Seal
 		prompt, e = r.prompt(tx, t, current, queued, seal)
 		if e != nil {
 			return e
@@ -285,6 +292,9 @@ func (r *Runner) finishPane(ctx context.Context, m model.Member, items []store.D
 			if _, e = r.b.changeDelivery(tx, r.team, item.MessageID, *d, state, reason); e != nil {
 				return e
 			}
+		}
+		if state == model.DeliveryStateDelivered && m.Session == nil && m.Harness != nil && *m.Harness == model.HarnessPi && m.Lease != nil && m.Lease.Launch != nil {
+			return tx.MarkPaneBriefed(*m.Lease.Launch)
 		}
 		if state == model.DeliveryStateDelivered && m.Session != nil {
 			s, e := tx.GetMemberSession(m.ID, *m.Session)

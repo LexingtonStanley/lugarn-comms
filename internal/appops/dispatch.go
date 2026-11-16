@@ -10,6 +10,13 @@ import (
 
 func dispatch(ctx context.Context, req any, svc service.App) (any, error) {
 	switch v := req.(type) {
+	case *wire.AdoptTeamRequest:
+		return svc.AdoptTeam(ctx, *v)
+	case *wire.BringOntoCommsRequest:
+		return svc.BringOntoComms(ctx, *v)
+	case *wire.ForgetTeamRequest:
+		return svc.ForgetTeam(ctx, *v)
+
 	case *wire.HelloRequest:
 		return svc.Hello(ctx, *v)
 	case *wire.ApplyTeamRequest:

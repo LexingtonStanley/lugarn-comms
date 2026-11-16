@@ -20,9 +20,11 @@ type HerdrAPI interface {
 	Status(context.Context) (herdr.Status, error)
 	CreateWorkspace(context.Context, string, string, map[string]string) (herdr.Workspace, error)
 	Workspace(context.Context, string) (herdr.Workspace, error)
+	Workspaces(context.Context) ([]herdr.Workspace, error)
 	OpenTab(context.Context, string, string, string, map[string]string) (herdr.Tab, error)
 	CloseTab(context.Context, string) error
 	Pane(context.Context, string) (herdr.Pane, error)
+	Panes(context.Context) ([]herdr.Pane, error)
 	ProcessInfo(context.Context, string) (herdr.ProcessInfo, error)
 	ClosePane(context.Context, string) error
 	RunCommand(context.Context, string, ...string) error

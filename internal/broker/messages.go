@@ -14,10 +14,20 @@ import (
 // denial is returned separately so its message and audit event can commit.
 func (b *Broker) accept(tx *store.Tx, t *store.Team, from model.Member, to *model.Member, all bool, text string, reply *string, kind model.MessageKind) (model.Message, []policy.DeliveryPlan, *model.Error, error) {
 	var zero model.Message
+	if from.External != nil || (to != nil && to.External != nil) {
+		return zero, nil, nil, invalid("member is not on comms")
+	}
 	live, e := tx.ListMembers(t.ID, false)
 	if e != nil {
 		return zero, nil, nil, e
 	}
+	filtered := live[:0]
+	for _, m := range live {
+		if m.External == nil {
+			filtered = append(filtered, m)
+		}
+	}
+	live = filtered
 	edges, e := b.grid(tx, t.ID)
 	if e != nil {
 		return zero, nil, nil, e

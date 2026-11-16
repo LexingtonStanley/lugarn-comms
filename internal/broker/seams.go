@@ -79,6 +79,9 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 	}
 	var host model.HerdrInfo
 	var hostErr error
+	if preflight.Forgotten {
+		return out, model.NewError(model.ErrorNotFound, "team was forgotten")
+	}
 	if preflight.State == model.TeamStateStopped {
 		if b.integration != nil {
 			status, e := b.integration.opts.Herdr(preflight.HerdrServer).Status(ctx)
@@ -92,6 +95,9 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 		t, e := tx.GetTeam(r.Team)
 		if e != nil {
 			return e
+		}
+		if t.Forgotten {
+			return model.NewError(model.ErrorNotFound, "team was forgotten")
 		}
 		if t.State == model.TeamStateRunning {
 			out.AlreadyRunning = true
@@ -138,7 +144,7 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 				return e
 			}
 			for _, m := range ms {
-				if m.Kind == model.MemberKindHuman {
+				if m.Kind == model.MemberKindHuman || m.External != nil {
 					continue
 				}
 				if e = tx.SetMemberSession(m.ID, nil, now); e != nil {
@@ -188,7 +194,7 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 				return e
 			}
 			for _, m := range live {
-				if m.Kind != model.MemberKindAgent || m.Origin != model.MemberOriginSpec {
+				if m.Kind != model.MemberKindAgent || m.External != nil || m.Origin != model.MemberOriginSpec {
 					continue
 				}
 				stored, e := tx.GetStoredMember(m.ID)
@@ -288,8 +294,18 @@ func (b *Broker) StopTeam(ctx context.Context, r wire.StopTeamRequest) (wire.Sto
 		}
 		return b.event(tx, &t.ID, model.EventTeamStateChanged, true, nil, nil, wire.TeamStateChangedEventData{Team: s, From: from, To: model.TeamStateStopping})
 	})
-	if e != nil || already {
+	if e != nil {
 		return out, e
+	}
+	if already {
+		if team.Forgotten {
+			return out, b.opts.Teardown.Close(ctx, team, nil)
+		}
+		return out, nil
+	}
+	// Detach: leave all agent panes running.
+	if team.Forgotten {
+		members = nil
 	}
 	externalErr := b.opts.Teardown.Close(ctx, team, members)
 	var ended []string
@@ -320,7 +336,7 @@ func (b *Broker) StopTeam(ctx context.Context, r wire.StopTeamRequest) (wire.Sto
 			return e
 		}
 		for _, m := range ms {
-			if m.Kind == model.MemberKindHuman {
+			if m.Kind == model.MemberKindHuman || m.External != nil {
 				continue
 			}
 			if _, e = tx.RevokeMemberTokens(m.ID, now); e != nil {
@@ -459,6 +475,9 @@ func (b *Broker) appRequest(ctx context.Context, team, id string, kind model.Req
 		m, e := b.member(tx, team, id)
 		if e != nil {
 			return e
+		}
+		if m.External != nil {
+			return invalid("member is not on comms; use bring-onto-comms")
 		}
 		if m.Kind == model.MemberKindHuman {
 			return invalid("human has no driver")

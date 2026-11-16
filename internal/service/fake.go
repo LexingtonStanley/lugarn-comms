@@ -10,6 +10,10 @@ import (
 // Fake is an in-memory service with typed callbacks. Unset callbacks return the C1d stub error.
 // Configure callbacks before use; callbacks must synchronize any state they mutate.
 type Fake struct {
+	AdoptTeamFunc      func(context.Context, wire.AdoptTeamRequest) (wire.ApplyTeamResult, error)
+	BringOntoCommsFunc func(context.Context, wire.BringOntoCommsRequest) (wire.BringOntoCommsResult, error)
+	ForgetTeamFunc     func(context.Context, wire.ForgetTeamRequest) (wire.ForgetTeamResult, error)
+
 	HelloFunc           func(context.Context, wire.HelloRequest) (wire.HelloResult, error)
 	ApplyTeamFunc       func(context.Context, wire.ApplyTeamRequest) (wire.ApplyTeamResult, error)
 	GetTeamFunc         func(context.Context, wire.GetTeamRequest) (wire.GetTeamResult, error)
@@ -202,3 +206,24 @@ func (f *Fake) Authenticate(ctx context.Context, member string, token *Token, fa
 var _ App = (*Fake)(nil)
 var _ Tools = (*Fake)(nil)
 var _ Authenticator = (*Fake)(nil)
+
+func (f *Fake) AdoptTeam(ctx context.Context, req wire.AdoptTeamRequest) (wire.ApplyTeamResult, error) {
+	if f.AdoptTeamFunc != nil {
+		return f.AdoptTeamFunc(ctx, req)
+	}
+	return wire.ApplyTeamResult{}, NotImplemented()
+}
+
+func (f *Fake) BringOntoComms(ctx context.Context, req wire.BringOntoCommsRequest) (wire.BringOntoCommsResult, error) {
+	if f.BringOntoCommsFunc != nil {
+		return f.BringOntoCommsFunc(ctx, req)
+	}
+	return wire.BringOntoCommsResult{}, NotImplemented()
+}
+
+func (f *Fake) ForgetTeam(ctx context.Context, req wire.ForgetTeamRequest) (wire.ForgetTeamResult, error) {
+	if f.ForgetTeamFunc != nil {
+		return f.ForgetTeamFunc(ctx, req)
+	}
+	return wire.ForgetTeamResult{}, NotImplemented()
+}

@@ -1,0 +1,29 @@
+{
+  "restart_required": true,
+  "conversation": "fresh",
+  "session": null,
+  "request": {
+    "id": "01M7JHN9S09B0233QKFHG04749",
+    "team": "adopted",
+    "kind": "open-terminal",
+    "member": {
+      "id": "adopted-alpha",
+      "name": "alpha"
+    },
+    "requested_by": {
+      "id": "01M7JHMZNX7Q88SGPBB5DCBHV1",
+      "name": "human"
+    },
+    "args": {
+      "bring_onto_comms": true,
+      "expected_session": null,
+      "pane": "w1:p1",
+      "terminal": "term_66066eced45031"
+    },
+    "status": "pending",
+    "error": null,
+    "created_at": "2026-11-16T16:04:51.616Z",
+    "started_at": null,
+    "finished_at": null
+  }
+}

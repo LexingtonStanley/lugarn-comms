@@ -52,6 +52,9 @@ func (l *integrationLifecycle) Execute(ctx context.Context, req model.Request) e
 		}
 		return l.stopMember(ctx, *m, reason, model.LeaseCauseStop)
 	case model.RequestKindOpenTerminal:
+		if bring, _ := req.Args["bring_onto_comms"].(bool); bring {
+			return l.bringOntoComms(ctx, *m, req)
+		}
 		cancel, _ := req.Args["cancel_turn"].(bool)
 		timeout := 30 * time.Minute
 		_ = l.i.b.db.Read(ctx, func(tx *store.Tx) error {
@@ -138,6 +141,9 @@ func (l *integrationLifecycle) closePane(ctx context.Context, m model.Member) er
 	})
 	if e != nil {
 		return e
+	}
+	if m.Herdr != nil && m.Herdr.Workspace != nil {
+		workspace = *m.Herdr.Workspace
 	}
 	if e = l.i.closeOwnedPane(ctx, server, workspace, *m.Lease.Pane); e != nil {
 		return e

@@ -80,7 +80,7 @@ func TestAgentNameAlwaysValid(t *testing.T) {
 }
 
 func TestNames(t *testing.T) {
-	if got := WorkspaceName("auth-rewrite"); got != "lugarn-auth-rewrite" {
+	if got := WorkspaceName("auth-rewrite"); got != "auth-rewrite" {
 		t.Fatalf("WorkspaceName = %q", got)
 	}
 	for name, valid := range map[string]bool{
@@ -110,5 +110,21 @@ func TestActivityFromHerdr(t *testing.T) {
 		if got := ActivityFromHerdr(in); got != want {
 			t.Fatalf("ActivityFromHerdr(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+func TestCandidateNameSuffixTruncation(t *testing.T) {
+	for _, base := range []string{"writer", strings.Repeat("a", 32)} {
+		seen := map[string]bool{}
+		for n := 1; n <= 1000; n++ {
+			name := CandidateName(base, n)
+			if seen[name] || ValidateAgentName(name) != nil {
+				t.Fatalf("invalid or repeated name %q", name)
+			}
+			seen[name] = true
+		}
+	}
+	if CandidateName("writer", 1) != "writer" || CandidateName("writer", 2) != "writer-2" {
+		t.Fatal("unexpected suffix")
 	}
 }

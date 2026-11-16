@@ -84,10 +84,15 @@ func childEnv(home, search string) []string {
 	var env []string
 	for _, s := range os.Environ() {
 		key, _, _ := strings.Cut(s, "=")
-		if strings.EqualFold(key, "PATH") || strings.HasPrefix(strings.ToUpper(key), "LUGARN_COMMS_") {
+		if strings.EqualFold(key, "PATH") || strings.HasPrefix(strings.ToUpper(key), "LUGARN_COMMS_") || (runtime.GOOS != "windows" && (key == "HOME" || key == "ZDOTDIR" || key == "XDG_CONFIG_HOME" || key == "SHELL")) {
 			continue
 		}
 		env = append(env, s)
+	}
+	// Login PATH capture must not read the developer's shell startup files and
+	// shadow this test's fake Herdr with the live server binary.
+	if runtime.GOOS != "windows" {
+		env = append(env, "HOME="+home, "ZDOTDIR="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"), "SHELL=/bin/sh")
 	}
 	return append(env, "PATH="+search, "LUGARN_COMMS_HOME="+home)
 }
@@ -164,7 +169,7 @@ func fixture(t *testing.T, hop int) *e2e {
 	f := &e2e{home: t.TempDir(), search: probeSearch, ctx: ctx, tokens: map[string]string{}, launches: map[string]string{}}
 	t.Setenv("LUGARN_COMMS_HOME", f.home)
 	hello := f.app(t, "hello", map[string]any{"protocols": []int{1}, "app": map[string]any{"version": "e2e"}}).Result.(*wire.HelloResult)
-	if hello.Schemas.Store != 1 || hello.Host.StateDir != f.home || hello.Herdr.Running {
+	if hello.Schemas.Store != 2 || hello.Host.StateDir != f.home || hello.Herdr.Running {
 		t.Fatal(hello)
 	}
 	contents, e := os.ReadFile(filepath.Join("..", "..", "schema", "examples", "team-spec", "writer-reviewer.json"))

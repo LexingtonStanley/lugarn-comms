@@ -15,7 +15,7 @@ const teamColumns = `id, name, pattern, spec_version, revision, run, state,
  herdr_server, herdr_workspace, hop_budget, review_rounds, per_recipient,
  headless_turns, turn_timeout_seconds, runner_state, runner_pid, runner_pane,
  runner_started_at, runner_heartbeat_at, last_app_contact_at, created_at,
- updated_at, started_at, stopped_at`
+ updated_at, started_at, stopped_at, display_name, placement, adopted, forgotten`
 
 func scanTeam(row scanner) (*Team, error) {
 	var t Team
@@ -23,15 +23,16 @@ func scanTeam(row scanner) (*Team, error) {
 	var workspace, pane, heartbeat, started, stopped, contact sql.NullString
 	var pid sql.NullInt64
 	var created, updated string
-	var runnerStarted sql.NullString
+	var runnerStarted, displayName sql.NullString
 	err := row.Scan(&t.ID, &t.Name, &t.Pattern, &t.SpecVersion, &t.Revision, &t.Run,
 		&state, &t.HerdrServer, &workspace, &t.HopBudget, &t.ReviewRounds,
 		&t.PerRecipient, &t.HeadlessTurns, &t.TurnTimeoutSeconds, &runnerState,
 		&pid, &pane, &runnerStarted, &heartbeat, &contact, &created, &updated,
-		&started, &stopped)
+		&started, &stopped, &displayName, &t.Placement, &t.Adopted, &t.Forgotten)
 	if err != nil {
 		return nil, err
 	}
+	t.DisplayName = stringPtr(displayName)
 	t.State = model.TeamState(state)
 	t.Runner.State = model.RunnerState(runnerState)
 	t.HerdrWorkspace = stringPtr(workspace)
@@ -65,6 +66,9 @@ func scanTeam(row scanner) (*Team, error) {
 
 // CreateTeam inserts a team. Zero-valued limits receive protocol defaults.
 func (tx *Tx) CreateTeam(t Team) error {
+	if t.Placement == "" {
+		t.Placement = model.DefaultHerdrPlacement
+	}
 	if t.SpecVersion == 0 {
 		t.SpecVersion = 1
 	}
@@ -106,14 +110,14 @@ func (tx *Tx) CreateTeam(t Team) error {
  id, name, pattern, spec_version, revision, run, state, herdr_server,
  herdr_workspace, hop_budget, review_rounds, per_recipient, headless_turns,
  turn_timeout_seconds, runner_state, runner_pid, runner_pane, runner_started_at,
- runner_heartbeat_at, last_app_contact_at, created_at, updated_at, started_at, stopped_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+ runner_heartbeat_at, last_app_contact_at, created_at, updated_at, started_at, stopped_at, display_name, placement, adopted, forgotten
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.Name, t.Pattern, t.SpecVersion, t.Revision, t.Run, t.State,
 		t.HerdrServer, dbPtr(t.HerdrWorkspace), t.HopBudget, t.ReviewRounds,
 		t.PerRecipient, t.HeadlessTurns, t.TurnTimeoutSeconds, t.Runner.State,
 		dbPtr(t.Runner.PID), dbPtr(t.Runner.Pane), dbTimePtr(t.Runner.StartedAt),
 		dbTimePtr(t.Runner.HeartbeatAt), dbTimePtr(t.LastAppContactAt), dbTime(t.CreatedAt),
-		dbTime(t.UpdatedAt), dbTimePtr(t.StartedAt), dbTimePtr(t.StoppedAt))
+		dbTime(t.UpdatedAt), dbTimePtr(t.StartedAt), dbTimePtr(t.StoppedAt), dbPtr(t.DisplayName), t.Placement, t.Adopted, t.Forgotten)
 	return err
 }
 
@@ -137,7 +141,7 @@ func (tx *Tx) GetTeamByName(name string) (*Team, error) {
 
 // ListTeams returns all teams ordered by name.
 func (tx *Tx) ListTeams() ([]Team, error) {
-	rows, err := tx.query("SELECT " + teamColumns + " FROM teams ORDER BY name")
+	rows, err := tx.query("SELECT " + teamColumns + " FROM teams WHERE forgotten = 0 ORDER BY name")
 	if err != nil {
 		return nil, err
 	}
@@ -160,6 +164,18 @@ func (tx *Tx) UpdateTeam(id string, patch TeamPatch, at model.Time) error {
 	add := func(column string, value any) {
 		sets = append(sets, column+" = ?")
 		args = append(args, value)
+	}
+	if patch.DisplayName != nil {
+		add("display_name", dbPtr(*patch.DisplayName))
+	}
+	if patch.Placement != nil {
+		add("placement", *patch.Placement)
+	}
+	if patch.Adopted != nil {
+		add("adopted", *patch.Adopted)
+	}
+	if patch.Forgotten != nil {
+		add("forgotten", *patch.Forgotten)
 	}
 	if patch.Name != nil {
 		add("name", *patch.Name)
