@@ -23,8 +23,15 @@ func (i *Integration) reserveAgentName(tx *store.Tx, t *store.Team, m model.Memb
 	for _, a := range agents {
 		names[a.Name] = true
 	}
-	for n := 1; n <= len(names)+1; n++ {
+	// Truncation can make the unsuffixed name equal a later candidate. Count
+	// distinct candidates so duplicates cannot exhaust the pigeonhole bound.
+	seen := map[string]bool{}
+	for n := 1; len(seen) <= len(names); n++ {
 		name := herdr.CandidateName(m.Name, n)
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
 		if !names[name] {
 			return name, nil
 		}

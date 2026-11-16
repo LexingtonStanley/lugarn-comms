@@ -6,6 +6,7 @@ import (
 	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -272,4 +273,23 @@ func TestBringRetryAcrossManagedLeaseHandoff(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNameAllocationSkipsDuplicateTruncatedCandidates(t *testing.T) {
+	b, l, m := reviewPaneSetup(t, &reviewHerdr{})
+	m.Name = strings.Repeat("a", 30) + "-2"
+	must(t, b.db.Write(context.Background(), func(tx *store.Tx) error {
+		team, e := tx.GetTeam(m.Team)
+		if e != nil {
+			return e
+		}
+		name, e := l.i.reserveAgentName(tx, team, m, []herdr.Agent{{Name: m.Name}})
+		if e != nil {
+			return e
+		}
+		if name != strings.Repeat("a", 30)+"-3" {
+			t.Fatal(name)
+		}
+		return nil
+	}))
 }
