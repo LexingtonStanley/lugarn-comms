@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"regexp"
+	"strconv"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 )
@@ -28,11 +29,11 @@ const (
 // tagEncoding is Crockford's base32 alphabet in lower case.
 var tagEncoding = base32.NewEncoding("0123456789abcdefghjkmnpqrstvwxyz").WithPadding(base32.NoPadding)
 
-// WorkspaceName is a team's Herdr workspace label: lugarn-<team name>. It's a
+// WorkspaceName is a team's Herdr workspace label. It's a
 // label for people; the broker records the workspace's id.
-func WorkspaceName(team string) string { return "lugarn-" + team }
+func WorkspaceName(team string) string { return team }
 
-// AgentName is a member's Herdr agent name (Herdr names, decision 5): the
+// AgentName is the legacy derived name retained by migration 2 (decision 5): the
 // member name cut to 25 characters, '-', and a tag, the first 6 characters of
 // the lower-case Crockford base32 of SHA-256("<team id>/<member name>"), such as
 // "writer-k2m9xa". The name is stable across launches, and the tag keeps two
@@ -68,4 +69,14 @@ func ValidateSession(name string) error {
 	}
 	return model.NewError(model.ErrorInvalidRequest, "invalid Herdr session name").
 		WithDetails(map[string]any{"reason": "herdr_session_name", "session": name})
+}
+
+// CandidateName returns the unsuffixed name for ordinal 1, then name-2, name-3,
+// truncating the base only as needed to retain Herdr's 32-byte limit.
+func CandidateName(member string, ordinal int) string {
+	if ordinal <= 1 {
+		return member
+	}
+	suffix := "-" + strconv.Itoa(ordinal)
+	return member[:min(len(member), MaxAgentName-len(suffix))] + suffix
 }

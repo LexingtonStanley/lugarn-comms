@@ -274,6 +274,11 @@ func applyMigration(ctx context.Context, db *sql.DB, m migration, latest int) (i
 	if _, err := tx.ExecContext(ctx, m.sql); err != nil {
 		return 0, asError(fmt.Errorf("migration %s: %w", m.name, err))
 	}
+	if m.version == 2 {
+		if err := migrateHerdrNames(ctx, tx); err != nil {
+			return 0, asError(err)
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return 0, asError(err)
 	}

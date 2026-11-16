@@ -78,7 +78,7 @@ func (r *Runner) pass(ctx context.Context) (bool, error) {
 	if e != nil {
 		return false, e
 	}
-	if team.State != model.TeamStateRunning {
+	if team.Forgotten || team.State != model.TeamStateRunning {
 		return true, nil
 	}
 	if e = r.checkOrphans(ctx, false); e != nil {
@@ -95,7 +95,7 @@ func (r *Runner) pass(ctx context.Context) (bool, error) {
 		}
 	}
 	for _, m := range members {
-		if m.Kind != model.MemberKindAgent || blocked[m.ID] {
+		if m.Kind != model.MemberKindAgent || m.External != nil || blocked[m.ID] {
 			continue
 		}
 		if _, ok := r.orphans[m.ID]; ok {

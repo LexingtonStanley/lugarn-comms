@@ -128,3 +128,6 @@ func openCodeMajor(version string) (int, error) {
 	return 0, model.NewError(model.ErrorHarnessUnavailable, "OpenCode "+version+" isn't supported").
 		WithDetails(map[string]any{"reason": "unsupported_version", "version": version})
 }
+
+// ValidSession checks a resume identity before any external agent is stopped.
+func ValidSession(h model.Harness, id string) bool { return validSession(h, id) }

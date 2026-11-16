@@ -184,7 +184,7 @@ func (c *Client) RunCommand(ctx context.Context, pane string, argv ...string) er
 
 // StartOptions describe `herdr agent start`.
 type StartOptions struct {
-	// Name is the Herdr agent name; see AgentName.
+	// Name is the member's persisted Herdr agent name.
 	Name    string
 	Harness model.Harness
 	// Pane must be at its shell prompt.

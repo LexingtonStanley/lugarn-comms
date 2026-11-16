@@ -39,7 +39,7 @@ func TestIntegrationStartHerdrAndCapabilities(t *testing.T) {
 	}
 	hello, e := b.Hello(context.Background(), wire.HelloRequest{Protocols: []int64{1}})
 	must(t, e)
-	if len(hello.Capabilities) != 8 {
+	if len(hello.Capabilities) != 13 {
 		t.Fatal(hello.Capabilities)
 	}
 }

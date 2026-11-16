@@ -3,6 +3,7 @@ package model
 // Schema defaults are exposed for the policy layer; decoding never applies them.
 const (
 	DefaultHerdrServer        = "default"
+	DefaultHerdrPlacement     = "tabs"
 	DefaultHopBudget          = 16
 	DefaultReviewRounds       = 3
 	DefaultPerRecipient       = 1
@@ -20,19 +21,21 @@ const (
 // responses. Optional non-nullable settings remain omitted until supplied;
 // nullable fields always marshal, using null when unset.
 type TeamSpec struct {
-	Version int            `json:"version"`
-	ID      string         `json:"id"`
-	Name    string         `json:"name"`
-	Pattern Pattern        `json:"pattern"`
-	Herdr   *HerdrSettings `json:"herdr,omitempty"`
-	Limits  *Limits        `json:"limits,omitempty"`
-	Members []MemberSpec   `json:"members"`
-	Grid    []GridEdge     `json:"grid"`
+	Version     int            `json:"version"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	DisplayName *string        `json:"display_name,omitempty"`
+	Pattern     Pattern        `json:"pattern"`
+	Herdr       *HerdrSettings `json:"herdr,omitempty"`
+	Limits      *Limits        `json:"limits,omitempty"`
+	Members     []MemberSpec   `json:"members"`
+	Grid        []GridEdge     `json:"grid"`
 }
 
 // HerdrSettings selects the Herdr server for a team.
 type HerdrSettings struct {
-	Server *string `json:"server,omitempty"`
+	Server    *string `json:"server,omitempty"`
+	Placement *string `json:"placement,omitempty"`
 }
 
 // Limits holds optional limits; nil fields leave defaults to the policy layer.

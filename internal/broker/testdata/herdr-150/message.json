@@ -1,0 +1,35 @@
+{
+  "message": {
+    "id": "01M7JHND2BNXTGK0T9855ET47Q",
+    "team": "adopted",
+    "from": {
+      "id": "01M7JHMZNX7Q88SGPBB5DCBHV1",
+      "name": "human"
+    },
+    "kind": "message",
+    "broadcast": false,
+    "reply_to": null,
+    "text": "CHECK150",
+    "hop": null,
+    "round": null,
+    "turn": null,
+    "created_at": "2026-11-16T16:04:54.987Z",
+    "deliveries": [
+      {
+        "to": {
+          "id": "adopted-alpha",
+          "name": "alpha"
+        },
+        "state": "queued",
+        "reason": null,
+        "via": null,
+        "wake": true,
+        "attempts": 0,
+        "notify": null,
+        "turn": null,
+        "updated_at": "2026-11-16T16:04:54.987Z",
+        "delivered_at": null
+      }
+    ]
+  }
+}

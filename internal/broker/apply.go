@@ -11,7 +11,7 @@ import (
 )
 
 func (b *Broker) spec(tx *store.Tx, t *store.Team) (model.TeamSpec, error) {
-	out := model.TeamSpec{Version: t.SpecVersion, ID: t.ID, Name: t.Name, Pattern: t.Pattern, Herdr: &model.HerdrSettings{Server: &t.HerdrServer}, Limits: &model.Limits{HopBudget: ptr(int(t.HopBudget)), ReviewRounds: ptr(int(t.ReviewRounds)), PerRecipient: ptr(int(t.PerRecipient)), HeadlessTurns: ptr(int(t.HeadlessTurns)), TurnTimeoutSeconds: ptr(int(t.TurnTimeoutSeconds))}, Members: []model.MemberSpec{}}
+	out := model.TeamSpec{Version: t.SpecVersion, ID: t.ID, Name: t.Name, Pattern: t.Pattern, DisplayName: t.DisplayName, Herdr: &model.HerdrSettings{Server: &t.HerdrServer, Placement: &t.Placement}, Limits: &model.Limits{HopBudget: ptr(int(t.HopBudget)), ReviewRounds: ptr(int(t.ReviewRounds)), PerRecipient: ptr(int(t.PerRecipient)), HeadlessTurns: ptr(int(t.HeadlessTurns)), TurnTimeoutSeconds: ptr(int(t.TurnTimeoutSeconds))}, Members: []model.MemberSpec{}}
 	ms, e := tx.ListMembers(t.ID, false)
 	if e != nil {
 		return out, e
@@ -66,6 +66,10 @@ func (b *Broker) GetTeam(ctx context.Context, r wire.GetTeamRequest) (wire.GetTe
 	return out, e
 }
 func (b *Broker) ApplyTeam(ctx context.Context, r wire.ApplyTeamRequest) (wire.ApplyTeamResult, error) {
+	return b.applyTeam(ctx, r, nil)
+}
+
+func (b *Broker) applyTeam(ctx context.Context, r wire.ApplyTeamRequest, adopt func(*store.Tx) error) (wire.ApplyTeamResult, error) {
 	var out wire.ApplyTeamResult
 	h := b.host(ctx)
 	if e := b.contact(ctx, &r.Spec.ID); e != nil && !missing(e) {
@@ -78,6 +82,9 @@ func (b *Broker) ApplyTeam(ctx context.Context, r wire.ApplyTeamRequest) (wire.A
 			return e
 		}
 		if e == nil {
+			if t.Forgotten {
+				return invalid("forgotten team IDs cannot be reused")
+			}
 			s, e := b.spec(tx, t)
 			if e != nil {
 				return e
@@ -114,15 +121,33 @@ func (b *Broker) ApplyTeam(ctx context.Context, r wire.ApplyTeamRequest) (wire.A
 			return pe
 		}
 		s := p.Spec
+		if t != nil {
+			for _, ms := range s.Members {
+				m, err := tx.GetMember(ms.ID)
+				if err != nil && !missing(err) {
+					return err
+				}
+				if err == nil && m.External != nil && (ms.Name != m.Name || ms.Harness != *m.Harness || ms.Folder != *m.Folder || (ms.Worktree != nil && *ms.Worktree) || ms.Mode != model.ModePane || *s.Herdr.Server != t.HerdrServer) {
+					return invalid("external member identity cannot change before joining comms")
+				}
+			}
+		}
 		now := b.now()
 		l := p.Limits
 		if p.Create {
-			if e = tx.CreateTeam(store.Team{ID: s.ID, Name: s.Name, Pattern: s.Pattern, SpecVersion: 1, Revision: p.Revision, State: model.TeamStateStopped, HerdrServer: *s.Herdr.Server, HopBudget: int64(l.HopBudget), ReviewRounds: int64(l.ReviewRounds), PerRecipient: int64(l.PerRecipient), HeadlessTurns: int64(l.HeadlessTurns), TurnTimeoutSeconds: int64(l.TurnTimeoutSeconds), CreatedAt: now, UpdatedAt: now}); e != nil {
+			if e = tx.CreateTeam(store.Team{ID: s.ID, Name: s.Name, Pattern: s.Pattern, SpecVersion: 1, Revision: p.Revision, State: model.TeamStateStopped, HerdrServer: *s.Herdr.Server, DisplayName: s.DisplayName, Placement: *s.Herdr.Placement, HopBudget: int64(l.HopBudget), ReviewRounds: int64(l.ReviewRounds), PerRecipient: int64(l.PerRecipient), HeadlessTurns: int64(l.HeadlessTurns), TurnTimeoutSeconds: int64(l.TurnTimeoutSeconds), CreatedAt: now, UpdatedAt: now}); e != nil {
 				return e
 			}
 		} else {
-			if e = tx.UpdateTeam(s.ID, store.TeamPatch{Name: &s.Name, Pattern: &s.Pattern, HerdrServer: s.Herdr.Server, HopBudget: ptr(int64(l.HopBudget)), ReviewRounds: ptr(int64(l.ReviewRounds)), PerRecipient: ptr(int64(l.PerRecipient)), HeadlessTurns: ptr(int64(l.HeadlessTurns)), TurnTimeoutSeconds: ptr(int64(l.TurnTimeoutSeconds))}, now); e != nil {
+			if e = tx.UpdateTeam(s.ID, store.TeamPatch{Name: &s.Name, Pattern: &s.Pattern, HerdrServer: s.Herdr.Server, DisplayName: &s.DisplayName, Placement: s.Herdr.Placement, HopBudget: ptr(int64(l.HopBudget)), ReviewRounds: ptr(int64(l.ReviewRounds)), PerRecipient: ptr(int64(l.PerRecipient)), HeadlessTurns: ptr(int64(l.HeadlessTurns)), TurnTimeoutSeconds: ptr(int64(l.TurnTimeoutSeconds))}, now); e != nil {
 				return e
+			}
+			// Workspace IDs are scoped to a server; never reuse an old server's
+			// recorded ID when the stopped team selects another server.
+			if t.HerdrServer != *s.Herdr.Server {
+				if e = tx.UpdateTeam(s.ID, store.TeamPatch{HerdrWorkspace: ptr((*string)(nil))}, now); e != nil {
+					return e
+				}
 			}
 			if _, e = tx.BumpTeamRevision(s.ID, r.IfRevision, now); e != nil {
 				return e
@@ -201,6 +226,11 @@ func (b *Broker) ApplyTeam(ctx context.Context, r wire.ApplyTeamRequest) (wire.A
 		}
 		if e = tx.ReplaceGrid(s.ID, edges); e != nil {
 			return e
+		}
+		if adopt != nil {
+			if e = adopt(tx); e != nil {
+				return e
+			}
 		}
 		for _, m := range p.Removed {
 			v, e := tx.GetMember(m.ID)

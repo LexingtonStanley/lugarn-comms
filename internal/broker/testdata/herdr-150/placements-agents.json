@@ -1,0 +1,66 @@
+{
+  "id": "cli:agent:list",
+  "result": {
+    "agents": [
+      {
+        "agent": "pi",
+        "agent_status": "idle",
+        "cwd": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+        "focused": true,
+        "foreground_cwd": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+        "name": "alpha",
+        "pane_id": "w1:p1",
+        "revision": 0,
+        "state_change_seq": 1,
+        "tab_id": "w1:t1",
+        "terminal_id": "term_66066eced45031",
+        "workspace_id": "w1"
+      },
+      {
+        "agent": "pi",
+        "agent_status": "idle",
+        "cwd": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+        "focused": false,
+        "foreground_cwd": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+        "name": "beta",
+        "pane_id": "w1:p2",
+        "revision": 0,
+        "state_change_seq": 2,
+        "tab_id": "w1:t2",
+        "terminal_id": "term_66066eced925f2",
+        "workspace_id": "w1"
+      },
+      {
+        "agent": "pi",
+        "agent_status": "idle",
+        "cwd": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names/.herdr-150-pqqzhti3/work",
+        "focused": false,
+        "foreground_cwd": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names/.herdr-150-pqqzhti3/work",
+        "interactive_ready": true,
+        "name": "writer",
+        "pane_id": "w2:p2",
+        "revision": 0,
+        "state_change_seq": 3,
+        "tab_id": "w2:t2",
+        "terminal_id": "term_66066eda27a8d4",
+        "workspace_id": "w2"
+      },
+      {
+        "agent": "pi",
+        "agent_status": "idle",
+        "cwd": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names/.herdr-150-pqqzhti3/work",
+        "focused": false,
+        "foreground_cwd": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names/.herdr-150-pqqzhti3/work",
+        "interactive_ready": true,
+        "name": "writer-2",
+        "pane_id": "w4:p1",
+        "revision": 0,
+        "state_change_seq": 4,
+        "tab_id": "w4:t1",
+        "terminal_id": "term_66066ee7386e36",
+        "workspace_id": "w4"
+      }
+    ],
+    "type": "agent_list"
+  }
+}

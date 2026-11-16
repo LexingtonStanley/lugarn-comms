@@ -36,7 +36,7 @@ func (r *Runner) reconcile(ctx context.Context) error {
 			return e
 		}
 		for _, m := range ms {
-			if r.freshStart && m.Origin == model.MemberOriginSpec && m.Lease != nil && m.Lease.Driver == model.DriverNone {
+			if r.freshStart && m.External == nil && m.Origin == model.MemberOriginSpec && m.Lease != nil && m.Lease.Driver == model.DriverNone {
 				r.startMembers[m.ID] = true
 			}
 			turn, e := tx.GetLiveTurn(m.ID)

@@ -187,7 +187,11 @@ func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 		}
 	}
 	if pane == "" {
-		ws, e := client.CreateWorkspace(ctx, herdr.WorkspaceName(t.Name), i.b.opts.StateDir, env)
+		label := t.Name
+		if t.DisplayName != nil {
+			label = *t.DisplayName
+		}
+		ws, e := client.CreateWorkspace(ctx, herdr.WorkspaceName(label), i.b.opts.StateDir, env)
 		if e != nil {
 			return e
 		}

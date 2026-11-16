@@ -1,0 +1,55 @@
+{
+  "protocol": 1,
+  "op": "adopt-team",
+  "spec": {
+    "version": 1,
+    "id": "adopted",
+    "name": "laptop-team",
+    "display_name": "Laptop Team",
+    "pattern": "custom",
+    "herdr": {
+      "server": "lugarn-150",
+      "placement": "tabs"
+    },
+    "members": [
+      {
+        "id": "alpha",
+        "name": "alpha",
+        "role": "custom",
+        "harness": "pi",
+        "folder": "/home/lex/code",
+        "profile": "workspace",
+        "mode": "pane",
+        "brief": "Use the Lugarn CLI to communicate.",
+        "task": null,
+        "host": null
+      },
+      {
+        "id": "beta",
+        "name": "beta",
+        "role": "custom",
+        "harness": "pi",
+        "folder": "/home/lex/code",
+        "profile": "workspace",
+        "mode": "pane",
+        "brief": "Use the Lugarn CLI to communicate.",
+        "task": null,
+        "host": null
+      }
+    ],
+    "grid": []
+  },
+  "workspace": "w1",
+  "members": [
+    {
+      "member": "alpha",
+      "pane": "w1:p1",
+      "agent": "alpha"
+    },
+    {
+      "member": "beta",
+      "pane": "w1:p2",
+      "agent": "beta"
+    }
+  ]
+}

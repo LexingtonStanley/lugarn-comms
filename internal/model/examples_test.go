@@ -21,6 +21,7 @@ type recordExample struct {
 
 // Paths are JSON pointers into the real examples, not synthesized fixtures.
 var recordExamples = []recordExample{
+	{"ExternalMember", ExternalMember{}, "app-ops/members--external.response.json", 0, "/result/members/1/external"},
 	{"Error", Error{}, "app-ops/apply-team--revision-conflict.response.json", 0, "/error"},
 	{"MemberRef", MemberRef{}, "app-ops/hold.response.json", 0, "/result/member"},
 	{"Worktree", Worktree{}, "app-ops/members.response.json", 0, "/result/members/2/worktree"},

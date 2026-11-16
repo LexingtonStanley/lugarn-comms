@@ -851,6 +851,12 @@
               "type": "null"
             }
           ]
+        },
+        "herdr_name": {
+          "$ref": "#/$defs/HerdrAgentName"
+        },
+        "external": {
+          "$ref": "#/$defs/ExternalMember"
         }
       },
       "required": [
@@ -1513,6 +1519,15 @@
               "type": "null"
             }
           ]
+        },
+        "display_name": {
+          "$ref": "#/$defs/DisplayName"
+        },
+        "adopted": {
+          "type": "boolean"
+        },
+        "forgotten": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -1602,6 +1617,59 @@
         "headless"
       ],
       "additionalProperties": false
+    },
+    "HerdrID": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_:-]{0,127}$"
+    },
+    "HerdrAgentName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,31}$"
+    },
+    "DisplayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[^\u0000-\u001f]+$"
+    },
+    "ExternalMember": {
+      "type": "object",
+      "properties": {
+        "pane": {
+          "$ref": "#/$defs/HerdrID"
+        },
+        "workspace": {
+          "$ref": "#/$defs/HerdrID"
+        },
+        "terminal": {
+          "$ref": "#/$defs/HerdrID"
+        },
+        "agent": {
+          "$ref": "#/$defs/HerdrAgentName"
+        },
+        "session": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "activity": {
+          "$ref": "#/$defs/Activity"
+        },
+        "available": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "pane",
+        "workspace",
+        "terminal",
+        "agent",
+        "session",
+        "activity",
+        "available"
+      ]
     }
   }
 }

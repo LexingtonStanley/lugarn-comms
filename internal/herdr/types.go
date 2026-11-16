@@ -55,6 +55,7 @@ type Tab struct {
 
 // Pane is one Herdr pane.
 type Pane struct {
+	Terminal  string
 	ID        string
 	Workspace string
 	Tab       string
@@ -156,6 +157,7 @@ func (w wireAgent) agent() Agent {
 }
 
 type wirePane struct {
+	TerminalID   string       `json:"terminal_id"`
 	PaneID       string       `json:"pane_id"`
 	WorkspaceID  string       `json:"workspace_id"`
 	TabID        string       `json:"tab_id"`
@@ -167,7 +169,7 @@ type wirePane struct {
 
 func (w wirePane) pane() Pane {
 	return Pane{
-		ID:        w.PaneID,
+		Terminal: w.TerminalID, ID: w.PaneID,
 		Workspace: w.WorkspaceID,
 		Tab:       w.TabID,
 		Cwd:       str(w.Cwd),

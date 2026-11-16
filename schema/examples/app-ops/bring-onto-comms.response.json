@@ -1,0 +1,11 @@
+{
+  "protocol": 1,
+  "op": "bring-onto-comms",
+  "ok": true,
+  "result": {
+    "restart_required": true,
+    "conversation": "fresh",
+    "session": null,
+    "request": null
+  }
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -595,4 +596,59 @@ func TestPaneProcessInfo(t *testing.T) {
 		t.Fatal(info, err)
 	}
 	wantArgs(t, onlyCall(t, f), "pane", "process-info", "--pane", "w1:p2")
+}
+
+// Captured from the isolated lugarn-150 run; ensure adoption's terminal and
+// relationship checks consume Herdr 0.9.5's real output shape.
+func TestHerdr150AdoptionFixtures(t *testing.T) {
+	raw, err := os.ReadFile("../broker/testdata/herdr-150/adopt-before.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshots map[string]struct {
+		Result json.RawMessage `json:"result"`
+	}
+	if err = json.Unmarshal(raw, &snapshots); err != nil {
+		t.Fatal(err)
+	}
+	f := newFake(t)
+	f.on("agent list", ok(string(snapshots["agent"].Result)))
+	agents, err := f.client().Agents(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var alpha Agent
+	for _, a := range agents {
+		if a.Name == "alpha" {
+			alpha = a
+		}
+	}
+	if alpha.Kind != "pi" || alpha.Activity != model.ActivityIdle || alpha.Workspace == "" || alpha.Cwd == "" {
+		t.Fatal(alpha)
+	}
+	var listing struct {
+		Panes []json.RawMessage `json:"panes"`
+	}
+	if err = json.Unmarshal(snapshots["pane"].Result, &listing); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range listing.Panes {
+		var p wirePane
+		if err = json.Unmarshal(raw, &p); err != nil {
+			t.Fatal(err)
+		}
+		if p.PaneID != alpha.Pane {
+			continue
+		}
+		f.on("pane get", ok(`{"pane":`+string(raw)+`}`))
+		pane, err := f.client().Pane(testContext(t), alpha.Pane)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pane.Terminal == "" || pane.Tab != alpha.Tab || pane.Workspace != alpha.Workspace || pane.Cwd != alpha.Cwd {
+			t.Fatal(pane, alpha)
+		}
+		return
+	}
+	t.Fatal("fixture lacks adopted pane")
 }

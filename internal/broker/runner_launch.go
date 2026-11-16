@@ -312,6 +312,9 @@ func (r *Runner) session(tx *store.Tx, m model.Member, id, seal string, source m
 			return e
 		}
 		rec := store.MemberSessionRecord{MemberID: m.ID, Ordinal: int64(len(sessions) + 1), SessionID: id, Harness: *m.Harness, Source: source, LaunchID: &launch, Seal: seal, FirstSeenAt: r.b.now()}
+		if launch == "" {
+			rec.LaunchID = nil
+		}
 		if e = tx.InsertMemberSession(rec); e != nil {
 			return e
 		}

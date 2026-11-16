@@ -68,7 +68,11 @@ func (i *Integration) Close(ctx context.Context, t store.Team, members []model.M
 	}
 	for _, m := range members {
 		if m.Lease != nil && m.Lease.Pane != nil {
-			record("close member "+m.ID+" pane "+*m.Lease.Pane, i.closeOwnedPane(ctx, t.HerdrServer, workspace, *m.Lease.Pane))
+			memberWorkspace := workspace
+			if m.Herdr != nil && m.Herdr.Workspace != nil {
+				memberWorkspace = *m.Herdr.Workspace
+			}
+			record("close member "+m.ID+" pane "+*m.Lease.Pane, i.closeOwnedPane(ctx, t.HerdrServer, memberWorkspace, *m.Lease.Pane))
 		}
 	}
 	if placement.PID > 0 && placement.Birth != "" {
@@ -78,7 +82,7 @@ func (i *Integration) Close(ctx context.Context, t store.Team, members []model.M
 	if root == nil && placement.Pane != "" {
 		root = &placement.Pane
 	}
-	if root != nil {
+	if root != nil && !t.Forgotten {
 		record("close runner pane "+*root, i.closeOwnedPane(ctx, t.HerdrServer, workspace, *root))
 	}
 	record("end launches team "+t.ID, i.b.db.Write(ctx, func(tx *store.Tx) error {

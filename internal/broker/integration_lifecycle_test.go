@@ -80,7 +80,7 @@ func TestIntegrationPaneLaunchAndSessionBeforePane(t *testing.T) {
 				if e != nil {
 					return e
 				}
-				if v.State != model.MemberStateRunning || v.Lease.Driver != model.DriverPane || v.Activity == nil || *v.Activity != model.ActivityBlocked || v.Herdr == nil || v.Herdr.Agent == nil || *v.Herdr.Agent != herdr.AgentName("t", "writer") {
+				if v.State != model.MemberStateRunning || v.Lease.Driver != model.DriverPane || v.Activity == nil || *v.Activity != model.ActivityBlocked || v.Herdr == nil || v.Herdr.Agent == nil || *v.Herdr.Agent != "writer" {
 					t.Fatal(v)
 				}
 				queued, e := tx.NextDeliveries(m.ID, 0)
@@ -118,6 +118,9 @@ func TestIntegrationPaneLaunchAndSessionBeforePane(t *testing.T) {
 
 // Windows fakes observe the generated capsule instead of starting a shell.
 func (h *lifecycleHerdr) Agents(context.Context) ([]herdr.Agent, error) {
+	if h.env == nil {
+		return nil, nil
+	}
 	raw, e := os.ReadFile(h.env["LUGARN_COMMS_PANE_CONFIG"])
 	if e != nil {
 		return nil, e

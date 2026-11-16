@@ -11,6 +11,10 @@ import (
 type Team struct {
 	ID                 string
 	Name               string
+	DisplayName        *string
+	Placement          string
+	Adopted            bool
+	Forgotten          bool
 	Pattern            model.Pattern
 	SpecVersion        int
 	Revision           int64
@@ -35,6 +39,10 @@ type Team struct {
 // dedicated accessors so concurrent revision checks remain explicit.
 type TeamPatch struct {
 	Name               *string
+	DisplayName        **string
+	Placement          *string
+	Adopted            *bool
+	Forgotten          *bool
 	Pattern            *model.Pattern
 	State              *model.TeamState
 	HerdrServer        *string
@@ -83,32 +91,35 @@ type MemberParams struct {
 
 // StoredMember adds configuration needed to rebuild a team spec to Member.
 type StoredMember struct {
-	Member     model.Member
-	Position   *int64
-	SpawnedRun *int64
-	Worktree   bool
-	WorktreeID *string
-	Brief      *string
-	Task       *string
-	UpdatedAt  model.Time
+	Member         model.Member
+	HerdrAgent     *string
+	HerdrWorkspace *string
+	Position       *int64
+	SpawnedRun     *int64
+	Worktree       bool
+	WorktreeID     *string
+	Brief          *string
+	Task           *string
+	UpdatedAt      model.Time
 }
 
 // MemberPatch changes a member's stored configuration. State, activity,
 // removal and current session have dedicated accessors.
 type MemberPatch struct {
-	Name       *string
-	Role       **model.Role
-	Position   **int64
-	Harness    **model.Harness
-	Profile    **model.Profile
-	Mode       **model.Mode
-	Folder     **string
-	Worktree   *bool
-	WorktreeID **string
-	Brief      **string
-	Task       **string
-	LastDriver **model.Mode
-	HerdrAgent **string
+	Name           *string
+	Role           **model.Role
+	Position       **int64
+	Harness        **model.Harness
+	Profile        **model.Profile
+	Mode           **model.Mode
+	Folder         **string
+	Worktree       *bool
+	WorktreeID     **string
+	Brief          **string
+	Task           **string
+	LastDriver     **model.Mode
+	HerdrAgent     **string
+	HerdrWorkspace **string
 }
 
 // GridRow is one stored grid capability.

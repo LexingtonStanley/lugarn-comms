@@ -1,0 +1,18 @@
+{
+  "sessions": [
+    {
+      "default": true,
+      "name": "default",
+      "running": true,
+      "session_dir": "/home/lexde/.config/herdr",
+      "socket_path": "/home/lexde/.config/herdr/herdr.sock"
+    },
+    {
+      "default": false,
+      "name": "lugarn-e2e",
+      "running": false,
+      "session_dir": "/home/lexde/.config/herdr/sessions/lugarn-e2e",
+      "socket_path": "/home/lexde/.config/herdr/sessions/lugarn-e2e/herdr.sock"
+    }
+  ]
+}

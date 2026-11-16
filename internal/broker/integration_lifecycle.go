@@ -184,7 +184,10 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 			}
 			newSession = true
 		}
-		agent := herdr.AgentName(m.Team, m.Name)
+		agent, e := l.i.reserveAgentName(ctx, tx, t, m)
+		if e != nil {
+			return e
+		}
 		if e := tx.UpdateMember(m.ID, store.MemberPatch{HerdrAgent: ptr(&agent), LastDriver: ptr(ptr(model.ModePane))}, now); e != nil {
 			return e
 		}
@@ -193,7 +196,6 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 				return e
 			}
 		}
-		var e error
 		starting, e = tx.GetMember(m.ID)
 		copy := *t
 		team = &copy
@@ -248,17 +250,29 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 		return e
 	}
 	client := l.i.opts.Herdr(team.HerdrServer)
-	tab, e := client.OpenTab(ctx, *team.HerdrWorkspace, m.Name, *m.Workdir, env)
+	workspace := *team.HerdrWorkspace
+	var tab herdr.Tab
+	if team.Placement == "workspaces" {
+		ws, err := client.CreateWorkspace(ctx, m.Name, *m.Workdir, env)
+		e = err
+		workspace = ws.ID
+		tab = herdr.Tab{ID: ws.RootTab, Workspace: ws.ID, RootPane: ws.RootPane}
+	} else {
+		tab, e = client.OpenTab(ctx, workspace, m.Name, *m.Workdir, env)
+	}
 	if e != nil {
 		return e
 	}
 	success := false
 	defer func() {
 		if !success {
-			_ = l.i.closeOwnedPane(context.WithoutCancel(ctx), team.HerdrServer, *team.HerdrWorkspace, tab.RootPane)
+			_ = l.i.closeOwnedPane(context.WithoutCancel(ctx), team.HerdrServer, workspace, tab.RootPane)
 		}
 	}()
 	e = l.r.write(ctx, starting, func(tx *store.Tx, _ *store.Team) error {
+		if e := tx.UpdateMember(m.ID, store.MemberPatch{HerdrWorkspace: ptr(&workspace)}, l.i.b.now()); e != nil {
+			return e
+		}
 		next := *starting.Lease
 		next.Pane = &tab.RootPane
 		if e := tx.CompareAndSwapLease(m.ID, next.Driver, next.Generation, next, l.i.b.now()); e != nil {
@@ -281,12 +295,12 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 		if e = l.i.waitPaneMarker(ctx, id, "pane-started", client, tab.RootPane); e != nil {
 			return e
 		}
-		agent, e = l.i.detectWindowsPane(ctx, client, tab.RootPane, *team.HerdrWorkspace, herdr.AgentName(m.Team, m.Name), *m.Harness)
+		agent, e = l.i.detectWindowsPane(ctx, client, tab.RootPane, workspace, *starting.HerdrName, *m.Harness)
 	} else {
 		if e = l.i.waitShell(ctx, id, client, tab.RootPane); e != nil {
 			return e
 		}
-		agent, e = client.StartAgent(ctx, herdr.StartOptions{Name: herdr.AgentName(m.Team, m.Name), Harness: *m.Harness, Pane: tab.RootPane, Args: args})
+		agent, e = client.StartAgent(ctx, herdr.StartOptions{Name: *starting.HerdrName, Harness: *m.Harness, Pane: tab.RootPane, Args: args})
 	}
 	if e != nil {
 		return e

@@ -1,0 +1,9 @@
+{
+  "protocol": 1,
+  "op": "bring-onto-comms",
+  "team": "adopted",
+  "member": "alpha",
+  "confirm": true,
+  "if_generation": 0,
+  "expected_session": null
+}

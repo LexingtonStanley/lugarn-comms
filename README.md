@@ -8,6 +8,10 @@ the agents keep working while the phone is asleep.
 
 **Status:** under construction. Nothing here is ready to use yet.
 
+Teams can use one Herdr workspace with member tabs, or a workspace per member. Existing
+Herdr workspaces can be adopted without restarting their agents; joining comms is a separate,
+explicit action. See [the v1 protocol](docs/protocol.md) for the proposed #150 contract.
+
 ## Build
 
 Use Go 1.27 or newer (the initial toolchain is Go 1.27.3), available on your `PATH`.

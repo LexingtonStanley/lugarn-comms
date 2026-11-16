@@ -3,6 +3,13 @@ package wire
 // NewRequest returns a pointer to the typed request for an app op, or nil.
 func NewRequest(name string) any {
 	switch name {
+	case "adopt-team":
+		return new(AdoptTeamRequest)
+	case "bring-onto-comms":
+		return new(BringOntoCommsRequest)
+	case "forget-team":
+		return new(ForgetTeamRequest)
+
 	case "hello":
 		return new(HelloRequest)
 	case "apply-team":
@@ -48,6 +55,13 @@ func NewRequest(name string) any {
 // NewResult returns a pointer to the typed result for an app op, or nil.
 func NewResult(name string) any {
 	switch name {
+	case "adopt-team":
+		return new(ApplyTeamResult)
+	case "bring-onto-comms":
+		return new(BringOntoCommsResult)
+	case "forget-team":
+		return new(ForgetTeamResult)
+
 	case "hello":
 		return new(HelloResult)
 	case "apply-team":

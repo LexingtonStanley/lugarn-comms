@@ -84,16 +84,26 @@ alone ([A session before a pane](#a-session-before-a-pane)).
 reserves `host` on the member (record, spec and store) and requires it to be `null`. Nothing
 else about it is designed here.
 
-**Herdr names.** Herdr agent names must match `[a-z][a-z0-9_-]{0,31}` and be unique on their
-server, so `<team name>-<member name>` doesn't fit (C2b, decision 49). A member's Herdr agent
-is `<member name, cut to 25 characters>-<tag>`, where the tag is the first 6 characters of
-the lower-case Crockford base32 of SHA-256(`<team id>/<member name>`): `writer-k2m9xa`. It's
-stable across launches and unique in practice; Herdr refuses a duplicate name, which fails
-that launch (`launch_failed`). A team's workspace is labelled `lugarn-<team name>`, but
-labels are free text and not unique, so the team records the workspace **id** Herdr returns
-and finds it by that id. If that workspace is gone, the next start creates a new one; the
-broker never adopts a workspace by its label. The agent name and the workspace id are
-recorded on the member.
+**Herdr names.** Herdr agent names match `[a-z][a-z0-9_-]{0,31}` and are unique
+on their server. A new member gets its member name when free, otherwise `name-2`,
+`name-3`, and so on. The suffix counts toward the 32-character limit: truncate the
+base only as needed. The broker considers both live server names and names reserved
+by other live member records in this store, including stopped members. An immediate
+transaction serializes reservations across runners. Herdr arbitrates races with other
+clients or stores: a conflicting launch fails rather than taking over an agent.
+
+The chosen name is recorded permanently as `Member.herdr_name`, before starting the
+harness, and reused on every later launch, including after a member-name edit. If that
+recorded name is occupied, the launch fails (`launch_failed`); it does not silently choose
+a different identity. Removed members and forgotten teams release their reservation.
+Migration 2 records the old derived `<member, cut to 25>-<6-character hash tag>` name
+for every existing agent member that has no recorded name, including never-launched
+members. Existing recorded names are retained. Nothing on Herdr is renamed.
+
+New team workspaces use `spec.display_name`, falling back to `spec.name`, without a
+`lugarn-` prefix. Existing workspaces retain their labels. Workspace identity is always
+the recorded ID, never a label. A missing workspace is recreated at the next launch.
+Members record their own workspace IDs, independently of the runner's workspace.
 
 ## State on the host
 
@@ -166,7 +176,8 @@ The app owns the spec and pushes all of it with `apply-team`. Schema:
 | `id`      | `OpaqueId`           | The team id.                                                       |
 | `name`    | `TeamName`           |                                                                    |
 | `pattern` | `Pattern`            | A label for the app and the briefs. The broker doesn't enforce a pattern's shape. |
-| `herdr`   | `{ server }`         | Optional. The Herdr server the team runs on, default `default`.    |
+| `display_name` | string | Optional, 1–128 Unicode characters without ASCII controls. Human-facing workspace label; omitted means `name`. |
+| `herdr`   | `{ server, placement }`         | Optional. The Herdr server the team runs on, default `default`. `placement` defaults to `tabs`; the alternative is `workspaces`. |
 | `limits`  | `Limits`             | Optional; every field has a default.                               |
 | `members` | `MemberSpec[]`       | 1 to 24.                                                           |
 | `grid`    | `GridEdge[]`         | May be empty: everything denied.                                   |
@@ -301,6 +312,68 @@ aren't in the spec and an apply never removes them.
 
 `get-team` rebuilds the spec from the store: the live spec members in their spec order, the
 whole current grid, and limits with defaults filled in.
+
+### Herdr placement
+
+`herdr.placement: "tabs"` is the default: the runner has a team workspace, and each
+pane member gets its own tab there. `"workspaces"` gives each pane member a separate
+workspace labelled with the member's name. The runner retains a team workspace, labelled
+with `display_name` or `name`, so its lifetime is independent of any one member. Headless
+members create no workspace until opened in a terminal.
+
+Placement and display-name edits are allowed while running. They affect newly created
+panes/workspaces only: no existing pane is moved, closed, focused or renamed. A later
+launch uses the then-current placement even if the member previously used the other mode.
+Old apps omitting placement get the existing tab layout.
+
+### Adopted teams
+
+`adopt-team` creates a stopped team from an existing workspace and selected named agent
+panes. It makes only Herdr read calls. All spec members must have a binding; use ordinary
+`apply-team` later to add new broker-managed members. The member's spec harness and folder
+must match the server, its mode must be `pane`, and `worktree` must be false. Member names
+remain v1 `AgentName`s: an external name containing `_`, or a reserved name, requires a
+valid comms alias in the spec; the binding retains the exact Herdr name without renaming.
+
+An adopted member has `external`, no launch/token, and a `none` lease. Its regular state
+is `stopped` (no comms driver); its Herdr activity and terminal locator are in `external`.
+The app labels it **Not on comms**. `members` refreshes external activity through read-only
+Herdr lookups, even with the team stopped; clients poll it for external state. These
+observations are not a watch event stream. Missing/replaced panes or an unavailable server
+set `external.available: false` and activity `unknown`. The app attaches directly to
+`external.terminal` on the team's server to open it; `open-terminal`, `stop-member` and
+`return-headless` refuse external members (`invalid_request`). Opening that terminal does
+not start comms. `start-team` starts the runner and managed members only. It neither posts
+tasks to external members nor resets their external conversations. Sends to external
+members fail with `invalid_request`; broadcasts exclude them. `stop-team` leaves them alone.
+
+`bring-onto-comms` first previews the restart and conversation outcome. After the person
+confirms, and after `start-team`, it queues an `open-terminal` request with
+`args.bring_onto_comms: true`. The runner revalidates the selected pane, terminal, harness,
+folder and expected session, checks harness availability and the folder, closes only that
+pane (never its tab or siblings), and launches the member under the broker in the same
+folder. The new pane follows the team's current placement and retains the Herdr name.
+Claude, Codex and OpenCode resume a validated `agent_session` ID if Herdr reports one;
+Codex still requires its recorded rollout cwd to match. No ID, or pi under the v1 launch
+table, means a fresh conversation, reported by the preview. The ordinary launch profile,
+MCP registration, environment, trust prompts and session-before-pane rules apply.
+
+There is no verified generic live-attachment path in this broker. This is not a claim that
+all harnesses require restart to load MCP: [OpenCode's server API](https://opencode.ai/v1/docs/server/)
+has dynamic MCP addition, and [Claude's plugin reload](https://code.claude.com/docs/en/mcp)
+can change plugin servers live. Herdr does not provide a verified per-pane endpoint and
+isolated config scope for those operations. They cannot establish this broker's ownership,
+profile, per-launch identity and cleanup guarantees. v0.1.2 therefore proposes explicit
+restart/resume, without changing global or project harness configuration.
+
+`forget-team` stops tracking an adopted team, revokes broker identities and ends its runner,
+while leaving agent panes and workspaces running. Its now-idle runner shell pane is retained
+too, so forgetting cannot accidentally delete a workspace whose last other pane exited. It refuses in-flight requests/launches
+and headless leases (`lease_conflict`): open those members in terminals first. The retained
+team record has `forgotten: true`, is absent from `status`, and cannot be started, edited
+or have its ID reused. Its slug also stays reserved by the historical team row. History remains readable. `team.applied` with the tombstone lets
+watch clients remove it. Retrying forget is safe; it does not close member panes. This is
+separate from `stop-team`, which still stops managed members.
 
 ## Teams and runs
 
@@ -449,7 +522,9 @@ stopping, the runner dying and the spawner forgetting the member. Rows are never
 | `lease`          | `{ driver, generation, launch, pane }`; null for `human`                                |
 | `last_driver`    | The driver it had last; what a wake relaunches it in                                    |
 | `held_until`     | When the person's [hold](#holds) lapses, while one is live; else null                    |
-| `herdr`          | `{ server, workspace, agent }` while it has a pane, else null                           |
+| `herdr_name`     | Optional permanent chosen Herdr name, present once allocated (migration backfills old members). |
+| `external`       | Optional `{ workspace, pane, terminal, agent, session, activity, available }` for a member not on comms. Absent once converted. |
+| `herdr`          | `{ server, workspace, agent }` while it has a managed pane, else null                           |
 | `session`        | The current session id, or null                                                         |
 | `sessions`       | Every session id it has had, oldest first: `{ id, ordinal, source, launch, first_seen_at }` |
 | `host`           | null (reserved)                                                                         |
@@ -926,7 +1001,8 @@ Notes:
   before the first delivery of each pane generation. The fixed title
   `Working directory · resume` fails and closes the launch; no choice is sent.
 - **pi** gets no MCP registration; the brief points it at the CLI, and its identity travels in
-  the environment.
+  the environment. Since its v1 session ID is null, the provenance seal and briefing bit
+  are durable launch fields. A new launch re-briefs it; a runner restart keeps the seal.
 
 ### The person's `PATH`
 
@@ -1202,8 +1278,9 @@ launch's environment (through `herdr tab create --env` for a member's pane: a wo
 `--env` reaches only its root pane, which is the runner's), which is how pi and the CLI find
 them. Flags win over the environment.
 
-**Panes.** The runner runs in the workspace's root pane. Each member with a pane gets a tab of
-its own, so 24 members don't split one screen into slivers (C2b).
+**Panes.** The runner has a team workspace. Each pane member gets a separate tab there
+(default), or its own workspace with `placement: workspaces`. Adopted external panes are
+tracked without creating any pane or tab.
 
 **Every call** (each MCP tool call, each CLI command) reads the token file, hashes it and looks
 the hash up:
@@ -1249,6 +1326,9 @@ no valid response (a crash).
 | Op                 | Needs a running team | Needs the runner | Returns at once                 |
 | ------------------ | -------------------- | ---------------- | ------------------------------- |
 | `hello`            |                      |                  | yes                             |
+| `adopt-team`       |                      |                  | after read-only validation      |
+| `bring-onto-comms` | confirmation only | confirmation only | preview or pending request |
+| `forget-team` | | | after runner detaches |
 | `apply-team`       |                      |                  | yes                             |
 | `get-team`         |                      |                  | yes                             |
 | `start-team`       |                      |                  | after the first heartbeat (≤ 15 s) |
@@ -1282,7 +1362,8 @@ Result:
   `protocols` (all the broker speaks);
 - `schemas`: `team_spec` (spec versions accepted), `store` (the store's migration version);
 - `capabilities`: feature flags. Known: `spawn`, `watch`, `open-terminal`, `return-headless`,
-  `start-herdr`, `resolve-delivery`, `hold`, `worktrees`. Clients ignore unknown flags;
+  `start-herdr`, `resolve-delivery`, `hold`, `worktrees`, `herdr-names`, `herdr-placement`,
+  `adopt-team`, `bring-onto-comms`, `forget-team`. Clients ignore unknown flags;
 - `host`: `id`, `os`, `arch`, `hostname`, `state_dir`, and `logind`: on Linux with
   systemd-logind, `kill_user_processes` (logind's `KillUserProcesses`) and `linger` (the
   user's `Linger`); null elsewhere or when `loginctl` can't say. With `kill_user_processes`
@@ -1317,6 +1398,46 @@ Errors: `revision_conflict` (`details.expected`, `details.actual`), `team_runnin
 (`details.fields`), `name_taken`, `invalid_request` (`details.errors`).
 See [Applying a spec](#applying-a-spec).
 
+### adopt-team
+
+Request: `spec` (v1), `workspace` (existing ID), `members` (1–24 bindings of
+`{ member: <spec member id>, pane, agent }`). Creates only, with implicit revision 0.
+Result: the same `team`, `warnings` as `apply-team`. All names, IDs and folders are validated;
+workspace/pane/terminal IDs are 1–128 ASCII letters, digits, `_`, `:`, `-`, starting with
+an alphanumeric. No shell option, control, relative folder or invalid resume ID is used.
+Bindings must exactly match current Herdr workspace/pane/agent/harness/folder relationships.
+A pane already tracked by this store fails with `lease_conflict`; a reserved agent name
+fails with `name_taken`. Ordinary apply validation and revision errors also apply, as do
+`not_found`, `herdr_unavailable` and `invalid_request`. The whole store write is atomic.
+
+### bring-onto-comms
+
+Request: `team`, `member`, optional `confirm` (default false). Preview needs no runner.
+Result: `restart_required: true`, `conversation: "resume" | "fresh"`, `session` (ID or null),
+`request` (null for preview). The app displays the conversation outcome before confirmation.
+
+With `confirm: true`, `if_generation` and `expected_session` are required; use the member's
+lease generation and the preview's session (explicit null for fresh). Requires a running
+team and fresh runner. Returns the pending request in `request`; it uses existing kind
+`open-terminal`, so no new request-kind or lease-cause enum is introduced. The request args
+include `bring_onto_comms`, `expected_session`, `pane` and `terminal`. The runner rechecks
+these before closing anything. Stale generation, changed session or terminal, or an open
+request gives `lease_conflict`. Other errors include `invalid_request` (already managed),
+`team_not_running`, `runner_unavailable`, `herdr_unavailable`, `harness_unavailable`,
+`not_found` and normal launch errors. Failures after the old pane has closed are visible
+request/launch failures; the broker does not promise rollback of the old process. A durable
+restart marker permits a fresh preview/confirmation to retry an interrupted conversion
+only after Herdr proves that the recorded pane is gone. A missing agent alone or an
+unavailable server is insufficient. No interrupted restart is replayed automatically.
+
+### forget-team
+
+Request: `team`, `if_revision`. Result: `team` with `forgotten: true`.
+Only adopted teams qualify (`invalid_request` otherwise). A stale revision gives
+`revision_conflict` with `expected` and `actual`; an in-flight action or headless lease gives
+`lease_conflict`. No member pane is closed. Runner cleanup errors use existing errors;
+a retry continues cleanup. The app removes the team from its active list.
+
 ### get-team
 
 Request: `team`. Result: `spec`, `revision`, `cursor` (to start `watch` from).
@@ -1343,7 +1464,7 @@ member id, then reviewer member id, ascending (also in `continue-budget`).
 `pane`, `started_at`, `heartbeat_at`), `hops` (`used`, `allowance`, `base`, `exhausted`),
 `rounds` (per pair, the same plus `writer` and `reviewer`), `counts` (`members`, `running`,
 `headless_turns`, `queued`, `held`, `uncertain`), `started_at`, `stopped_at`,
-`last_app_contact_at`.
+`last_app_contact_at`. New optional fields are `display_name`, `adopted` and `forgotten`.
 
 **App contact.** Every app op updates `last_app_contact_at` on the team it names, or on every
 team when it names none (`hello`, `status` without a team, `start-herdr`). An open `watch`
@@ -1752,6 +1873,7 @@ one transaction and records itself in `schema_migrations`.
 | `schema_migrations` | applied migrations                                                                       |
 | `meta`            | `host_id`                                                                                  |
 | `teams`           | the team, its limits, state, run, revision and runner heartbeat                            |
+| `external_members` | read-only Herdr bindings for members not yet on comms |
 | `members`         | every member, `human` included; never deleted                                              |
 | `worktrees`       | every worktree the broker created, with `removed_at` once `remove-worktrees` removes it     |
 | `holds`           | the person's hold per member                                                               |
@@ -1840,7 +1962,7 @@ under [Versioning and compatibility](#versioning-and-compatibility).
 | `Face`             | `mcp`, `cli` | `auth.rejected` |
 | `EventType`        | `team.applied`, `team.state_changed`, `runner.state_changed`, `member.added`, `member.state_changed`, `member.activity_changed`, `member.session_added`, `member.removed`, `lease.changed`, `message.created`, `delivery.changed`, `turn.started`, `turn.finished`, `policy.denied`, `budget.changed`, `rounds.changed`, `request.changed`, `auth.rejected`, `worktree.removed` | events |
 | `ErrorCode`        | `internal`, `invalid_request`, `unauthenticated`, `unsupported_version`, `not_found`, `unknown_member`, `denied`, `spawn_disabled`, `spawn_cap_reached`, `harness_not_allowed`, `profile_too_high`, `nesting_not_allowed`, `name_taken`, `team_not_running`, `team_running`, `runner_unavailable`, `herdr_unavailable`, `harness_unavailable`, `launch_failed`, `lease_conflict`, `revision_conflict`, `cursor_invalid`, `timeout` | errors |
-| `OpName`           | `hello`, `apply-team`, `get-team`, `start-team`, `stop-team`, `status`, `members`, `timeline`, `send`, `continue-budget`, `resolve-delivery`, `hold`, `open-terminal`, `return-headless`, `stop-member`, `worktrees`, `remove-worktrees`, `start-herdr`, `watch` | app ops |
+| `OpName`           | `adopt-team`, `bring-onto-comms`, `forget-team`, `hello`, `apply-team`, `get-team`, `start-team`, `stop-team`, `status`, `members`, `timeline`, `send`, `continue-budget`, `resolve-delivery`, `hold`, `open-terminal`, `return-headless`, `stop-member`, `worktrees`, `remove-worktrees`, `start-herdr`, `watch` | app ops |
 | `HerdrStartMethod` | `detached`, `systemd`, `wmi` | `start-herdr` |
 | `GitState`         | `missing`, `clean`, `dirty` | `worktrees` |
 | `WorktreeRefusal`  | `member_not_stopped`, `dirty`, `unknown_path`, `git_failed` | `remove-worktrees` |
@@ -2047,3 +2169,47 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     and Windows can't replace that shell (verified on ufo: a nested `-NoProfile` shell counts
     as busy, hook or not). The broker types `<broker> pane-launch <launch id>` instead, starts
     the harness with exact argv, and names the agent Herdr detects with `agent rename`.
+
+
+**Proposals for Nova: names, placement and adoption (#150)**
+
+71. **Changes decisions 5 and 49:** new agent names use the member name, then the lowest
+    free `-2`, `-3`, … suffix within 32 characters. Persist the choice before launching and
+    keep it through restarts and member renames. This makes app names recognizable without
+    turning a later launch into an accidental attachment to someone else's agent. Store
+    reservations include stopped members; Herdr still arbitrates other clients' races.
+72. **Changes decisions 5 and 49:** migration 2 preserves every existing agent's recorded
+    name and backfills missing legacy derived names in the same transaction. The SHA-256
+    calculation is a Go migration hook because SQLite has no built-in SHA-256. Historical
+    migration 1 stays unchanged, and downgrade remains refused. No server rename occurs.
+73. **Changes decision 5:** optional `display_name` is the smallest v1 addition carrying the
+    app label separately from `TeamName`. New team workspace labels use it or the slug,
+    without a prefix. IDs remain authoritative; old labels remain untouched.
+74. **Placement:** optional `herdr.placement` defaults to `tabs`; `workspaces` gives every
+    pane member its own workspace. The runner keeps a team workspace to avoid coupling its
+    lifetime to a member. Edits apply to future launches, so a settings edit cannot disrupt
+    a running conversation. Each member persists its actual workspace for safe teardown.
+75. **Adoption:** a create-only `adopt-team` operation atomically records a validated spec and
+    bindings. External members keep ordinary `origin: spec`, plus an optional `external`
+    record, avoiding a new origin/state enum for older v1 clients. Their lease is `none`,
+    not a synthetic managed launch. Terminal opening uses the recorded terminal locator;
+    `members` refreshes Herdr state without a runner. No adoption command mutates Herdr.
+76. **Explicit conversion:** preview and confirmation use `bring-onto-comms`; only confirmation
+    queues the existing `open-terminal` request kind. Expected generation/session and the
+    recorded terminal prevent stale confirmation from restarting a replacement. Resume uses
+    existing validated launch flags; unavailable IDs and pi report fresh. Dynamic MCP is
+    possible in some harnesses, but no verified, isolated external-pane binding is available
+    to this broker; restarting is the proposed v0.1.2 ownership boundary.
+77. **Extends decisions 29, 33 and 34:** `forget-team` archives adopted teams and revokes comms
+    without closing agent panes. It stops only the runner. Headless members must first be
+    opened in terminals; pending actions must finish, so forgetting never implicitly kills
+    a headless conversation. Tombstones retain history and forbid reusing team IDs.
+78. **No new error codes or request kinds:** existing validation, conflict, availability and
+    launch errors cover these operations. All new spec/record fields are optional on the
+    wire; capability flags let the app discover the new operations before using them.
+
+79. **pi pane delivery repair found by #150's real test:** pi's v1 session remains null,
+    but pane delivery previously required a session. Keep a provenance seal and briefing
+    bit on its launch instead. They survive runner restarts, rotate with a new launch,
+    and never pretend to identify pi's conversation. This enables the existing CLI-only
+    pi contract without changing its session/resume promises (decision 46).

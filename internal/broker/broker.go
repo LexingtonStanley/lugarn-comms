@@ -94,7 +94,7 @@ func (b *Broker) now() model.Time {
 }
 func invalid(s string) *model.Error { return model.NewError(model.ErrorInvalidRequest, s) }
 func running(t *store.Team) error {
-	if t.State != model.TeamStateRunning {
+	if t.Forgotten || t.State != model.TeamStateRunning {
 		return model.NewError(model.ErrorTeamNotRunning, "the team isn't running")
 	}
 	return nil
@@ -203,7 +203,7 @@ func (b *Broker) reconcileRunner(tx *store.Tx, t *store.Team) error {
 	return b.event(tx, &t.ID, model.EventRunnerStateChanged, true, nil, nil, wire.RunnerStateChangedEventData{Team: s, From: model.RunnerStateUp, To: model.RunnerStateDown})
 }
 func (b *Broker) status(tx *store.Tx, t *store.Team) (model.TeamStatus, error) {
-	s := model.TeamStatus{ID: t.ID, Name: t.Name, Pattern: t.Pattern, Revision: t.Revision, Run: t.Run, State: t.State, Runner: t.Runner, StartedAt: t.StartedAt, StoppedAt: t.StoppedAt, LastAppContactAt: t.LastAppContactAt}
+	s := model.TeamStatus{DisplayName: t.DisplayName, Adopted: ptr(t.Adopted), Forgotten: ptr(t.Forgotten), ID: t.ID, Name: t.Name, Pattern: t.Pattern, Revision: t.Revision, Run: t.Run, State: t.State, Runner: t.Runner, StartedAt: t.StartedAt, StoppedAt: t.StoppedAt, LastAppContactAt: t.LastAppContactAt}
 	budget, e := b.budget(tx, t, false)
 	if e != nil {
 		return s, e

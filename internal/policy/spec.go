@@ -112,7 +112,11 @@ func ApplyDefaults(spec model.TeamSpec) model.TeamSpec {
 	if spec.Herdr != nil && spec.Herdr.Server != nil {
 		server = *spec.Herdr.Server
 	}
-	out.Herdr = &model.HerdrSettings{Server: &server}
+	placement := model.DefaultHerdrPlacement
+	if spec.Herdr != nil && spec.Herdr.Placement != nil {
+		placement = *spec.Herdr.Placement
+	}
+	out.Herdr = &model.HerdrSettings{Server: &server, Placement: &placement}
 
 	l := ResolveLimits(spec.Limits)
 	out.Limits = &model.Limits{
@@ -216,6 +220,7 @@ type SpecFacts struct {
 }
 
 var herdrServerPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+var displayControlPattern = regexp.MustCompile(`[\x00-\x1f\x7f]`)
 
 // ValidateSpec checks spec as received, before defaults. It returns:
 //
@@ -281,6 +286,12 @@ func checkSpecValues(errs *fieldErrors, spec model.TeamSpec) {
 	}
 	if model.ValidateTeamName(spec.Name) != nil {
 		errs.add("/name", "must be a lower-case letter or digit, then up to 47 of a-z, 0-9 and -")
+	}
+	if spec.DisplayName != nil && (model.ValidateText(*spec.DisplayName) != nil || utf8.RuneCountInString(*spec.DisplayName) > 128 || displayControlPattern.MatchString(*spec.DisplayName)) {
+		errs.add("/display_name", "must be 1 to 128 characters without controls")
+	}
+	if spec.Herdr != nil && spec.Herdr.Placement != nil && *spec.Herdr.Placement != "tabs" && *spec.Herdr.Placement != "workspaces" {
+		errs.add("/herdr/placement", "must be tabs or workspaces")
 	}
 	if !spec.Pattern.Valid() {
 		errs.add("/pattern", "must be one of %v", model.Pattern("").Values())
