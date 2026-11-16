@@ -33,7 +33,10 @@ func migrateHerdrNames(ctx context.Context, tx *sql.Tx) error {
 			return err
 		}
 	}
-	return nil
+	// Names must exist before workspace ownership is backfilled, including
+	// members that had never launched under migration 1.
+	_, err = tx.ExecContext(ctx, `UPDATE members SET herdr_workspace = (SELECT herdr_workspace FROM teams WHERE id = members.team_id) WHERE herdr_agent IS NOT NULL`)
+	return err
 }
 
 // ReservedHerdrNames includes stopped members: a recorded name is permanent.

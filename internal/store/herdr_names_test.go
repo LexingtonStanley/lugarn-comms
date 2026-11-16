@@ -44,6 +44,9 @@ func TestHerdrMigrationPreservesOldNamesAndNeverLaunchedMembers(t *testing.T) {
 			if e != nil {
 				return e
 			}
+			if b.HerdrWorkspace == nil || *b.HerdrWorkspace != "w1" {
+				t.Fatalf("never-launched member lost workspace: %+v", b)
+			}
 			if *a.HerdrAgent != "keep-this" || *a.HerdrWorkspace != "w1" || *b.HerdrAgent != herdr.AgentName("old", b.Member.Name) {
 				t.Fatalf("migration changed names: %+v %+v", a, b)
 			}
