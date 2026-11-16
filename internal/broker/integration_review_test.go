@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"errors"
 	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 	"os"
 	"slices"
@@ -125,7 +126,9 @@ func TestNameClashAtStartFailsWithoutRenamingOrTakeover(t *testing.T) {
 // Targeted reads describe the external pane; launch calls describe its replacement.
 type conversionHerdr struct {
 	reviewHerdr
-	external *adoptionHerdr
+	external  *adoptionHerdr
+	gone      error
+	oldClosed bool
 }
 
 func (h *conversionHerdr) Workspace(ctx context.Context, id string) (herdr.Workspace, error) {
@@ -133,6 +136,9 @@ func (h *conversionHerdr) Workspace(ctx context.Context, id string) (herdr.Works
 }
 func (h *conversionHerdr) Pane(ctx context.Context, id string) (herdr.Pane, error) {
 	if id == h.external.pane.ID {
+		if h.oldClosed {
+			return herdr.Pane{}, h.gone
+		}
 		return h.external.Pane(ctx, id)
 	}
 	return h.reviewHerdr.Pane(ctx, id)
@@ -173,5 +179,97 @@ func TestBringFreshCodexUsesAdoptedFolder(t *testing.T) {
 	}
 	if len(client.closedPanes) != 1 || client.closedPanes[0] != h.pane.ID {
 		t.Fatal(client.closedPanes)
+	}
+}
+
+func (h *conversionHerdr) ClosePane(ctx context.Context, id string) error {
+	if id == h.external.pane.ID {
+		h.oldClosed = true
+	}
+	return h.reviewHerdr.ClosePane(ctx, id)
+}
+
+// Obtain the real client's gone classification without contacting any server.
+func init() {
+	if os.Getenv("LUGARN_TEST_GONE_HERDR") == "1" {
+		_, _ = os.Stderr.WriteString(`{"error":{"code":"pane_not_found"}}`)
+		os.Exit(1)
+	}
+}
+func reviewGone(t *testing.T) error {
+	t.Helper()
+	binary, e := os.Executable()
+	must(t, e)
+	t.Setenv("LUGARN_TEST_GONE_HERDR", "1")
+	_, e = herdr.New(binary, "lugarn-fake").Pane(context.Background(), "gone")
+	t.Setenv("LUGARN_TEST_GONE_HERDR", "")
+	if !herdr.IsGone(e) {
+		t.Fatal(e)
+	}
+	return e
+}
+func TestBringRetryAcrossManagedLeaseHandoff(t *testing.T) {
+	for _, phase := range []string{"before-lease", "after-lease"} {
+		t.Run(phase, func(t *testing.T) {
+			b, h, r := adoptionSetup(t)
+			ctx := context.Background()
+			r.Spec.Members[0].Harness = model.HarnessClaude
+			h.agent.Kind = "claude"
+			h.pane.Agent = "claude"
+			session := "00000000-0000-4000-8000-000000000001"
+			h.agent.Session = &herdr.AgentSession{Agent: "claude", Kind: "id", Value: session}
+			_, e := b.AdoptTeam(ctx, r)
+			must(t, e)
+			client := &conversionHerdr{external: h, gone: reviewGone(t)}
+			l := reviewLifecycle(t, b, client, r.Spec.ID)
+			if phase == "before-lease" {
+				b.opts.ID = func() (string, error) { return "", errors.New("interrupted before lease") }
+			} else {
+				client.startErr = model.NewError(model.ErrorLaunchFailed, "replacement failed")
+			}
+			m, e := l.current(ctx, "external")
+			must(t, e)
+			e = l.bringOntoComms(ctx, *m, model.Request{Args: map[string]any{"expected_session": session, "pane": h.pane.ID, "terminal": h.pane.Terminal}})
+			if e == nil {
+				t.Fatal("failure was not injected")
+			}
+			m, e = l.current(ctx, m.ID)
+			must(t, e)
+			if m.Session == nil || *m.Session != session || m.Lease.Driver != model.DriverNone {
+				t.Fatal(m)
+			}
+			// Recreate the runner to exercise durable state, rather than local retry data.
+			b.opts.ID = model.NewULID
+			client.startErr = nil
+			l = reviewLifecycle(t, b, client, r.Spec.ID)
+			if phase == "before-lease" {
+				if m.External == nil {
+					t.Fatal("restart marker lost before replacement launch")
+				}
+				preview, e := b.BringOntoComms(ctx, wire.BringOntoCommsRequest{Team: r.Spec.ID, Member: m.ID})
+				must(t, e)
+				if preview.Conversation != "resume" || preview.Session == nil || *preview.Session != session {
+					t.Fatal(preview)
+				}
+				confirmed, e := b.BringOntoComms(ctx, wire.BringOntoCommsRequest{Team: r.Spec.ID, Member: m.ID, Confirm: true, IfGeneration: &m.Lease.Generation, ExpectedSession: preview.Session})
+				must(t, e)
+				must(t, l.Execute(ctx, *confirmed.Request))
+			} else {
+				if m.External != nil {
+					t.Fatal("managed lease retained external binding")
+				}
+				retry, e := b.OpenTerminal(ctx, wire.OpenTerminalRequest{Team: r.Spec.ID, Member: m.ID, IfGeneration: &m.Lease.Generation})
+				must(t, e)
+				must(t, l.Execute(ctx, retry.Request))
+			}
+			m, e = l.current(ctx, m.ID)
+			must(t, e)
+			if m.External != nil || m.State != model.MemberStateRunning || !slices.Contains(client.starts[len(client.starts)-1].Args, session) {
+				t.Fatal(m, client.starts)
+			}
+			if len(client.closedPanes) != 1 || client.closedPanes[0] != h.pane.ID {
+				t.Fatal("retry closed a pane", client.closedPanes)
+			}
+		})
 	}
 }

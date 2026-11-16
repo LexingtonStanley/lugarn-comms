@@ -364,10 +364,9 @@ func (l *integrationLifecycle) bringOntoComms(ctx context.Context, m model.Membe
 				return e
 			}
 		}
-		if e := tx.SetMemberSession(m.ID, v.Session, l.i.b.now()); e != nil {
-			return e
-		}
-		return tx.DeleteExternalMember(m.ID)
+		// Keep the restart marker until Open atomically transfers ownership to a
+		// managed pane lease. Preflight failures can still retry this conversion.
+		return tx.SetMemberSession(m.ID, v.Session, l.i.b.now())
 	})
 	if e != nil {
 		return e

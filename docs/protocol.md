@@ -1429,9 +1429,12 @@ request gives `lease_conflict`. Other errors include `invalid_request` (already 
 `team_not_running`, `runner_unavailable`, `herdr_unavailable`, `harness_unavailable`,
 `not_found` and normal launch errors. Failures after the old pane has closed are visible
 request/launch failures; the broker does not promise rollback of the old process. A durable
-restart marker permits a fresh preview/confirmation to retry an interrupted conversion
-only after Herdr proves that the recorded pane is gone. A missing agent alone or an
-unavailable server is insufficient. No interrupted restart is replayed automatically.
+restart marker remains until the managed pane lease is committed. Before that handoff,
+a fresh preview/confirmation retries the conversion after Herdr proves the recorded pane
+is gone, without closing anything. A missing agent alone or an unavailable server is
+insufficient. The handoff atomically removes `external` and retains the recorded session;
+after it, use `open-terminal` to retry the managed launch with that session (or fresh if
+none was recorded). No interrupted conversion is replayed automatically.
 
 ### forget-team
 
@@ -2206,7 +2209,9 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     recorded terminal prevent stale confirmation from restarting a replacement. Resume uses
     existing validated launch flags; unavailable IDs and pi report fresh. Dynamic MCP is
     possible in some harnesses, but no verified, isolated external-pane binding is available
-    to this broker; restarting is the proposed v0.1.2 ownership boundary.
+    to this broker; restarting is the proposed v0.1.2 ownership boundary. A durable marker
+    permits explicit conversion retry until the managed pane lease commits; after that
+    atomic handoff, `open-terminal` retries using the recorded session.
 77. **Extends decisions 29, 33 and 34:** `forget-team` archives adopted teams and revokes comms
     without closing agent panes. It stops only the runner. Headless members must first be
     opened in terminals; pending actions must finish, so forgetting never implicitly kills

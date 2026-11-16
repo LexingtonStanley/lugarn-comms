@@ -172,6 +172,20 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 		if m.Lease.Driver == model.DriverPane {
 			return model.NewError(model.ErrorLeaseConflict, "member already has a pane")
 		}
+		if m.External != nil {
+			restarting, e := tx.ExternalRestarting(m.ID)
+			if e != nil {
+				return e
+			}
+			if !restarting {
+				return model.NewError(model.ErrorLeaseConflict, "external restart is not authorized")
+			}
+			// This transaction hands recovery to the managed launch record. Until it
+			// commits, the external marker and recorded session survive every failure.
+			if e = tx.DeleteExternalMember(m.ID); e != nil {
+				return e
+			}
+		}
 		now := l.i.b.now()
 		if m.Lease.Launch != nil {
 			if e := tx.EndLaunch(*m.Lease.Launch, model.LaunchEndReasonConverted, now); e != nil {
