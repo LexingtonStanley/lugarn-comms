@@ -1,7 +1,6 @@
 package broker
 
 import (
-	"context"
 	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/store"
@@ -9,7 +8,7 @@ import (
 
 // The immediate transaction serializes allocations across runners using this
 // store. Herdr remains the final arbiter against clients using other stores.
-func (i *Integration) reserveAgentName(ctx context.Context, tx *store.Tx, t *store.Team, m model.Member) (string, error) {
+func (i *Integration) reserveAgentName(tx *store.Tx, t *store.Team, m model.Member, agents []herdr.Agent) (string, error) {
 	current, err := tx.GetStoredMember(m.ID)
 	if err != nil {
 		return "", err
@@ -18,10 +17,6 @@ func (i *Integration) reserveAgentName(ctx context.Context, tx *store.Tx, t *sto
 		return *current.HerdrAgent, nil
 	}
 	names, err := tx.ReservedHerdrNames(t.HerdrServer)
-	if err != nil {
-		return "", err
-	}
-	agents, err := i.opts.Herdr(t.HerdrServer).Agents(ctx)
 	if err != nil {
 		return "", err
 	}

@@ -2177,7 +2177,9 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     free `-2`, `-3`, … suffix within 32 characters. Persist the choice before launching and
     keep it through restarts and member renames. This makes app names recognizable without
     turning a later launch into an accidental attachment to someone else's agent. Store
-    reservations include stopped members; Herdr still arbitrates other clients' races.
+    reservations include stopped members; live names are read before the reservation write.
+    Herdr still arbitrates other clients' races: a clash at agent start fails with
+    `name_taken`, without renaming or taking over the other agent.
 72. **Changes decisions 5 and 49:** migration 2 preserves every existing agent's recorded
     name and backfills missing legacy derived names in the same transaction. The SHA-256
     calculation is a Go migration hook because SQLite has no built-in SHA-256. Historical

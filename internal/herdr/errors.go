@@ -153,7 +153,9 @@ func (e *Error) mapped() *Error {
 		p = model.NewError(model.ErrorInvalidRequest, "Herdr refused the request")
 	default:
 		details["cause"] = "herdr_failed"
-		if launchOps[e.Op] {
+		if e.Code == CodeAgentNameTaken {
+			p = model.NewError(model.ErrorNameTaken, "Herdr agent name is already used")
+		} else if launchOps[e.Op] {
 			p = model.NewError(model.ErrorLaunchFailed, "herdr "+e.Op+" failed")
 		} else {
 			p = model.NewError(model.ErrorInternal, "herdr "+e.Op+" failed")

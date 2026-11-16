@@ -336,7 +336,7 @@ func TestStartAgentFailures(t *testing.T) {
 		timeout bool
 	}{
 		{fails("agent_pane_busy", "agent target pane w1:p7 is not an available shell"), model.ErrorLaunchFailed, false},
-		{fails("agent_name_taken", "agent name alpha-cx is already used"), model.ErrorLaunchFailed, false},
+		{fails("agent_name_taken", "agent name alpha-cx is already used"), model.ErrorNameTaken, false},
 		{fails("timeout", "timed out waiting for agent startup"), model.ErrorLaunchFailed, true},
 		{fails("agent_pane_not_found", "agent target pane w1:p99 not found"), model.ErrorNotFound, false},
 		{fails("server_not_running", "no server"), model.ErrorHerdrUnavailable, false},

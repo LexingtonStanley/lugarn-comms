@@ -202,8 +202,8 @@ type StartOptions struct {
 // returns once Herdr sees it ready, or blocked. A harness that stops at its
 // trust question is blocked: StartAgent returns it with Activity blocked and
 // no error, since the person answers that on the phone. A harness that never
-// comes up is launch_failed (IsTimeout); a busy pane or a taken name is
-// launch_failed with Herdr's code (CodeAgentPaneBusy, CodeAgentNameTaken).
+// comes up is launch_failed (IsTimeout); a busy pane is launch_failed, and
+// a taken name is name_taken. Both preserve Herdr's code.
 func (c *Client) StartAgent(ctx context.Context, o StartOptions) (Agent, error) {
 	if err := ValidateAgentName(o.Name); err != nil {
 		return Agent{}, err

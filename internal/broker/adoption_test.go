@@ -168,7 +168,7 @@ func TestConcurrentNameReservationsAndReuse(t *testing.T) {
 				if e != nil {
 					return e
 				}
-				name, e := b.integration.reserveAgentName(ctx, tx, team, *m)
+				name, e := b.integration.reserveAgentName(tx, team, *m, []herdr.Agent{h.agent})
 				if e != nil {
 					return e
 				}
@@ -200,7 +200,7 @@ func TestConcurrentNameReservationsAndReuse(t *testing.T) {
 		if e != nil {
 			return e
 		}
-		name, e := b.integration.reserveAgentName(ctx, tx, team, *m)
+		name, e := b.integration.reserveAgentName(tx, team, *m, []herdr.Agent{h.agent})
 		if name != *m.HerdrName {
 			t.Fatal("name changed")
 		}

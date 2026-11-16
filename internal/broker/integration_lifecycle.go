@@ -57,6 +57,27 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 			return e
 		}
 	}
+	// Fetch server observations before any write transaction or lease rotation.
+	// The write below serializes this snapshot with the store's reservations;
+	// agent start remains authoritative for races with other clients.
+	var agents []herdr.Agent
+	if m.HerdrName == nil {
+		var server string
+		if e := l.i.b.db.Read(ctx, func(tx *store.Tx) error {
+			t, e := tx.GetTeam(m.Team)
+			if e == nil {
+				server = t.HerdrServer
+			}
+			return e
+		}); e != nil {
+			return e
+		}
+		var e error
+		agents, e = l.i.opts.Herdr(server).Agents(ctx)
+		if e != nil {
+			return e
+		}
+	}
 	original := m
 	launchStarted := false
 	prepared, e := l.i.prepareWorktree(ctx, l.r, m)
@@ -184,7 +205,7 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 			}
 			newSession = true
 		}
-		agent, e := l.i.reserveAgentName(ctx, tx, t, m)
+		agent, e := l.i.reserveAgentName(tx, t, m, agents)
 		if e != nil {
 			return e
 		}
