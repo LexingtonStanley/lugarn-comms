@@ -354,7 +354,8 @@ folder and expected session, checks harness availability and the folder, closes 
 pane (never its tab or siblings), and launches the member under the broker in the same
 folder. The new pane follows the team's current placement and retains the Herdr name.
 Claude, Codex and OpenCode resume a validated `agent_session` ID if Herdr reports one;
-Codex still requires its recorded rollout cwd to match. No ID, or pi under the v1 launch
+Codex checks the recorded rollout cwd only when resuming; a fresh conversion starts
+in the adopted folder. No ID, or pi under the v1 launch
 table, means a fresh conversation, reported by the preview. The ordinary launch profile,
 MCP registration, environment, trust prompts and session-before-pane rules apply.
 

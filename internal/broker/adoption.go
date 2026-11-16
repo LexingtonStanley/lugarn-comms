@@ -325,8 +325,10 @@ func (l *integrationLifecycle) bringOntoComms(ctx context.Context, m model.Membe
 		return model.NewError(model.ErrorLaunchFailed, "adopted folder is missing").WithDetail("cause", "workdir_missing")
 	}
 	m.Session = v.Session
-	if e = l.i.b.assertCodexWorkdir(m); e != nil {
-		return e
+	if m.Session != nil {
+		if e = l.i.b.assertCodexWorkdir(m); e != nil {
+			return e
+		}
 	}
 	// Commit the authorized transition before touching the server. If interrupted,
 	// reconciliation fails this request, and does not automatically restart it.

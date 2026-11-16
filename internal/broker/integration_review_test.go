@@ -2,7 +2,9 @@ package broker
 
 import (
 	"context"
+	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -117,5 +119,59 @@ func TestNameClashAtStartFailsWithoutRenamingOrTakeover(t *testing.T) {
 	}
 	if h.closed != 1 || len(h.closedPanes) != 0 {
 		t.Fatal(h.closedPanes)
+	}
+}
+
+// Targeted reads describe the external pane; launch calls describe its replacement.
+type conversionHerdr struct {
+	reviewHerdr
+	external *adoptionHerdr
+}
+
+func (h *conversionHerdr) Workspace(ctx context.Context, id string) (herdr.Workspace, error) {
+	return h.external.Workspace(ctx, id)
+}
+func (h *conversionHerdr) Pane(ctx context.Context, id string) (herdr.Pane, error) {
+	if id == h.external.pane.ID {
+		return h.external.Pane(ctx, id)
+	}
+	return h.reviewHerdr.Pane(ctx, id)
+}
+func (h *conversionHerdr) Agent(ctx context.Context, id string) (herdr.Agent, error) {
+	return h.external.Agent(ctx, id)
+}
+func TestBringFreshCodexUsesAdoptedFolder(t *testing.T) {
+	b, h, req := adoptionSetup(t)
+	t.Setenv("CODEX_HOME", t.TempDir())
+	req.Spec.Members[0].Harness = model.HarnessCodex
+	h.agent.Kind = "codex"
+	h.pane.Agent = "codex"
+	ctx := context.Background()
+	_, e := b.AdoptTeam(ctx, req)
+	must(t, e)
+	preview, e := b.BringOntoComms(ctx, wire.BringOntoCommsRequest{Team: req.Spec.ID, Member: "external"})
+	must(t, e)
+	if preview.Conversation != "fresh" || preview.Session != nil {
+		t.Fatal(preview)
+	}
+	client := &conversionHerdr{external: h}
+	l := reviewLifecycle(t, b, client, req.Spec.ID)
+	fresh := false
+	session := "00000000-0000-4000-8000-000000000002"
+	l.r.opts.Headless = &headlessStub{fn: func(s turnStart) {
+		fresh = s.launch.Session == nil && s.launch.Workdir == h.pane.Cwd
+		writeCodexRollout(t, session, s.launch.Workdir)
+		s.handle.complete(TurnOutcome{Acknowledged: true, Session: &session, ExitCode: ptr(int64(0)), Text: "ready"})
+	}}
+	m, e := l.current(ctx, "external")
+	must(t, e)
+	must(t, l.bringOntoComms(ctx, *m, model.Request{Args: map[string]any{"expected_session": nil, "pane": h.pane.ID, "terminal": h.pane.Terminal}}))
+	after, e := l.current(ctx, m.ID)
+	must(t, e)
+	if !fresh || after.External != nil || after.State != model.MemberStateRunning || len(client.starts) != 1 || !slices.Contains(client.starts[0].Args, h.pane.Cwd) {
+		t.Fatal(after, client.starts, fresh)
+	}
+	if len(client.closedPanes) != 1 || client.closedPanes[0] != h.pane.ID {
+		t.Fatal(client.closedPanes)
 	}
 }
