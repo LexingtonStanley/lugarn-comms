@@ -14,18 +14,30 @@ import (
 )
 
 type adoptionHerdr struct {
-	HerdrAPI // Any unimplemented mutation panics: adoption must be read-only.
-	agent    herdr.Agent
-	pane     herdr.Pane
+	HerdrAPI    // Any unimplemented mutation panics: adoption must be read-only.
+	agent       herdr.Agent
+	pane        herdr.Pane
+	gets        int
+	lists       [3]int
+	extraAgents []herdr.Agent
+	extraPanes  []herdr.Pane
 }
 
 func (h *adoptionHerdr) Workspace(context.Context, string) (herdr.Workspace, error) {
+	h.gets++
 	return herdr.Workspace{ID: h.pane.Workspace}, nil
 }
-func (h *adoptionHerdr) Pane(context.Context, string) (herdr.Pane, error)   { return h.pane, nil }
-func (h *adoptionHerdr) Agent(context.Context, string) (herdr.Agent, error) { return h.agent, nil }
+func (h *adoptionHerdr) Pane(context.Context, string) (herdr.Pane, error) {
+	h.gets++
+	return h.pane, nil
+}
+func (h *adoptionHerdr) Agent(context.Context, string) (herdr.Agent, error) {
+	h.gets++
+	return h.agent, nil
+}
 func (h *adoptionHerdr) Agents(context.Context) ([]herdr.Agent, error) {
-	return []herdr.Agent{h.agent}, nil
+	h.lists[2]++
+	return append([]herdr.Agent{h.agent}, h.extraAgents...), nil
 }
 
 func adoptionSetup(t *testing.T) (*Broker, *adoptionHerdr, wire.AdoptTeamRequest) {
@@ -311,8 +323,8 @@ type failedExternalHerdr struct {
 	err error
 }
 
-func (h *failedExternalHerdr) Agent(context.Context, string) (herdr.Agent, error) {
-	return herdr.Agent{}, h.err
+func (h *failedExternalHerdr) Agents(context.Context) ([]herdr.Agent, error) {
+	return nil, h.err
 }
 func TestMembersExternalReadFailuresAreObservations(t *testing.T) {
 	for _, code := range []model.ErrorCode{model.ErrorTimeout, model.ErrorInternal, model.ErrorInvalidRequest} {
@@ -367,5 +379,66 @@ func TestUnusableExternalSessionsAreFresh(t *testing.T) {
 				t.Fatal(preview)
 			}
 		})
+	}
+}
+
+func (h *adoptionHerdr) Workspaces(context.Context) ([]herdr.Workspace, error) {
+	h.lists[0]++
+	return []herdr.Workspace{{ID: h.pane.Workspace}}, nil
+}
+func (h *adoptionHerdr) Panes(context.Context) ([]herdr.Pane, error) {
+	h.lists[1]++
+	return append([]herdr.Pane{h.pane}, h.extraPanes...), nil
+}
+func TestMembersUsesOneExternalSnapshotPerPoll(t *testing.T) {
+	b, h, r := adoptionSetup(t)
+	ctx := context.Background()
+	_, e := b.AdoptTeam(ctx, r)
+	must(t, e)
+	// Add a second valid binding without issuing targeted adoption reads.
+	agent, pane := h.agent, h.pane
+	agent.Name = "external_two"
+	agent.Pane = "w1:p2"
+	pane.ID = agent.Pane
+	pane.Terminal = "term_456"
+	h.extraAgents = []herdr.Agent{agent}
+	h.extraPanes = []herdr.Pane{pane}
+	must(t, b.db.Write(ctx, func(tx *store.Tx) error {
+		if e := tx.InsertMember(store.MemberParams{ID: "external2", TeamID: r.Spec.ID, Name: "external-two", Role: ptr(model.RoleCustom), Kind: model.MemberKindAgent, Origin: model.MemberOriginSpec, Harness: ptr(model.HarnessPi), Profile: ptr(model.ProfileWorkspace), Mode: ptr(model.ModePane), Folder: &pane.Cwd, Brief: ptr("b")}); e != nil {
+			return e
+		}
+		if e := tx.InsertLease("external2", model.Lease{Driver: model.DriverNone}, b.now()); e != nil {
+			return e
+		}
+		return tx.PutExternalMember("external2", model.ExternalMember{Workspace: pane.Workspace, Pane: pane.ID, Terminal: pane.Terminal, Agent: agent.Name, Activity: model.ActivityIdle, Available: true})
+	}))
+	for poll := 1; poll <= 2; poll++ {
+		h.agent.Activity = model.ActivityWorking
+		out, e := b.Members(ctx, wire.MembersRequest{Team: r.Spec.ID})
+		must(t, e)
+		external := 0
+		for _, m := range out.Members {
+			if m.External != nil {
+				external++
+				if !m.External.Available {
+					t.Fatal(m)
+				}
+				if m.ID == "external" && m.External.Activity != model.ActivityWorking {
+					t.Fatal(m)
+				}
+			}
+		}
+		if external != 2 || h.gets != 3 || h.lists != [3]int{poll, poll, poll} {
+			t.Fatal(external, h.gets, h.lists)
+		}
+	}
+	// A mismatch in one snapshot entry must not hide its healthy sibling.
+	h.extraAgents[0].Tab = "wrong-tab"
+	out, e := b.Members(ctx, wire.MembersRequest{Team: r.Spec.ID})
+	must(t, e)
+	for _, m := range out.Members {
+		if m.External != nil && m.External.Available != (m.ID == "external") {
+			t.Fatal(m)
+		}
 	}
 }

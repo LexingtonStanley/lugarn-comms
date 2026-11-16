@@ -77,6 +77,21 @@ func (c *Client) Workspace(ctx context.Context, id string) (Workspace, error) {
 	return Workspace{ID: r.Workspace.WorkspaceID, Label: r.Workspace.Label}, nil
 }
 
+// Workspaces lists the server's workspaces without creating or focusing any.
+func (c *Client) Workspaces(ctx context.Context) ([]Workspace, error) {
+	var r struct {
+		Workspaces []wireWorkspace `json:"workspaces"`
+	}
+	if err := c.result(ctx, 0, "workspace list", &r, "workspace", "list"); err != nil {
+		return nil, err
+	}
+	out := make([]Workspace, 0, len(r.Workspaces))
+	for _, w := range r.Workspaces {
+		out = append(out, Workspace{ID: w.WorkspaceID, Label: w.Label})
+	}
+	return out, nil
+}
+
 // OpenTab creates a tab in workspace, unfocused, labelled label (empty:
 // Herdr's number), with its one pane's shell in cwd (empty: Herdr's default)
 // and env added to that pane's environment, and returns it with its root pane:
@@ -124,6 +139,21 @@ func (c *Client) Pane(ctx context.Context, id string) (Pane, error) {
 		return Pane{}, err
 	}
 	return r.Pane.pane(), nil
+}
+
+// Panes lists all panes on the server, across workspaces.
+func (c *Client) Panes(ctx context.Context) ([]Pane, error) {
+	var r struct {
+		Panes []wirePane `json:"panes"`
+	}
+	if err := c.result(ctx, 0, "pane list", &r, "pane", "list"); err != nil {
+		return nil, err
+	}
+	out := make([]Pane, 0, len(r.Panes))
+	for _, p := range r.Panes {
+		out = append(out, p.pane())
+	}
+	return out, nil
 }
 
 // PaneExists reports whether a pane still exists. Pane ids aren't reused.

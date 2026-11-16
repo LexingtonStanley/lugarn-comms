@@ -2203,7 +2203,9 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     bindings. External members keep ordinary `origin: spec`, plus an optional `external`
     record, avoiding a new origin/state enum for older v1 clients. Their lease is `none`,
     not a synthetic managed launch. Terminal opening uses the recorded terminal locator;
-    `members` refreshes Herdr state without a runner. No adoption command mutates Herdr.
+    `members` refreshes Herdr state without a runner, using one workspace, pane and agent
+    list per server per call and the same validation as targeted reads. Adoption and
+    conversion still use fresh targeted gets. No adoption command mutates Herdr.
 76. **Explicit conversion:** preview and confirmation use `bring-onto-comms`; only confirmation
     queues the existing `open-terminal` request kind. Expected generation/session and the
     recorded terminal prevent stale confirmation from restarting a replacement. Resume uses

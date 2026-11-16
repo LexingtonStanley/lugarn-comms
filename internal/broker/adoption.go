@@ -43,7 +43,6 @@ func (b *Broker) inspectExternal(ctx context.Context, server, workspace, pane, n
 }
 
 func (i *Integration) inspectExternal(ctx context.Context, server, workspace, pane, name string, h model.Harness, folder string) (model.ExternalMember, error) {
-	b := i.b
 	var out model.ExternalMember
 	if !herdrIDPattern.MatchString(workspace) || !herdrIDPattern.MatchString(pane) || herdr.ValidateAgentName(name) != nil {
 		return out, invalid("invalid Herdr identity")
@@ -61,13 +60,22 @@ func (i *Integration) inspectExternal(ctx context.Context, server, workspace, pa
 	if e != nil {
 		return out, e
 	}
+	return i.validateExternal(ctx, workspace, pane, name, h, folder, ws, p, a)
+}
+
+// Targeted actions and list-based polling share all identity/path validation.
+func (i *Integration) validateExternal(ctx context.Context, workspace, pane, name string, h model.Harness, folder string, ws herdr.Workspace, p herdr.Pane, a herdr.Agent) (model.ExternalMember, error) {
+	var out model.ExternalMember
+	if !herdrIDPattern.MatchString(workspace) || !herdrIDPattern.MatchString(pane) || herdr.ValidateAgentName(name) != nil {
+		return out, invalid("invalid Herdr identity")
+	}
 	if ws.ID != workspace || p.ID != pane || p.Workspace != workspace || a.Pane != pane || a.Workspace != workspace || a.Name != name || a.Tab != p.Tab || !herdrIDPattern.MatchString(p.Tab) || !herdrIDPattern.MatchString(p.Terminal) {
 		return out, model.NewError(model.ErrorLeaseConflict, "Herdr pane identity changed")
 	}
 	if a.Kind != string(h) || p.Agent != string(h) || a.Cwd != folder || p.Cwd != folder {
 		return out, model.NewError(model.ErrorLeaseConflict, "Herdr harness or folder changed")
 	}
-	if !utf8.ValidString(folder) || strings.ContainsRune(folder, 0) || utf8.RuneCountInString(folder) > 4096 || !policy.IsAbsPath(b.host(ctx).OS(), folder) {
+	if !utf8.ValidString(folder) || strings.ContainsRune(folder, 0) || utf8.RuneCountInString(folder) > 4096 || !policy.IsAbsPath(i.b.host(ctx).OS(), folder) {
 		return out, invalid("invalid Herdr folder")
 	}
 	session, e := externalSession(a)
@@ -155,12 +163,24 @@ func (b *Broker) refreshExternal(ctx context.Context, team string) error {
 	if t.Forgotten {
 		return nil
 	}
+	var snapshot externalSnapshot
+	var observationErr error
+	for _, m := range ms {
+		if m.External != nil {
+			snapshot, observationErr = b.integration.listExternal(ctx, t.HerdrServer)
+			break
+		}
+	}
 	for _, m := range ms {
 		if m.External == nil {
 			continue
 		}
 		old := *m.External
-		v, err := b.inspectExternal(ctx, t.HerdrServer, old.Workspace, old.Pane, old.Agent, *m.Harness, *m.Folder)
+		var v model.ExternalMember
+		err := observationErr
+		if err == nil {
+			v, err = b.integration.validateExternal(ctx, old.Workspace, old.Pane, old.Agent, *m.Harness, *m.Folder, snapshot.workspaces[old.Workspace], snapshot.panes[old.Pane], snapshot.agents[old.Agent])
+		}
 		if err != nil {
 			v = old
 			v.Available = false

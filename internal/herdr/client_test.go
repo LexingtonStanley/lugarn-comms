@@ -626,6 +626,37 @@ func TestHerdr150AdoptionFixtures(t *testing.T) {
 	if alpha.Kind != "pi" || alpha.Activity != model.ActivityIdle || alpha.Workspace == "" || alpha.Cwd == "" {
 		t.Fatal(alpha)
 	}
+	f.on("workspace list", ok(string(snapshots["workspace"].Result)))
+	workspaces, err := f.client().Workspaces(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundWorkspace := false
+	for _, w := range workspaces {
+		if w.ID == alpha.Workspace {
+			foundWorkspace = true
+		}
+	}
+	if !foundWorkspace {
+		t.Fatal("workspace list lost adopted workspace", workspaces)
+	}
+	f.on("pane list", ok(string(snapshots["pane"].Result)))
+	panes, err := f.client().Panes(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundPane := false
+	for _, p := range panes {
+		if p.ID == alpha.Pane {
+			foundPane = true
+			if p.Terminal == "" || p.Tab != alpha.Tab || p.Workspace != alpha.Workspace || p.Cwd != alpha.Cwd {
+				t.Fatal(p, alpha)
+			}
+		}
+	}
+	if !foundPane {
+		t.Fatal("pane list lost adopted pane", panes)
+	}
 	var listing struct {
 		Panes []json.RawMessage `json:"panes"`
 	}
@@ -651,4 +682,25 @@ func TestHerdr150AdoptionFixtures(t *testing.T) {
 		return
 	}
 	t.Fatal("fixture lacks adopted pane")
+}
+
+func TestExternalListsNameTheirServer(t *testing.T) {
+	t.Run("workspaces", func(t *testing.T) {
+		f := newFake(t)
+		f.on("workspace list", ok(`{"workspaces":[]}`))
+		_, err := f.client().Workspaces(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantArgs(t, onlyCall(t, f), "workspace", "list")
+	})
+	t.Run("panes", func(t *testing.T) {
+		f := newFake(t)
+		f.on("pane list", ok(`{"panes":[]}`))
+		_, err := f.client().Panes(testContext(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantArgs(t, onlyCall(t, f), "pane", "list")
+	})
 }
