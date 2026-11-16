@@ -50,6 +50,10 @@ func reviewLifecycle(t *testing.T, b *Broker, h HerdrAPI, team string) *integrat
 	must(t, e)
 	i, e := NewIntegration(b, IntegrationOptions{Binary: binary, HomeDir: t.TempDir(), Herdr: func(string) HerdrAPI { return h }})
 	must(t, e)
+	// These tests drive agent start (name clashes, snapshots, conversion) on
+	// every host. The Windows pane-launch path has its own tests; these fakes
+	// script agent lists, so they cannot also feed Windows agent detection.
+	i.windowsPanes = false
 	i.Attach()
 	must(t, b.db.Write(context.Background(), func(tx *store.Tx) error {
 		if e := tx.UpdateTeam(team, store.TeamPatch{State: ptr(model.TeamStateStarting)}, b.now()); e != nil {
