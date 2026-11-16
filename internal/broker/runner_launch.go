@@ -231,7 +231,13 @@ func launchFailure(cause error) *model.Error {
 			details["cause"] = "launch_failed"
 		}
 	}
-	return model.NewError(model.ErrorLaunchFailed, original.Message).WithDetails(details)
+	code := model.ErrorLaunchFailed
+	// A cross-client name race must remain distinguishable in requests and the
+	// durable failure event as well as the immediate pane-launch return value.
+	if original.Code == model.ErrorNameTaken {
+		code = model.ErrorNameTaken
+	}
+	return model.NewError(code, original.Message).WithDetails(details)
 }
 func (r *Runner) launchFailed(ctx context.Context, m model.Member, cause error) error {
 	failure := launchFailure(cause)

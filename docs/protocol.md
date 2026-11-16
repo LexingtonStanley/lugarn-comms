@@ -89,12 +89,13 @@ on their server. A new member gets its member name when free, otherwise `name-2`
 `name-3`, and so on. The suffix counts toward the 32-character limit: truncate the
 base only as needed. The broker considers both live server names and names reserved
 by other live member records in this store, including stopped members. An immediate
-transaction serializes reservations across runners. Herdr arbitrates races with other
-clients or stores: a conflicting launch fails rather than taking over an agent.
+transaction serializes reservations across runners, using a live-name snapshot read
+before the write transaction. Herdr arbitrates races with other clients or stores:
+a conflicting launch fails with `name_taken` rather than taking over an agent.
 
 The chosen name is recorded permanently as `Member.herdr_name`, before starting the
 harness, and reused on every later launch, including after a member-name edit. If that
-recorded name is occupied, the launch fails (`launch_failed`); it does not silently choose
+recorded name is occupied, the launch fails (`name_taken`); it does not silently choose
 a different identity. Removed members and forgotten teams release their reservation.
 Migration 2 records the old derived `<member, cut to 25>-<6-character hash tag>` name
 for every existing agent member that has no recorded name, including never-launched

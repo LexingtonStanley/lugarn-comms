@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/LexingtonStanley/lugarn-comms/internal/wire"
 	"os"
@@ -289,6 +290,41 @@ func TestNameAllocationSkipsDuplicateTruncatedCandidates(t *testing.T) {
 		}
 		if name != strings.Repeat("a", 30)+"-3" {
 			t.Fatal(name)
+		}
+		return nil
+	}))
+}
+
+func TestSpawnNameClashPreservesNameTaken(t *testing.T) {
+	h := &reviewHerdr{startErr: model.NewError(model.ErrorNameTaken, "external race")}
+	b, l, m := reviewPaneSetup(t, h)
+	code(t, l.Execute(context.Background(), model.Request{Kind: model.RequestKindSpawn, Member: &model.MemberRef{ID: m.ID}, Args: map[string]any{}}), model.ErrorNameTaken)
+	must(t, b.db.Read(context.Background(), func(tx *store.Tx) error {
+		events, e := tx.ReplayEvents(0, &m.Team, 0)
+		if e != nil {
+			return e
+		}
+		found := false
+		for _, event := range events {
+			if event.Type == model.EventMemberStateChanged {
+				var data wire.MemberStateChangedEventData
+				raw, e := json.Marshal(event.Data)
+				if e != nil {
+					return e
+				}
+				if e = json.Unmarshal(raw, &data); e != nil {
+					return e
+				}
+				if data.Error != nil {
+					found = true
+					if data.Error.Code != model.ErrorNameTaken {
+						t.Fatal(data.Error)
+					}
+				}
+			}
+		}
+		if !found {
+			t.Fatal("launch failure event missing")
 		}
 		return nil
 	}))
