@@ -251,7 +251,8 @@ func TestForgetAdoptedTeamDetachesAndCannotRestart(t *testing.T) {
 	if out.Team.Forgotten == nil || !*out.Team.Forgotten || teardown.calls != 1 {
 		t.Fatal(out, teardown)
 	}
-	_, e = b.ForgetTeam(ctx, wire.ForgetTeamRequest{Team: r.Spec.ID, IfRevision: 1})
+	// Already-forgotten retries ignore revision and continue safe cleanup.
+	_, e = b.ForgetTeam(ctx, wire.ForgetTeamRequest{Team: r.Spec.ID, IfRevision: 99})
 	must(t, e)
 	_, e = b.StartTeam(ctx, wire.StartTeamRequest{Team: r.Spec.ID})
 	if model.AsError(e).Code != model.ErrorNotFound {

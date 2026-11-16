@@ -375,7 +375,8 @@ too, so forgetting cannot accidentally delete a workspace whose last other pane 
 and headless leases (`lease_conflict`): open those members in terminals first. The retained
 team record has `forgotten: true`, is absent from `status`, and cannot be started, edited
 or have its ID reused. Its slug also stays reserved by the historical team row. History remains readable. `team.applied` with the tombstone lets
-watch clients remove it. Retrying forget is safe; it does not close member panes. This is
+watch clients remove it. Retrying forget is safe: an already-forgotten team succeeds without checking
+`if_revision` and does not close member panes. This is
 separate from `stop-team`, which still stops managed members.
 
 ## Teams and runs
@@ -1442,7 +1443,8 @@ Request: `team`, `if_revision`. Result: `team` with `forgotten: true`.
 Only adopted teams qualify (`invalid_request` otherwise). A stale revision gives
 `revision_conflict` with `expected` and `actual`; an in-flight action or headless lease gives
 `lease_conflict`. No member pane is closed. Runner cleanup errors use existing errors;
-a retry continues cleanup. The app removes the team from its active list.
+a retry continues cleanup. Once the team is forgotten, retries succeed without checking
+`if_revision`. The app removes the team from its active list.
 
 ### get-team
 
@@ -2218,6 +2220,7 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     without closing agent panes. It stops only the runner. Headless members must first be
     opened in terminals; pending actions must finish, so forgetting never implicitly kills
     a headless conversation. Tombstones retain history and forbid reusing team IDs.
+    Retrying an already-forgotten team succeeds without checking `if_revision`.
 78. **No new error codes or request kinds:** existing validation, conflict, availability and
     launch errors cover these operations. All new spec/record fields are optional on the
     wire; capability flags let the app discover the new operations before using them.
