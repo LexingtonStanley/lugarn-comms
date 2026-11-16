@@ -267,8 +267,10 @@ func TestBringPreviewSessionValidationAndTerminalReplacement(t *testing.T) {
 		t.Fatal(preview)
 	}
 	h.agent.Session.Value = "--resume malicious"
-	if _, e = b.BringOntoComms(ctx, wire.BringOntoCommsRequest{Team: r.Spec.ID, Member: "external"}); model.AsError(e).Code != model.ErrorInvalidRequest {
-		t.Fatal(e)
+	preview, e = b.BringOntoComms(ctx, wire.BringOntoCommsRequest{Team: r.Spec.ID, Member: "external"})
+	must(t, e)
+	if preview.Conversation != "fresh" || preview.Session != nil {
+		t.Fatal(preview)
 	}
 	h.agent.Session.Value = id
 	h.pane.Terminal = "term_replacement"
@@ -302,4 +304,68 @@ func TestServerChangeCannotReuseOtherServerWorkspaceID(t *testing.T) {
 		}
 		return e
 	}))
+}
+
+type failedExternalHerdr struct {
+	*adoptionHerdr
+	err error
+}
+
+func (h *failedExternalHerdr) Agent(context.Context, string) (herdr.Agent, error) {
+	return herdr.Agent{}, h.err
+}
+func TestMembersExternalReadFailuresAreObservations(t *testing.T) {
+	for _, code := range []model.ErrorCode{model.ErrorTimeout, model.ErrorInternal, model.ErrorInvalidRequest} {
+		t.Run(string(code), func(t *testing.T) {
+			b, h, r := adoptionSetup(t)
+			ctx := context.Background()
+			_, e := b.AdoptTeam(ctx, r)
+			must(t, e)
+			b.integration.opts.Herdr = func(string) HerdrAPI { return &failedExternalHerdr{h, model.NewError(code, "failed observation")} }
+			out, e := b.Members(ctx, wire.MembersRequest{Team: r.Spec.ID})
+			must(t, e)
+			found := false
+			for _, m := range out.Members {
+				if m.ID == "external" {
+					found = true
+					if m.External == nil || m.External.Available || m.External.Activity != model.ActivityUnknown {
+						t.Fatal(m)
+					}
+				}
+			}
+			if !found {
+				t.Fatal("external member missing")
+			}
+		})
+	}
+}
+func TestUnusableExternalSessionsAreFresh(t *testing.T) {
+	for _, session := range []herdr.AgentSession{
+		{Agent: "claude", Kind: "path", Value: "/tmp/conversation"},
+		{Agent: "claude", Kind: "id", Value: "--resume malicious"},
+		{Agent: "codex", Kind: "id", Value: "00000000-0000-4000-8000-000000000001"},
+	} {
+		t.Run(session.Kind+session.Agent+session.Value, func(t *testing.T) {
+			b, h, r := adoptionSetup(t)
+			ctx := context.Background()
+			r.Spec.Members[0].Harness = model.HarnessClaude
+			h.agent.Kind = "claude"
+			h.pane.Agent = "claude"
+			_, e := b.AdoptTeam(ctx, r)
+			must(t, e)
+			h.agent.Session = &session
+			out, e := b.Members(ctx, wire.MembersRequest{Team: r.Spec.ID})
+			must(t, e)
+			for _, m := range out.Members {
+				if m.External != nil && (!m.External.Available || m.External.Session != nil) {
+					t.Fatal(m)
+				}
+			}
+			preview, e := b.BringOntoComms(ctx, wire.BringOntoCommsRequest{Team: r.Spec.ID, Member: "external"})
+			must(t, e)
+			if preview.Conversation != "fresh" || preview.Session != nil {
+				t.Fatal(preview)
+			}
+		})
+	}
 }

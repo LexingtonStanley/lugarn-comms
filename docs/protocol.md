@@ -339,8 +339,10 @@ An adopted member has `external`, no launch/token, and a `none` lease. Its regul
 is `stopped` (no comms driver); its Herdr activity and terminal locator are in `external`.
 The app labels it **Not on comms**. `members` refreshes external activity through read-only
 Herdr lookups, even with the team stopped; clients poll it for external state. These
-observations are not a watch event stream. Missing/replaced panes or an unavailable server
-set `external.available: false` and activity `unknown`. The app attaches directly to
+observations are not a watch event stream. Missing/replaced panes or any Herdr read failure
+(including timeouts) set the affected `external.available: false` and activity `unknown`;
+the `members` operation still succeeds. A session that is not a valid harness ID is treated
+as absent, with a fresh conversation, and is never passed to a harness. The app attaches directly to
 `external.terminal` on the team's server to open it; `open-terminal`, `stop-member` and
 `return-headless` refuse external members (`invalid_request`). Opening that terminal does
 not start comms. `start-team` starts the runner and managed members only. It neither posts
@@ -355,7 +357,7 @@ pane (never its tab or siblings), and launches the member under the broker in th
 folder. The new pane follows the team's current placement and retains the Herdr name.
 Claude, Codex and OpenCode resume a validated `agent_session` ID if Herdr reports one;
 Codex checks the recorded rollout cwd only when resuming; a fresh conversion starts
-in the adopted folder. No ID, or pi under the v1 launch
+in the adopted folder. No usable ID (including path sessions), or pi under the v1 launch
 table, means a fresh conversation, reported by the preview. The ordinary launch profile,
 MCP registration, environment, trust prompts and session-before-pane rules apply.
 
@@ -1481,7 +1483,9 @@ Request: `team`, `include_removed` (default `false`). Result: `members` (`Member
 included), `cursor`. The app copies these into its own storage on focus, on watch events, and
 at start and stop. Members are ordered by `created_at`, ascending, then by member `id`,
 ascending for ties. This includes `human` and, when requested, removed members; it is
-independent of member name, role, state, and the spec's member order.
+independent of member name, role, state, and the spec's member order. External observations
+are best effort: a Herdr read failure makes affected external members unavailable/unknown
+without failing the operation. Unusable resume identities are exposed as null sessions.
 
 ### timeline
 

@@ -28,7 +28,7 @@ func externalSession(a herdr.Agent) (*string, error) {
 		return nil, nil
 	}
 	if a.Session.Kind != "id" || a.Session.Agent != a.Kind || !harness.ValidSession(model.Harness(a.Kind), a.Session.Value) {
-		return nil, invalid("Herdr reported an invalid harness session")
+		return nil, nil
 	}
 	return ptr(a.Session.Value), nil
 }
@@ -162,9 +162,6 @@ func (b *Broker) refreshExternal(ctx context.Context, team string) error {
 		old := *m.External
 		v, err := b.inspectExternal(ctx, t.HerdrServer, old.Workspace, old.Pane, old.Agent, *m.Harness, *m.Folder)
 		if err != nil {
-			if !herdr.IsGone(err) && !herdr.IsUnavailable(err) && model.AsError(err).Code != model.ErrorLeaseConflict {
-				return err
-			}
 			v = old
 			v.Available = false
 			v.Activity = model.ActivityUnknown
