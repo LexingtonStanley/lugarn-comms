@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/hc"
@@ -434,4 +435,44 @@ func TestHCBackendEditWhileRunningRefused(t *testing.T) {
 	got.Spec.Herdr.Backend = ptr(model.HerdrBackendChoiceHerdr)
 	_, e = i.b.ApplyTeam(ctx, wire.ApplyTeamRequest{Spec: got.Spec, IfRevision: got.Revision})
 	code(t, e, model.ErrorTeamRunning)
+}
+
+// return-headless keeps waiting through blocked, as on 0.9: the person may answer
+// it within the window. Only the deadline ends the wait.
+func TestHCReturnHeadlessWaitsThroughBlocked(t *testing.T) {
+	i, path, s := hcFake(t)
+	ctx := context.Background()
+	v := s.Terminals[0]
+	name := v.Address
+	if v.Name != nil {
+		name = *v.Name
+	}
+	spec := model.TeamSpec{Version: 1, ID: "adopted", Name: "adopted", Pattern: model.PatternCustom, Herdr: &model.HerdrSettings{Server: ptr("lugarn-test-fake"), Backend: ptr(model.HerdrBackendChoiceHC)}, Members: []model.MemberSpec{{ID: "outside", Name: "outside", Role: model.RoleCustom, Harness: model.HarnessPi, Mode: model.ModePane, Profile: model.ProfileWorkspace, Folder: v.Foreground.Cwd, Brief: "test"}}, Grid: []model.GridEdge{}}
+	_, e := i.b.AdoptTeam(ctx, wire.AdoptTeamRequest{Spec: spec, Backend: ptr(model.HerdrBackendHC), Workspace: v.Labels["herdr.space"], Members: []wire.AdoptMember{{Member: "outside", Pane: v.Address, Agent: name}}})
+	must(t, e)
+	must(t, i.b.db.Write(ctx, func(tx *store.Tx) error {
+		return tx.UpdateTeam("adopted", store.TeamPatch{State: ptr(model.TeamStateStarting)}, i.b.now())
+	}))
+	r := i.Runner("adopted", RunnerOptions{Binary: func(model.Harness) (string, error) { return i.opts.Binary, nil }})
+	must(t, r.acquire(ctx))
+	var member *model.Member
+	must(t, i.b.db.Read(ctx, func(tx *store.Tx) error { var e error; member, e = tx.GetMember("outside"); return e }))
+	lifecycle := &integrationLifecycle{i: i, r: r}
+	must(t, lifecycle.bringOntoComms(ctx, *member, model.Request{Args: map[string]any{"pane": v.Address, "terminal": v.Address, "expected_session": nil}}))
+	state, e := hctest.Read(path)
+	must(t, e)
+	state.Terminals[1].Status = &hc.Status{App: "pi", State: "blocked", Kind: "permission"}
+	must(t, hctest.Write(path, state))
+	must(t, i.b.db.Read(ctx, func(tx *store.Tx) error { var e error; member, e = tx.GetMember("outside"); return e }))
+	if !hcMember(*member) {
+		t.Fatal("brought member is not on hc", member.Herdr)
+	}
+	started := time.Now()
+	e = i.waitHCIdle(ctx, *member, 2500*time.Millisecond)
+	if model.AsError(e).Code != model.ErrorTimeout {
+		t.Fatalf("blocked member: want timeout, got %v", e)
+	}
+	if time.Since(started) < 2*time.Second {
+		t.Fatalf("gave up after %s, before the deadline", time.Since(started))
+	}
 }

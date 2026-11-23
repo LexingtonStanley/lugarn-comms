@@ -1,6 +1,5 @@
 {
   "team": {
-    "herdr_backend": "herdr",
     "display_name": "Team ADOPTED",
     "adopted": true,
     "forgotten": true,
@@ -14,8 +13,8 @@
       "state": "down",
       "pid": null,
       "pane": null,
-      "started_at": "2026-11-23T16:44:35.962Z",
-      "heartbeat_at": "2026-11-23T16:44:45.971Z"
+      "started_at": "2026-11-16T16:04:51.537Z",
+      "heartbeat_at": "2026-11-16T16:05:01.546Z"
     },
     "hops": {
       "used": 0,
@@ -32,8 +31,8 @@
       "held": 0,
       "uncertain": 0
     },
-    "started_at": "2026-11-23T16:44:25.921Z",
-    "stopped_at": "2026-11-23T16:44:50.848Z",
-    "last_app_contact_at": "2026-11-23T16:44:25.829Z"
+    "started_at": "2026-11-16T16:04:41.482Z",
+    "stopped_at": "2026-11-16T16:05:05.617Z",
+    "last_app_contact_at": "2026-11-16T16:04:41.277Z"
   }
 }

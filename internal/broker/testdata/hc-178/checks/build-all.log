@@ -1,6 +1,0 @@
-Building linux/amd64 -> dist/lugarn-comms_dev_linux_amd64/lugarn-comms
-Building linux/arm64 -> dist/lugarn-comms_dev_linux_arm64/lugarn-comms
-Building darwin/amd64 -> dist/lugarn-comms_dev_darwin_amd64/lugarn-comms
-Building darwin/arm64 -> dist/lugarn-comms_dev_darwin_arm64/lugarn-comms
-Building windows/amd64 -> dist/lugarn-comms_dev_windows_amd64/lugarn-comms.exe
-Building windows/arm64 -> dist/lugarn-comms_dev_windows_arm64/lugarn-comms.exe

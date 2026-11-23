@@ -212,10 +212,14 @@ func (i *Integration) waitHCIdle(ctx context.Context, m model.Member, timeout ti
 		if observation.Activity == model.ActivityIdle || observation.Activity == model.ActivityDone {
 			return nil
 		}
+		// As on 0.9, keep waiting through blocked: the person may answer it from
+		// the phone within the window. terminal.wait returns at once while blocked,
+		// so pause longer between checks instead of spinning on connections.
+		pause := 50 * time.Millisecond
 		if observation.Activity == model.ActivityBlocked {
-			return hcBlocked()
+			pause = time.Second
 		}
-		if e = i.b.opts.Wait(wait, 50*time.Millisecond); e != nil {
+		if e = i.b.opts.Wait(wait, pause); e != nil {
 			return model.NewError(model.ErrorTimeout, "hc terminal did not settle")
 		}
 	}
