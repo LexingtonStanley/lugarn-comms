@@ -1,0 +1,1015 @@
+=== RUN   TestEveryCallNamesItsSessionAndStripsHerdrEnv
+--- PASS: TestEveryCallNamesItsSessionAndStripsHerdrEnv (0.01s)
+=== RUN   TestCleanEnv
+--- PASS: TestCleanEnv (0.00s)
+=== RUN   TestStatus
+--- PASS: TestStatus (0.01s)
+=== RUN   TestUnavailable
+--- PASS: TestUnavailable (0.01s)
+=== RUN   TestNoAnswerIsTimeout
+--- PASS: TestNoAnswerIsTimeout (0.30s)
+=== RUN   TestCallerCancellationIsReturned
+--- PASS: TestCallerCancellationIsReturned (0.20s)
+=== RUN   TestSyntaxErrorDiscardsHerdrText
+--- PASS: TestSyntaxErrorDiscardsHerdrText (0.01s)
+=== RUN   TestBadArgumentsNeverRun
+--- PASS: TestBadArgumentsNeverRun (0.00s)
+=== RUN   TestCreateWorkspaceAndFindItByID
+--- PASS: TestCreateWorkspaceAndFindItByID (0.02s)
+=== RUN   TestOpenTabAndClose
+--- PASS: TestOpenTabAndClose (0.03s)
+=== RUN   TestPaneGoneAndClose
+--- PASS: TestPaneGoneAndClose (0.03s)
+=== RUN   TestStartAgent
+--- PASS: TestStartAgent (0.02s)
+=== RUN   TestStartAgentBlockedAtTrustIsStarted
+--- PASS: TestStartAgentBlockedAtTrustIsStarted (0.01s)
+=== RUN   TestStartAgentFailures
+--- PASS: TestStartAgentFailures (0.04s)
+=== RUN   TestAgentRecords
+--- PASS: TestAgentRecords (0.01s)
+=== RUN   TestPrompt
+--- PASS: TestPrompt (0.02s)
+=== RUN   TestWait
+--- PASS: TestWait (0.02s)
+=== RUN   TestReadAgent
+--- PASS: TestReadAgent (0.01s)
+=== RUN   TestRunCommand
+--- PASS: TestRunCommand (0.01s)
+=== RUN   TestRenameDetectedAgent
+--- PASS: TestRenameDetectedAgent (0.01s)
+=== RUN   TestHerdrErrorsNeverExposeProcessPayload
+--- PASS: TestHerdrErrorsNeverExposeProcessPayload (0.04s)
+=== RUN   TestFutureHerdrCodesRemainIdentifiers
+=== RUN   TestFutureHerdrCodesRemainIdentifiers/future_launch_refused
+=== RUN   TestFutureHerdrCodesRemainIdentifiers/a
+=== RUN   TestFutureHerdrCodesRemainIdentifiers/a_______________________________________________________________
+=== RUN   TestFutureHerdrCodesRemainIdentifiers/a________________________________________________________________
+=== RUN   TestFutureHerdrCodesRemainIdentifiers/UpperCase
+=== RUN   TestFutureHerdrCodesRemainIdentifiers/bad_code
+=== RUN   TestFutureHerdrCodesRemainIdentifiers/bad_code#01
+=== RUN   TestFutureHerdrCodesRemainIdentifiers/#00
+--- PASS: TestFutureHerdrCodesRemainIdentifiers (0.00s)
+    --- PASS: TestFutureHerdrCodesRemainIdentifiers/future_launch_refused (0.00s)
+    --- PASS: TestFutureHerdrCodesRemainIdentifiers/a (0.00s)
+    --- PASS: TestFutureHerdrCodesRemainIdentifiers/a_______________________________________________________________ (0.00s)
+    --- PASS: TestFutureHerdrCodesRemainIdentifiers/a________________________________________________________________ (0.00s)
+    --- PASS: TestFutureHerdrCodesRemainIdentifiers/UpperCase (0.00s)
+    --- PASS: TestFutureHerdrCodesRemainIdentifiers/bad_code (0.00s)
+    --- PASS: TestFutureHerdrCodesRemainIdentifiers/bad_code#01 (0.00s)
+    --- PASS: TestFutureHerdrCodesRemainIdentifiers/#00 (0.00s)
+=== RUN   TestPaneProcessInfo
+--- PASS: TestPaneProcessInfo (0.01s)
+=== RUN   TestHerdr150AdoptionFixtures
+--- PASS: TestHerdr150AdoptionFixtures (0.02s)
+=== RUN   TestExternalListsNameTheirServer
+=== RUN   TestExternalListsNameTheirServer/workspaces
+=== RUN   TestExternalListsNameTheirServer/panes
+--- PASS: TestExternalListsNameTheirServer (0.02s)
+    --- PASS: TestExternalListsNameTheirServer/workspaces (0.01s)
+    --- PASS: TestExternalListsNameTheirServer/panes (0.01s)
+=== RUN   TestLiveCodexPaneLeavesNoDaemon
+    live_codex_linux_test.go:33: set LUGARN_HERDR_LIVE_CODEX_THREAD to a Codex thread id of yours and LUGARN_HERDR_LIVE_CODEX_DIR to its folder
+--- SKIP: TestLiveCodexPaneLeavesNoDaemon (0.00s)
+=== RUN   TestLiveHerdr
+    live_linux_test.go:131: private session lugarn-test-4hmub9wybx
+    live_linux_test.go:138: StartServer: started=true method=detached pid=1195406 running=true version=0.9.5 socket=/home/lexde/.config/herdr/sessions/lugarn-test-4hmub9wybx/herdr.sock
+    live_linux_test.go:164: CreateWorkspace: id w1 label "livetest" root tab w1:t1 root pane w1:p1
+    live_linux_test.go:169: Workspace(w999): not_found: the Herdr agent or pane is gone (IsGone true)
+    live_linux_test.go:183: root pane saw LUGARN_COMMS_MEMBER="m-root" LUGARN_X="a b\"c' $(touch /tmp/TestLiveHerdr2686114719/001/pwned) `id` %PATH% \\n ü\nsecond line"
+    live_linux_test.go:195: OpenTab: tab w1:t2 label "writer" in w1, root pane w1:p2
+    live_linux_test.go:207: tab pane w1:p2 saw LUGARN_COMMS_MEMBER="m-tab" LUGARN_COMMS_TOKEN_FILE="/tmp/TestLiveHerdr2686114719/001/launch dir/01J.token"; workspace's LUGARN_X inherited: false
+    live_linux_test.go:233: CloseTab(w1:t2): pane w1:p2 gone, shell 1195487 gone, second close ok, workspace w1 still there
+=== RUN   TestLiveHerdr/fake_agent
+    live_linux_test.go:316: StartAgent: name=writer-42r9p8 kind=pi pane=w1:p3 status=idle activity=idle ready=true session=<nil>
+    live_linux_test.go:324: agent argv arrived exactly: ["--plain" "arg with space" "q\"uote" "s'ingle" "$(touch /tmp/TestLiveHerdr2686114719/001/pwned)" "back\\slash" "semi;colon" "%PATH%"]
+    live_linux_test.go:338: prompt returned with status idle; agent received 250 bytes, exactly ESC[200~ + text + ESC[201~ + CR
+    live_linux_test.go:343: agent read: "eHerdr2686114719/001/pwned)' 'back\\slash' 'semi;colon' %PATH%\nlugarn fake agent ready\n> got 249 bytes\n> got 1 bytes\n>"
+    live_linux_test.go:355: reported working: Prompt err=<nil> IsBlocked=false, 26 bytes delivered
+    live_linux_test.go:355: reported blocked: Prompt err=internal: herdr agent prompt failed IsBlocked=true, 0 bytes delivered
+    live_linux_test.go:355: reported unknown: Prompt err=<nil> IsBlocked=false, 26 bytes delivered
+    live_linux_test.go:355: reported idle: Prompt err=<nil> IsBlocked=false, 23 bytes delivered
+    live_linux_test.go:367: Wait(working, 1.5s) on an idle agent: timeout: Herdr's wait ran out after 1.505s; model error timeout: Herdr's wait ran out
+    live_linux_test.go:377: Agent(nosuch-agent): not_found: the Herdr agent or pane is gone
+    live_linux_test.go:395: agent exited: Agent(writer-42r9p8) is gone, pane w1:p3 still exists
+    live_linux_test.go:415: Wait while its pane closed: not_found: the Herdr agent or pane is gone
+    live_linux_test.go:435: pane closed: agent and pane gone, agent process 1204528 gone
+=== RUN   TestLiveHerdr/names
+    live_linux_test.go:481: agent rename to "abcdefghijklmnopqrstuvwxy-ee8g02" (32 bytes): Herdr accepts=true; ValidateAgentName accepts=true <nil>
+    live_linux_test.go:481: agent rename to "a-mfm4d6" (8 bytes): Herdr accepts=true; ValidateAgentName accepts=true <nil>
+    live_linux_test.go:481: agent rename to "abcdefghijklmnopqrstuvwx--es5x4x" (32 bytes): Herdr accepts=true; ValidateAgentName accepts=true <nil>
+    live_linux_test.go:481: agent rename to "reviewer-rqjeqt" (15 bytes): Herdr accepts=true; ValidateAgentName accepts=true <nil>
+    live_linux_test.go:481: agent rename to "a" (1 bytes): Herdr accepts=true; ValidateAgentName accepts=true <nil>
+    live_linux_test.go:481: agent rename to "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" (32 bytes): Herdr accepts=true; ValidateAgentName accepts=true <nil>
+    live_linux_test.go:481: agent rename to "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" (33 bytes): Herdr accepts=false; ValidateAgentName accepts=false invalid_request: Herdr refused the request
+    live_linux_test.go:481: agent rename to "0team-writer" (12 bytes): Herdr accepts=false; ValidateAgentName accepts=false invalid_request: Herdr refused the request
+    live_linux_test.go:481: agent rename to "UPPER" (5 bytes): Herdr accepts=false; ValidateAgentName accepts=false invalid_request: Herdr refused the request
+    live_linux_test.go:481: agent rename to "-lead" (5 bytes): Herdr accepts=false; ValidateAgentName accepts=false invalid_request: Herdr refused the request
+    live_linux_test.go:481: agent rename to "tttttttttttttttttttttttttttttttttttttttttttttttt-abcdefghijklmnopqrstuvwxyz012345" (81 bytes): Herdr accepts=false; ValidateAgentName accepts=false invalid_request: Herdr refused the request
+    live_linux_test.go:497: workspace label "tttttttttttttttttttttttttttttttttttttttttttttttt" (48 bytes) accepted as w2
+    live_linux_test.go:497: workspace label "0digit-team" (11 bytes) accepted as w3
+=== RUN   TestLiveHerdr/opencode
+    live_linux_test.go:524: opencode opencode-xnsr1a: start status=idle; agent get: kind=opencode status=idle activity=idle ready=true session=<nil>
+    live_linux_test.go:534: opencode tab process 1206398 gone after CloseTab: true
+    live_linux_test.go:534: opencode tab process 1206453 gone after CloseTab: true
+=== NAME  TestLiveHerdr
+    live_linux_test.go:245: after its last pane closed, Workspace(w1): not_found: the Herdr agent or pane is gone
+    live_linux_test.go:134: herdr --session lugarn-test-4hmub9wybx server stop:  <nil>
+    live_linux_test.go:134: after stop: session lugarn-test-4hmub9wybx running=false (<nil>); pid 1195406 alive=false
+    live_linux_test.go:134: herdr --session lugarn-test-4hmub9wybx session delete lugarn-test-4hmub9wybx: deleted session lugarn-test-4hmub9wybx <nil>
+--- PASS: TestLiveHerdr (22.42s)
+    --- PASS: TestLiveHerdr/fake_agent (13.98s)
+    --- PASS: TestLiveHerdr/names (4.00s)
+    --- PASS: TestLiveHerdr/opencode (3.98s)
+=== RUN   TestLiveServerSurvivesSessionEnd
+    live_linux_test.go:613: private session lugarn-test-ft2p4qcfef
+    live_linux_test.go:661: helper 1208204 (session 1208204, exit <nil>) reported {HelperPID:1208204 ControlPID:1208235 ServerPID:1208243 Started:true Method:detached Error:}
+    live_linux_test.go:674: after the session ended: control child 1208235 alive=false; server 1208243 alive=true sid=1208243 ppid=4089416; status running=true (<nil>)
+    live_linux_test.go:615: herdr --session lugarn-test-ft2p4qcfef server stop:  <nil>
+    live_linux_test.go:615: after stop: session lugarn-test-ft2p4qcfef running=false (<nil>); pid 1208243 alive=false
+    live_linux_test.go:615: herdr --session lugarn-test-ft2p4qcfef session delete lugarn-test-ft2p4qcfef: deleted session lugarn-test-ft2p4qcfef <nil>
+--- PASS: TestLiveServerSurvivesSessionEnd (2.17s)
+=== RUN   TestLiveSystemdServer
+    live_systemd_linux_test.go:37: private session lugarn-test-nwhfjar6m4, unit lugarn-herdr-lugarn-test-nwhfjar6m4.service
+    live_systemd_linux_test.go:46: $ systemd-run --user --unit=lugarn-herdr-lugarn-test-nwhfjar6m4.service -- /usr/bin/false
+        Running as unit: lugarn-herdr-lugarn-test-nwhfjar6m4.service; invocation ID: cba661ed320b47d3a3046125653b949a
+        (exit 0, <nil>)
+    live_systemd_linux_test.go:48: $ systemctl --user status --no-pager --lines=0 lugarn-herdr-lugarn-test-nwhfjar6m4.service
+        × lugarn-herdr-lugarn-test-nwhfjar6m4.service - /usr/bin/false
+             Loaded: loaded (/run/user/1000/systemd/transient/lugarn-herdr-lugarn-test-nwhfjar6m4.service; transient)
+          Transient: yes
+             Active: failed (Result: exit-code) since Mon 2026-11-23 16:44:07 UTC; 6ms ago
+           Duration: 1ms
+            Process: 1210834 ExecStart=/usr/bin/false (code=exited, status=1/FAILURE)
+           Main PID: 1210834 (code=exited, status=1/FAILURE)
+                CPU: 1ms
+        (exit 3, <nil>)
+    live_systemd_linux_test.go:54: StartServer(KillUserProcesses(true)) over the failed unit: started=true method=systemd pid=1210854 running=true version=0.9.5
+    live_systemd_linux_test.go:59: $ systemctl --user status --no-pager --lines=0 lugarn-herdr-lugarn-test-nwhfjar6m4.service
+        ● lugarn-herdr-lugarn-test-nwhfjar6m4.service - /home/lexde/.local/bin/herdr --session lugarn-test-nwhfjar6m4 server
+             Loaded: loaded (/run/user/1000/systemd/transient/lugarn-herdr-lugarn-test-nwhfjar6m4.service; transient)
+          Transient: yes
+             Active: active (running) since Mon 2026-11-23 16:44:07 UTC; 116ms ago
+           Main PID: 1210854 (herdr)
+              Tasks: 31 (limit: 37945)
+             Memory: 11.4M (peak: 11.8M)
+                CPU: 83ms
+             CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/lugarn-herdr-lugarn-test-nwhfjar6m4.service
+                     ├─1210854 /home/lexde/.local/bin/herdr --session lugarn-test-nwhfjar6m4 server
+                     ├─1210910 curl -sfL --retry 2 --connect-timeout 5 --max-time 15 --max-filesize 262144 https://herdr.dev/agent-detection/index.toml
+                     └─1210916 curl -sfL --retry 3 --connect-timeout 10 --max-time 20 https://herdr.dev/latest.json
+        (exit 0, <nil>)
+    live_systemd_linux_test.go:63: server 1210854: cgroup 0::/user.slice/user-1000.slice/user@1000.service/app.slice/lugarn-herdr-lugarn-test-nwhfjar6m4.service; parent 4089416 (systemd)
+    live_systemd_linux_test.go:71: second StartServer while it answers: started=false method="" (<nil>)
+    live_systemd_linux_test.go:85: after SIGKILL of 1210854: is-active inactive, loaded false
+    live_systemd_linux_test.go:86: $ systemctl --user status --no-pager --lines=0 lugarn-herdr-lugarn-test-nwhfjar6m4.service
+        Unit lugarn-herdr-lugarn-test-nwhfjar6m4.service could not be found.
+        (exit 4, <nil>)
+    live_systemd_linux_test.go:91: StartServer after the dead server: started=true method=systemd pid=1211095 running=true
+    live_systemd_linux_test.go:95: $ systemctl --user status --no-pager --lines=0 lugarn-herdr-lugarn-test-nwhfjar6m4.service
+        ● lugarn-herdr-lugarn-test-nwhfjar6m4.service - /home/lexde/.local/bin/herdr --session lugarn-test-nwhfjar6m4 server
+             Loaded: loaded (/run/user/1000/systemd/transient/lugarn-herdr-lugarn-test-nwhfjar6m4.service; transient)
+          Transient: yes
+             Active: active (running) since Mon 2026-11-23 16:44:07 UTC; 117ms ago
+           Main PID: 1211095 (herdr)
+              Tasks: 31 (limit: 37945)
+             Memory: 12.1M (peak: 12.1M)
+                CPU: 99ms
+             CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/lugarn-herdr-lugarn-test-nwhfjar6m4.service
+                     ├─1211095 /home/lexde/.local/bin/herdr --session lugarn-test-nwhfjar6m4 server
+                     ├─1211126 curl -sfL --retry 2 --connect-timeout 5 --max-time 15 --max-filesize 262144 https://herdr.dev/agent-detection/index.toml
+                     └─1211130 curl -sfL --retry 3 --connect-timeout 10 --max-time 20 https://herdr.dev/latest.json
+        (exit 0, <nil>)
+    live_systemd_linux_test.go:38: $ systemctl --user stop lugarn-herdr-lugarn-test-nwhfjar6m4.service
+        (exit 0, <nil>)
+    live_systemd_linux_test.go:38: after stop: unit lugarn-herdr-lugarn-test-nwhfjar6m4.service is-active inactive loaded false (<nil>); main pid 1211095 alive false; session lugarn-test-nwhfjar6m4 running false
+    live_systemd_linux_test.go:38: $ herdr --session lugarn-test-nwhfjar6m4 session delete lugarn-test-nwhfjar6m4: deleted session lugarn-test-nwhfjar6m4 <nil>
+--- PASS: TestLiveSystemdServer (0.99s)
+=== RUN   TestAgentNameVectors
+--- PASS: TestAgentNameVectors (0.00s)
+=== RUN   TestAgentNameAlwaysValid
+    names_test.go:79: 231287 names checked
+--- PASS: TestAgentNameAlwaysValid (0.19s)
+=== RUN   TestNames
+--- PASS: TestNames (0.00s)
+=== RUN   TestActivityFromHerdr
+--- PASS: TestActivityFromHerdr (0.00s)
+=== RUN   TestCandidateNameSuffixTruncation
+--- PASS: TestCandidateNameSuffixTruncation (0.00s)
+=== RUN   TestSessionSocketPath
+--- PASS: TestSessionSocketPath (0.00s)
+=== RUN   TestLongHomeAndXDGFailBeforeHerdrInvocation
+=== RUN   TestLongHomeAndXDGFailBeforeHerdrInvocation/false
+=== RUN   TestLongHomeAndXDGFailBeforeHerdrInvocation/true
+--- PASS: TestLongHomeAndXDGFailBeforeHerdrInvocation (0.00s)
+    --- PASS: TestLongHomeAndXDGFailBeforeHerdrInvocation/false (0.00s)
+    --- PASS: TestLongHomeAndXDGFailBeforeHerdrInvocation/true (0.00s)
+=== RUN   TestServerSocketPathLimit
+=== RUN   TestServerSocketPathLimit/client_limit-1
+=== RUN   TestServerSocketPathLimit/client_limit+0
+=== RUN   TestServerSocketPathLimit/client_limit+1
+=== RUN   TestServerSocketPathLimit/client_limit+7
+=== RUN   TestServerSocketPathLimit/client_limit+8
+--- PASS: TestServerSocketPathLimit (0.00s)
+    --- PASS: TestServerSocketPathLimit/client_limit-1 (0.00s)
+    --- PASS: TestServerSocketPathLimit/client_limit+0 (0.00s)
+    --- PASS: TestServerSocketPathLimit/client_limit+1 (0.00s)
+    --- PASS: TestServerSocketPathLimit/client_limit+7 (0.00s)
+    --- PASS: TestServerSocketPathLimit/client_limit+8 (0.00s)
+=== RUN   TestStartServerRejectsLongSocketBeforeSpawn
+--- PASS: TestStartServerRejectsLongSocketBeforeSpawn (0.02s)
+=== RUN   TestStartServerSystemd
+--- PASS: TestStartServerSystemd (0.10s)
+=== RUN   TestStartServerSystemdLeftover
+=== RUN   TestStartServerSystemdLeftover/failed
+=== RUN   TestStartServerSystemdLeftover/inactive
+--- PASS: TestStartServerSystemdLeftover (0.30s)
+    --- PASS: TestStartServerSystemdLeftover/failed (0.10s)
+    --- PASS: TestStartServerSystemdLeftover/inactive (0.21s)
+=== RUN   TestStartServerSystemdFailures
+=== RUN   TestStartServerSystemdFailures/refused
+=== RUN   TestStartServerSystemdFailures/server_exits
+=== RUN   TestStartServerSystemdFailures/no_systemd
+--- PASS: TestStartServerSystemdFailures (0.08s)
+    --- PASS: TestStartServerSystemdFailures/refused (0.03s)
+    --- PASS: TestStartServerSystemdFailures/server_exits (0.05s)
+    --- PASS: TestStartServerSystemdFailures/no_systemd (0.01s)
+=== RUN   TestStartServerSystemdUnitAlreadyRunning
+--- PASS: TestStartServerSystemdUnitAlreadyRunning (1.64s)
+=== RUN   TestStartServerWithoutKillUserProcessesIsDetached
+--- PASS: TestStartServerWithoutKillUserProcessesIsDetached (0.17s)
+=== RUN   TestSystemdEnvironmentOption
+--- PASS: TestSystemdEnvironmentOption (0.20s)
+=== RUN   TestStartMethodsMatchWire
+--- PASS: TestStartMethodsMatchWire (0.00s)
+=== RUN   TestStartServer
+--- PASS: TestStartServer (0.17s)
+=== RUN   TestStartServerNotInstalled
+--- PASS: TestStartServerNotInstalled (0.00s)
+=== RUN   TestStartServerAlreadyRunning
+--- PASS: TestStartServerAlreadyRunning (0.01s)
+=== RUN   TestStartServerFailures
+=== RUN   TestStartServerFailures/exit
+=== RUN   TestStartServerFailures/silent
+--- PASS: TestStartServerFailures (1.68s)
+    --- PASS: TestStartServerFailures/exit (0.02s)
+    --- PASS: TestStartServerFailures/silent (1.65s)
+=== RUN   TestUnitName
+--- PASS: TestUnitName (0.00s)
+=== RUN   TestStartServerDetaches
+--- PASS: TestStartServerDetaches (0.17s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/herdr	31.176s
+=== RUN   TestAdoptionReadOnlyAndExplicitCommsBoundary
+--- PASS: TestAdoptionReadOnlyAndExplicitCommsBoundary (0.07s)
+=== RUN   TestAdoptionInvalidAndDuplicateBindingsRollback
+=== RUN   TestAdoptionInvalidAndDuplicateBindingsRollback/folder
+=== RUN   TestAdoptionInvalidAndDuplicateBindingsRollback/name
+=== RUN   TestAdoptionInvalidAndDuplicateBindingsRollback/terminal
+=== RUN   TestAdoptionInvalidAndDuplicateBindingsRollback/workspace
+=== RUN   TestAdoptionInvalidAndDuplicateBindingsRollback/harness
+--- PASS: TestAdoptionInvalidAndDuplicateBindingsRollback (0.29s)
+    --- PASS: TestAdoptionInvalidAndDuplicateBindingsRollback/folder (0.04s)
+    --- PASS: TestAdoptionInvalidAndDuplicateBindingsRollback/name (0.04s)
+    --- PASS: TestAdoptionInvalidAndDuplicateBindingsRollback/terminal (0.06s)
+    --- PASS: TestAdoptionInvalidAndDuplicateBindingsRollback/workspace (0.09s)
+    --- PASS: TestAdoptionInvalidAndDuplicateBindingsRollback/harness (0.03s)
+=== RUN   TestConcurrentNameReservationsAndReuse
+--- PASS: TestConcurrentNameReservationsAndReuse (0.05s)
+=== RUN   TestForgetAdoptedTeamDetachesAndCannotRestart
+--- PASS: TestForgetAdoptedTeamDetachesAndCannotRestart (0.06s)
+=== RUN   TestBringPreviewSessionValidationAndTerminalReplacement
+--- PASS: TestBringPreviewSessionValidationAndTerminalReplacement (0.05s)
+=== RUN   TestServerChangeCannotReuseOtherServerWorkspaceID
+--- PASS: TestServerChangeCannotReuseOtherServerWorkspaceID (0.04s)
+=== RUN   TestMembersExternalReadFailuresAreObservations
+=== RUN   TestMembersExternalReadFailuresAreObservations/timeout
+=== RUN   TestMembersExternalReadFailuresAreObservations/internal
+=== RUN   TestMembersExternalReadFailuresAreObservations/invalid_request
+--- PASS: TestMembersExternalReadFailuresAreObservations (0.13s)
+    --- PASS: TestMembersExternalReadFailuresAreObservations/timeout (0.04s)
+    --- PASS: TestMembersExternalReadFailuresAreObservations/internal (0.05s)
+    --- PASS: TestMembersExternalReadFailuresAreObservations/invalid_request (0.04s)
+=== RUN   TestUnusableExternalSessionsAreFresh
+=== RUN   TestUnusableExternalSessionsAreFresh/pathclaude/tmp/conversation
+=== RUN   TestUnusableExternalSessionsAreFresh/idclaude--resume_malicious
+=== RUN   TestUnusableExternalSessionsAreFresh/idcodex00000000-0000-4000-8000-000000000001
+--- PASS: TestUnusableExternalSessionsAreFresh (0.14s)
+    --- PASS: TestUnusableExternalSessionsAreFresh/pathclaude/tmp/conversation (0.04s)
+    --- PASS: TestUnusableExternalSessionsAreFresh/idclaude--resume_malicious (0.04s)
+    --- PASS: TestUnusableExternalSessionsAreFresh/idcodex00000000-0000-4000-8000-000000000001 (0.06s)
+=== RUN   TestMembersUsesOneExternalSnapshotPerPoll
+--- PASS: TestMembersUsesOneExternalSnapshotPerPoll (0.07s)
+=== RUN   TestApplyAndGet
+--- PASS: TestApplyAndGet (0.07s)
+=== RUN   TestAuthenticate
+--- PASS: TestAuthenticate (0.06s)
+=== RUN   TestReadOps
+--- PASS: TestReadOps (0.05s)
+=== RUN   TestBudgetContinueAndReset
+--- PASS: TestBudgetContinueAndReset (0.09s)
+=== RUN   TestResolveDeliveryStates
+=== RUN   TestResolveDeliveryStates/uncertain/resend
+=== RUN   TestResolveDeliveryStates/uncertain/mark_delivered
+=== RUN   TestResolveDeliveryStates/held/resend
+=== RUN   TestResolveDeliveryStates/held/resend#01
+=== RUN   TestResolveDeliveryStates/queued/cancel
+=== RUN   TestResolveDeliveryStates/queued/mark_delivered
+--- PASS: TestResolveDeliveryStates (0.50s)
+    --- PASS: TestResolveDeliveryStates/uncertain/resend (0.07s)
+    --- PASS: TestResolveDeliveryStates/uncertain/mark_delivered (0.10s)
+    --- PASS: TestResolveDeliveryStates/held/resend (0.11s)
+    --- PASS: TestResolveDeliveryStates/held/resend#01 (0.08s)
+    --- PASS: TestResolveDeliveryStates/queued/cancel (0.07s)
+    --- PASS: TestResolveDeliveryStates/queued/mark_delivered (0.07s)
+=== RUN   TestHolds
+--- PASS: TestHolds (0.08s)
+=== RUN   TestTimelineZeroAndPaging
+--- PASS: TestTimelineZeroAndPaging (0.07s)
+=== RUN   TestCancelledStartCleansStore
+--- PASS: TestCancelledStartCleansStore (0.07s)
+=== RUN   TestPolicyHostErrorsAreNotOutsideGit
+--- PASS: TestPolicyHostErrorsAreNotOutsideGit (0.05s)
+=== RUN   TestSpawnRefusals
+=== RUN   TestSpawnRefusals/stopped
+=== RUN   TestSpawnRefusals/runner
+=== RUN   TestSpawnRefusals/nesting
+=== RUN   TestSpawnRefusals/disabled
+=== RUN   TestSpawnRefusals/invalid
+=== RUN   TestSpawnRefusals/name
+=== RUN   TestSpawnRefusals/harness
+=== RUN   TestSpawnRefusals/host
+=== RUN   TestSpawnRefusals/profile
+=== RUN   TestSpawnRefusals/running_cap
+=== RUN   TestSpawnRefusals/run_cap
+=== RUN   TestSpawnRefusals/team_cap
+--- PASS: TestSpawnRefusals (0.87s)
+    --- PASS: TestSpawnRefusals/stopped (0.05s)
+    --- PASS: TestSpawnRefusals/runner (0.04s)
+    --- PASS: TestSpawnRefusals/nesting (0.06s)
+    --- PASS: TestSpawnRefusals/disabled (0.06s)
+    --- PASS: TestSpawnRefusals/invalid (0.06s)
+    --- PASS: TestSpawnRefusals/name (0.06s)
+    --- PASS: TestSpawnRefusals/harness (0.08s)
+    --- PASS: TestSpawnRefusals/host (0.08s)
+    --- PASS: TestSpawnRefusals/profile (0.08s)
+    --- PASS: TestSpawnRefusals/running_cap (0.11s)
+    --- PASS: TestSpawnRefusals/run_cap (0.10s)
+    --- PASS: TestSpawnRefusals/team_cap (0.08s)
+=== RUN   TestSpawnRequestCompletion
+=== RUN   TestSpawnRequestCompletion/false
+=== RUN   TestSpawnRequestCompletion/true
+--- PASS: TestSpawnRequestCompletion (0.14s)
+    --- PASS: TestSpawnRequestCompletion/false (0.07s)
+    --- PASS: TestSpawnRequestCompletion/true (0.07s)
+=== RUN   TestStoppedTeamAndMissingResources
+=== RUN   TestStoppedTeamAndMissingResources/0
+=== RUN   TestStoppedTeamAndMissingResources/1
+=== RUN   TestStoppedTeamAndMissingResources/2
+=== RUN   TestStoppedTeamAndMissingResources/3
+=== RUN   TestStoppedTeamAndMissingResources/4
+=== RUN   TestStoppedTeamAndMissingResources/5
+=== RUN   TestStoppedTeamAndMissingResources/6
+=== RUN   TestStoppedTeamAndMissingResources/7
+=== RUN   TestStoppedTeamAndMissingResources/8
+=== RUN   TestStoppedTeamAndMissingResources/9
+=== RUN   TestStoppedTeamAndMissingResources/10
+--- PASS: TestStoppedTeamAndMissingResources (0.07s)
+    --- PASS: TestStoppedTeamAndMissingResources/0 (0.00s)
+    --- PASS: TestStoppedTeamAndMissingResources/1 (0.00s)
+    --- PASS: TestStoppedTeamAndMissingResources/2 (0.00s)
+    --- PASS: TestStoppedTeamAndMissingResources/3 (0.00s)
+    --- PASS: TestStoppedTeamAndMissingResources/4 (0.00s)
+    --- PASS: TestStoppedTeamAndMissingResources/5 (0.00s)
+    --- PASS: TestStoppedTeamAndMissingResources/6 (0.00s)
+    --- PASS: TestStoppedTeamAndMissingResources/7 (0.00s)
+    --- PASS: TestStoppedTeamAndMissingResources/8 (0.00s)
+    --- PASS: TestStoppedTeamAndMissingResources/9 (0.00s)
+    --- PASS: TestStoppedTeamAndMissingResources/10 (0.00s)
+=== RUN   TestResolveHistoricalRecipient
+--- PASS: TestResolveHistoricalRecipient (0.12s)
+=== RUN   TestHCResolution
+=== RUN   TestHCResolution/hc
+=== RUN   TestHCResolution/generation2
+=== RUN   TestHCResolution/missing_hc
+=== RUN   TestHCResolution/neither
+=== RUN   TestHCResolution/unsupported_only
+--- PASS: TestHCResolution (0.40s)
+    --- PASS: TestHCResolution/hc (0.11s)
+    --- PASS: TestHCResolution/generation2 (0.10s)
+    --- PASS: TestHCResolution/missing_hc (0.06s)
+    --- PASS: TestHCResolution/neither (0.05s)
+    --- PASS: TestHCResolution/unsupported_only (0.08s)
+=== RUN   TestHCOwnershipRefusals
+=== RUN   TestHCOwnershipRefusals/core
+=== RUN   TestHCOwnershipRefusals/home
+=== RUN   TestHCOwnershipRefusals/team
+=== RUN   TestHCOwnershipRefusals/pid
+=== RUN   TestHCOwnershipRefusals/address
+--- PASS: TestHCOwnershipRefusals (0.39s)
+    --- PASS: TestHCOwnershipRefusals/core (0.09s)
+    --- PASS: TestHCOwnershipRefusals/home (0.07s)
+    --- PASS: TestHCOwnershipRefusals/team (0.07s)
+    --- PASS: TestHCOwnershipRefusals/pid (0.06s)
+    --- PASS: TestHCOwnershipRefusals/address (0.10s)
+=== RUN   TestHCNamesPlacementAndRace
+=== RUN   TestHCNamesPlacementAndRace/tabs
+=== RUN   TestHCNamesPlacementAndRace/workspaces
+--- PASS: TestHCNamesPlacementAndRace (0.33s)
+    --- PASS: TestHCNamesPlacementAndRace/tabs (0.17s)
+    --- PASS: TestHCNamesPlacementAndRace/workspaces (0.16s)
+=== RUN   TestHCFolder
+--- PASS: TestHCFolder (0.00s)
+=== RUN   TestHCSessionDiscovery
+--- PASS: TestHCSessionDiscovery (0.00s)
+=== RUN   TestHCAdoptionAndForget
+--- PASS: TestHCAdoptionAndForget (0.08s)
+=== RUN   TestHCBringReusesTabAndForgetLeavesManaged
+--- PASS: TestHCBringReusesTabAndForgetLeavesManaged (0.20s)
+=== RUN   TestHCLiveOwnership
+    hc_live_test.go:15: set LUGARN_HC_LIVE=1 for a private hc core
+--- SKIP: TestHCLiveOwnership (0.00s)
+=== RUN   TestTeamProbesHarnessesOnlyForSpawner
+--- PASS: TestTeamProbesHarnessesOnlyForSpawner (0.08s)
+=== RUN   TestIntegrationHeadlessAdapter
+--- PASS: TestIntegrationHeadlessAdapter (0.06s)
+=== RUN   TestIntegrationPaneAdapterObservesActivity
+--- PASS: TestIntegrationPaneAdapterObservesActivity (0.04s)
+=== RUN   TestPaneObservationErrorRetriesWithoutStoppingRunner
+2026/11/23 16:43:46 pane observation for writer: internal: internal error; retrying
+--- PASS: TestPaneObservationErrorRetriesWithoutStoppingRunner (0.07s)
+=== RUN   TestTreeKillRechecksSnapshotIdentity
+=== RUN   TestTreeKillRechecksSnapshotIdentity/birth
+=== RUN   TestTreeKillRechecksSnapshotIdentity/parent
+=== RUN   TestTreeKillRechecksSnapshotIdentity/before-signal
+--- PASS: TestTreeKillRechecksSnapshotIdentity (0.00s)
+    --- PASS: TestTreeKillRechecksSnapshotIdentity/birth (0.00s)
+    --- PASS: TestTreeKillRechecksSnapshotIdentity/parent (0.00s)
+    --- PASS: TestTreeKillRechecksSnapshotIdentity/before-signal (0.00s)
+=== RUN   TestRunnerBridgeSweepOwnershipAgeAndPlacements
+--- PASS: TestRunnerBridgeSweepOwnershipAgeAndPlacements (0.06s)
+=== RUN   TestRunnerBridgeSweepRefusesLinksAndUnreadablePlacements
+=== RUN   TestRunnerBridgeSweepRefusesLinksAndUnreadablePlacements/marker-link
+=== RUN   TestRunnerBridgeSweepRefusesLinksAndUnreadablePlacements/directory-link
+=== RUN   TestRunnerBridgeSweepRefusesLinksAndUnreadablePlacements/malformed-placement
+--- PASS: TestRunnerBridgeSweepRefusesLinksAndUnreadablePlacements (0.14s)
+    --- PASS: TestRunnerBridgeSweepRefusesLinksAndUnreadablePlacements/marker-link (0.05s)
+    --- PASS: TestRunnerBridgeSweepRefusesLinksAndUnreadablePlacements/directory-link (0.04s)
+    --- PASS: TestRunnerBridgeSweepRefusesLinksAndUnreadablePlacements/malformed-placement (0.05s)
+=== RUN   TestRunnerBridgeFailedRemovalKeepsMarkerForRetry
+--- PASS: TestRunnerBridgeFailedRemovalKeepsMarkerForRetry (0.05s)
+=== RUN   TestRunnerTakeoverSweepsBridges
+--- PASS: TestRunnerTakeoverSweepsBridges (0.04s)
+=== RUN   TestRunnerLaunchFailurePreservesRecordedBridge
+--- PASS: TestRunnerLaunchFailurePreservesRecordedBridge (0.05s)
+=== RUN   TestIntegrationLiveCodexWorkdir
+    integration_codex_live_linux_test.go:43: explicit cheap Codex cwd/picker probe opt-in
+--- SKIP: TestIntegrationLiveCodexWorkdir (0.00s)
+=== RUN   TestFailedPaneConversionRemovesPreviousLaunchFiles
+--- PASS: TestFailedPaneConversionRemovesPreviousLaunchFiles (0.10s)
+=== RUN   TestShellHomePrivateEmptyAndIdempotent
+--- PASS: TestShellHomePrivateEmptyAndIdempotent (0.00s)
+=== RUN   TestShellHomeRefusesLinks
+=== RUN   TestShellHomeRefusesLinks/#00
+=== RUN   TestShellHomeRefusesLinks/.config
+=== RUN   TestShellHomeRefusesLinks/.config/fish
+=== RUN   TestShellHomeRefusesLinks/.zshenv
+=== RUN   TestShellHomeRefusesLinks/.zprofile
+=== RUN   TestShellHomeRefusesLinks/.zshrc
+=== RUN   TestShellHomeRefusesLinks/.zlogin
+=== RUN   TestShellHomeRefusesLinks/.bash_profile
+=== RUN   TestShellHomeRefusesLinks/.bashrc
+=== RUN   TestShellHomeRefusesLinks/.profile
+=== RUN   TestShellHomeRefusesLinks/.config/fish/config.fish
+--- PASS: TestShellHomeRefusesLinks (0.01s)
+    --- PASS: TestShellHomeRefusesLinks/#00 (0.00s)
+    --- PASS: TestShellHomeRefusesLinks/.config (0.00s)
+    --- PASS: TestShellHomeRefusesLinks/.config/fish (0.00s)
+    --- PASS: TestShellHomeRefusesLinks/.zshenv (0.00s)
+    --- PASS: TestShellHomeRefusesLinks/.zprofile (0.00s)
+    --- PASS: TestShellHomeRefusesLinks/.zshrc (0.00s)
+    --- PASS: TestShellHomeRefusesLinks/.zlogin (0.00s)
+    --- PASS: TestShellHomeRefusesLinks/.bash_profile (0.00s)
+    --- PASS: TestShellHomeRefusesLinks/.bashrc (0.00s)
+    --- PASS: TestShellHomeRefusesLinks/.profile (0.00s)
+    --- PASS: TestShellHomeRefusesLinks/.config/fish/config.fish (0.00s)
+=== RUN   TestShellHomeRefusesHardLinksAndDirectories
+=== RUN   TestShellHomeRefusesHardLinksAndDirectories/hardlink
+=== RUN   TestShellHomeRefusesHardLinksAndDirectories/directory
+--- PASS: TestShellHomeRefusesHardLinksAndDirectories (0.00s)
+    --- PASS: TestShellHomeRefusesHardLinksAndDirectories/hardlink (0.00s)
+    --- PASS: TestShellHomeRefusesHardLinksAndDirectories/directory (0.00s)
+=== RUN   TestRunnerRestoresStartupSelectorsFromPlacement
+=== RUN   TestRunnerRestoresStartupSelectorsFromPlacement/unset
+=== RUN   TestRunnerRestoresStartupSelectorsFromPlacement/#00
+=== RUN   TestRunnerRestoresStartupSelectorsFromPlacement//tmp/real_home/'$()_日本語
+--- PASS: TestRunnerRestoresStartupSelectorsFromPlacement (0.15s)
+    --- PASS: TestRunnerRestoresStartupSelectorsFromPlacement/unset (0.05s)
+    --- PASS: TestRunnerRestoresStartupSelectorsFromPlacement/#00 (0.06s)
+    --- PASS: TestRunnerRestoresStartupSelectorsFromPlacement//tmp/real_home/'$()_日本語 (0.05s)
+=== RUN   TestIntegrationLauncherRecordsWorkspaceIDAndNativeBridge
+--- PASS: TestIntegrationLauncherRecordsWorkspaceIDAndNativeBridge (0.08s)
+=== RUN   TestIntegrationRunnerBridgeHandlesSourcePathWithSpaces
+--- PASS: TestIntegrationRunnerBridgeHandlesSourcePathWithSpaces (0.13s)
+=== RUN   TestIntegrationStartPreflightDoesNotHoldWriter
+--- PASS: TestIntegrationStartPreflightDoesNotHoldWriter (0.06s)
+=== RUN   TestIntegrationBridgeUsesPlainExecutable
+--- PASS: TestIntegrationBridgeUsesPlainExecutable (0.04s)
+=== RUN   TestIntegrationPaneLaunchAndSessionBeforePane
+=== RUN   TestIntegrationPaneLaunchAndSessionBeforePane/claude
+=== RUN   TestIntegrationPaneLaunchAndSessionBeforePane/codex
+--- PASS: TestIntegrationPaneLaunchAndSessionBeforePane (0.20s)
+    --- PASS: TestIntegrationPaneLaunchAndSessionBeforePane/claude (0.08s)
+    --- PASS: TestIntegrationPaneLaunchAndSessionBeforePane/codex (0.12s)
+=== RUN   TestIntegrationLiveFlows
+    integration_live_linux_test.go:205: opt in to tiny live model runs using the person's own config
+--- SKIP: TestIntegrationLiveFlows (0.00s)
+=== RUN   TestOpenCodeExportConversationFormats
+--- PASS: TestOpenCodeExportConversationFormats (0.00s)
+=== RUN   TestOpenCodeSessionBeforePaneAndDelivery
+--- PASS: TestOpenCodeSessionBeforePaneAndDelivery (0.23s)
+=== RUN   TestCodexWorkdirUsesRollout
+--- PASS: TestCodexWorkdirUsesRollout (0.17s)
+=== RUN   TestCodexResumePickerClosesWithoutDelivery
+--- PASS: TestCodexResumePickerClosesWithoutDelivery (0.08s)
+=== RUN   TestPaneLaunchExactArgvAndExitCode
+=== RUN   TestPaneLaunchExactArgvAndExitCode/claude/0
+=== RUN   TestPaneLaunchExactArgvAndExitCode/claude/7
+=== RUN   TestPaneLaunchExactArgvAndExitCode/codex/0
+=== RUN   TestPaneLaunchExactArgvAndExitCode/codex/7
+=== RUN   TestPaneLaunchExactArgvAndExitCode/opencode/0
+=== RUN   TestPaneLaunchExactArgvAndExitCode/opencode/7
+--- PASS: TestPaneLaunchExactArgvAndExitCode (0.11s)
+    --- PASS: TestPaneLaunchExactArgvAndExitCode/claude/0 (0.02s)
+    --- PASS: TestPaneLaunchExactArgvAndExitCode/claude/7 (0.02s)
+    --- PASS: TestPaneLaunchExactArgvAndExitCode/codex/0 (0.02s)
+    --- PASS: TestPaneLaunchExactArgvAndExitCode/codex/7 (0.02s)
+    --- PASS: TestPaneLaunchExactArgvAndExitCode/opencode/0 (0.02s)
+    --- PASS: TestPaneLaunchExactArgvAndExitCode/opencode/7 (0.02s)
+=== RUN   TestPaneLaunchCapsuleConfinement
+=== RUN   TestPaneLaunchCapsuleConfinement/different-id
+=== RUN   TestPaneLaunchCapsuleConfinement/relative
+=== RUN   TestPaneLaunchCapsuleConfinement/wrong-name
+=== RUN   TestPaneLaunchCapsuleConfinement/file-link
+=== RUN   TestPaneLaunchCapsuleConfinement/directory-link
+=== RUN   TestPaneLaunchCapsuleConfinement/no-explicit-state
+--- PASS: TestPaneLaunchCapsuleConfinement (0.00s)
+    --- PASS: TestPaneLaunchCapsuleConfinement/different-id (0.00s)
+    --- PASS: TestPaneLaunchCapsuleConfinement/relative (0.00s)
+    --- PASS: TestPaneLaunchCapsuleConfinement/wrong-name (0.00s)
+    --- PASS: TestPaneLaunchCapsuleConfinement/file-link (0.00s)
+    --- PASS: TestPaneLaunchCapsuleConfinement/directory-link (0.00s)
+    --- PASS: TestPaneLaunchCapsuleConfinement/no-explicit-state (0.00s)
+=== RUN   TestWindowsPaneCapsuleContainsOnlyLaunchEnvironment
+=== RUN   TestWindowsPaneCapsuleContainsOnlyLaunchEnvironment/claude
+=== RUN   TestWindowsPaneCapsuleContainsOnlyLaunchEnvironment/codex
+=== RUN   TestWindowsPaneCapsuleContainsOnlyLaunchEnvironment/opencode
+--- PASS: TestWindowsPaneCapsuleContainsOnlyLaunchEnvironment (0.13s)
+    --- PASS: TestWindowsPaneCapsuleContainsOnlyLaunchEnvironment/claude (0.05s)
+    --- PASS: TestWindowsPaneCapsuleContainsOnlyLaunchEnvironment/codex (0.05s)
+    --- PASS: TestWindowsPaneCapsuleContainsOnlyLaunchEnvironment/opencode (0.04s)
+=== RUN   TestIntegrationLiveLoginPath
+    integration_path_live_linux_test.go:33: explicit login PATH/systemd probe opt-in
+--- SKIP: TestIntegrationLiveLoginPath (0.00s)
+=== RUN   TestIntegrationClaudeClearUsesCompletePointerAndRebriefs
+--- PASS: TestIntegrationClaudeClearUsesCompletePointerAndRebriefs (0.10s)
+=== RUN   TestOpenPreflightLeavesHeadlessMemberUnchanged
+=== RUN   TestOpenPreflightLeavesHeadlessMemberUnchanged/harness-issue
+=== RUN   TestOpenPreflightLeavesHeadlessMemberUnchanged/binary-resolution
+=== RUN   TestOpenPreflightLeavesHeadlessMemberUnchanged/live-turn
+--- PASS: TestOpenPreflightLeavesHeadlessMemberUnchanged (0.18s)
+    --- PASS: TestOpenPreflightLeavesHeadlessMemberUnchanged/harness-issue (0.06s)
+    --- PASS: TestOpenPreflightLeavesHeadlessMemberUnchanged/binary-resolution (0.05s)
+    --- PASS: TestOpenPreflightLeavesHeadlessMemberUnchanged/live-turn (0.07s)
+=== RUN   TestIntegrationLiveOpenCodeBaseline
+    integration_provider_live_linux_test.go:22: opt in to the standalone free-model diagnostic
+--- SKIP: TestIntegrationLiveOpenCodeBaseline (0.00s)
+=== RUN   TestIntegrationReaperDoesNotStealExecStatus
+--- PASS: TestIntegrationReaperDoesNotStealExecStatus (0.03s)
+=== RUN   TestIntegrationStopCleansAdoptedDescendant
+--- PASS: TestIntegrationStopCleansAdoptedDescendant (0.06s)
+=== RUN   TestIntegrationRequestConversionsAndStop
+--- PASS: TestIntegrationRequestConversionsAndStop (0.10s)
+=== RUN   TestIntegrationSpawnAndSpawnerStopRequests
+--- PASS: TestIntegrationSpawnAndSpawnerStopRequests (0.12s)
+=== RUN   TestIntegrationPaneExitRestoresHeadlessWithoutWaitingOnItself
+--- PASS: TestIntegrationPaneExitRestoresHeadlessWithoutWaitingOnItself (0.11s)
+=== RUN   TestIntegrationUnusedClaudeSessionStartsThenResumesWithoutLosingBrief
+--- PASS: TestIntegrationUnusedClaudeSessionStartsThenResumesWithoutLosingBrief (0.17s)
+=== RUN   TestStopMemberClosesPaneRecordedWhileWaiting
+--- PASS: TestStopMemberClosesPaneRecordedWhileWaiting (0.07s)
+=== RUN   TestReturnHeadlessWaitsForDeliveringBeforeHerdr
+--- PASS: TestReturnHeadlessWaitsForDeliveringBeforeHerdr (0.08s)
+=== RUN   TestReturnHeadlessReleasesPaneHoldsDuringPersonHold
+--- PASS: TestReturnHeadlessReleasesPaneHoldsDuringPersonHold (0.09s)
+=== RUN   TestPaneExitWithoutRecordedPaneID
+--- PASS: TestPaneExitWithoutRecordedPaneID (0.08s)
+=== RUN   TestClosePaneRefusesReusedIDInForeignWorkspace
+--- PASS: TestClosePaneRefusesReusedIDInForeignWorkspace (0.07s)
+=== RUN   TestNameSnapshotDoesNotHoldStoreWrite
+--- PASS: TestNameSnapshotDoesNotHoldStoreWrite (0.07s)
+=== RUN   TestNameSnapshotFailureDoesNotRotateLease
+--- PASS: TestNameSnapshotFailureDoesNotRotateLease (0.06s)
+=== RUN   TestNameClashAtStartFailsWithoutRenamingOrTakeover
+--- PASS: TestNameClashAtStartFailsWithoutRenamingOrTakeover (0.06s)
+=== RUN   TestWorkspacePlacementLabelsWithHerdrName
+--- PASS: TestWorkspacePlacementLabelsWithHerdrName (0.07s)
+=== RUN   TestBringFreshCodexUsesAdoptedFolder
+--- PASS: TestBringFreshCodexUsesAdoptedFolder (0.11s)
+=== RUN   TestBringRetryAcrossManagedLeaseHandoff
+=== RUN   TestBringRetryAcrossManagedLeaseHandoff/before-lease
+=== RUN   TestBringRetryAcrossManagedLeaseHandoff/after-lease
+--- PASS: TestBringRetryAcrossManagedLeaseHandoff (0.23s)
+    --- PASS: TestBringRetryAcrossManagedLeaseHandoff/before-lease (0.10s)
+    --- PASS: TestBringRetryAcrossManagedLeaseHandoff/after-lease (0.12s)
+=== RUN   TestNameAllocationSkipsDuplicateTruncatedCandidates
+--- PASS: TestNameAllocationSkipsDuplicateTruncatedCandidates (0.05s)
+=== RUN   TestSpawnNameClashPreservesNameTaken
+--- PASS: TestSpawnNameClashPreservesNameTaken (0.08s)
+=== RUN   TestIntegrationLiveShellPinning
+    integration_shell_live_linux_test.go:59: opt in to isolated Herdr shell probes
+--- SKIP: TestIntegrationLiveShellPinning (0.00s)
+=== RUN   TestCleanShellHistoryIsEmpty
+--- PASS: TestCleanShellHistoryIsEmpty (0.00s)
+=== RUN   TestIntegrationStartHerdrAndCapabilities
+--- PASS: TestIntegrationStartHerdrAndCapabilities (0.05s)
+=== RUN   TestPaneBootstrapWait
+=== RUN   TestPaneBootstrapWait/shell-ready/missing
+=== RUN   TestPaneBootstrapWait/shell-ready/invalid
+=== RUN   TestPaneBootstrapWait/shell-ready/ready
+=== RUN   TestPaneBootstrapWait/shell-ready/cancelled
+=== RUN   TestPaneBootstrapWait/pane-started/missing
+=== RUN   TestPaneBootstrapWait/pane-started/invalid
+=== RUN   TestPaneBootstrapWait/pane-started/ready
+=== RUN   TestPaneBootstrapWait/pane-started/cancelled
+--- PASS: TestPaneBootstrapWait (0.41s)
+    --- PASS: TestPaneBootstrapWait/shell-ready/missing (0.05s)
+    --- PASS: TestPaneBootstrapWait/shell-ready/invalid (0.05s)
+    --- PASS: TestPaneBootstrapWait/shell-ready/ready (0.05s)
+    --- PASS: TestPaneBootstrapWait/shell-ready/cancelled (0.05s)
+    --- PASS: TestPaneBootstrapWait/pane-started/missing (0.05s)
+    --- PASS: TestPaneBootstrapWait/pane-started/invalid (0.06s)
+    --- PASS: TestPaneBootstrapWait/pane-started/ready (0.06s)
+    --- PASS: TestPaneBootstrapWait/pane-started/cancelled (0.05s)
+=== RUN   TestRunnerStartupTimeoutDistinguishesBroker
+=== RUN   TestRunnerStartupTimeoutDistinguishesBroker/shell
+=== RUN   TestRunnerStartupTimeoutDistinguishesBroker/broker
+--- PASS: TestRunnerStartupTimeoutDistinguishesBroker (0.16s)
+    --- PASS: TestRunnerStartupTimeoutDistinguishesBroker/shell (0.08s)
+    --- PASS: TestRunnerStartupTimeoutDistinguishesBroker/broker (0.08s)
+=== RUN   TestHarnessStartupTimeoutRecordsShellCause
+=== RUN   TestHarnessStartupTimeoutRecordsShellCause/shell/posix
+=== RUN   TestHarnessStartupTimeoutRecordsShellCause/shell/windows
+=== RUN   TestHarnessStartupTimeoutRecordsShellCause/broker/posix
+=== RUN   TestHarnessStartupTimeoutRecordsShellCause/broker/windows
+--- PASS: TestHarnessStartupTimeoutRecordsShellCause (0.51s)
+    --- PASS: TestHarnessStartupTimeoutRecordsShellCause/shell/posix (0.12s)
+    --- PASS: TestHarnessStartupTimeoutRecordsShellCause/shell/windows (0.13s)
+    --- PASS: TestHarnessStartupTimeoutRecordsShellCause/broker/posix (0.12s)
+    --- PASS: TestHarnessStartupTimeoutRecordsShellCause/broker/windows (0.13s)
+=== RUN   TestStartupTimeoutUsesBrokerEvidence
+=== RUN   TestStartupTimeoutUsesBrokerEvidence/broker_argv
+=== RUN   TestStartupTimeoutUsesBrokerEvidence/broker_argv0
+=== RUN   TestStartupTimeoutUsesBrokerEvidence/broker_name_only
+=== RUN   TestStartupTimeoutUsesBrokerEvidence/shell
+=== RUN   TestStartupTimeoutUsesBrokerEvidence/unrelated_command
+=== RUN   TestStartupTimeoutUsesBrokerEvidence/same_name_other_executable
+=== RUN   TestStartupTimeoutUsesBrokerEvidence/missing_process_info
+--- PASS: TestStartupTimeoutUsesBrokerEvidence (0.00s)
+    --- PASS: TestStartupTimeoutUsesBrokerEvidence/broker_argv (0.00s)
+    --- PASS: TestStartupTimeoutUsesBrokerEvidence/broker_argv0 (0.00s)
+    --- PASS: TestStartupTimeoutUsesBrokerEvidence/broker_name_only (0.00s)
+    --- PASS: TestStartupTimeoutUsesBrokerEvidence/shell (0.00s)
+    --- PASS: TestStartupTimeoutUsesBrokerEvidence/unrelated_command (0.00s)
+    --- PASS: TestStartupTimeoutUsesBrokerEvidence/same_name_other_executable (0.00s)
+    --- PASS: TestStartupTimeoutUsesBrokerEvidence/missing_process_info (0.00s)
+=== RUN   TestIntegrationTeardownEndsOwnedLaunchArtifacts
+--- PASS: TestIntegrationTeardownEndsOwnedLaunchArtifacts (0.11s)
+=== RUN   TestWindowsPaneFlowListsThenRenames
+--- PASS: TestWindowsPaneFlowListsThenRenames (0.10s)
+=== RUN   TestWindowsPaneDetectionTimeout
+--- PASS: TestWindowsPaneDetectionTimeout (0.05s)
+=== RUN   TestIntegrationWorktreeCreationAndReuse
+--- PASS: TestIntegrationWorktreeCreationAndReuse (0.18s)
+=== RUN   TestIntegrationWorktreeProbeFailureDoesNotSilentlyShare
+--- PASS: TestIntegrationWorktreeProbeFailureDoesNotSilentlyShare (0.09s)
+=== RUN   TestStopTeamRetriesBusyLaunchDirectory
+=== RUN   TestStopTeamRetriesBusyLaunchDirectory/access_then_success
+=== RUN   TestStopTeamRetriesBusyLaunchDirectory/sharing_then_success
+=== RUN   TestStopTeamRetriesBusyLaunchDirectory/still_busy
+--- PASS: TestStopTeamRetriesBusyLaunchDirectory (0.26s)
+    --- PASS: TestStopTeamRetriesBusyLaunchDirectory/access_then_success (0.12s)
+    --- PASS: TestStopTeamRetriesBusyLaunchDirectory/sharing_then_success (0.07s)
+    --- PASS: TestStopTeamRetriesBusyLaunchDirectory/still_busy (0.08s)
+=== RUN   TestLaunchCleanupNotFoundDuringRemoval
+--- PASS: TestLaunchCleanupNotFoundDuringRemoval (0.05s)
+=== RUN   TestLaunchCleanupConcurrentRemoval
+--- PASS: TestLaunchCleanupConcurrentRemoval (0.05s)
+=== RUN   TestLaunchCleanupCallersDeferBusyDirectory
+=== RUN   TestLaunchCleanupCallersDeferBusyDirectory/launch_failure
+2026/11/23 16:43:52 launch directory cleanup deferred; will retry during artifact sweep
+=== RUN   TestLaunchCleanupCallersDeferBusyDirectory/sweep
+2026/11/23 16:43:52 launch directory cleanup deferred; will retry during artifact sweep
+=== RUN   TestLaunchCleanupCallersDeferBusyDirectory/runner_stop
+2026/11/23 16:43:52 launch directory cleanup deferred; will retry during artifact sweep
+=== RUN   TestLaunchCleanupCallersDeferBusyDirectory/integration_teardown
+2026/11/23 16:43:52 launch directory cleanup deferred; will retry during artifact sweep
+2026/11/23 16:43:52 launch directory cleanup deferred; will retry during artifact sweep
+--- PASS: TestLaunchCleanupCallersDeferBusyDirectory (0.21s)
+    --- PASS: TestLaunchCleanupCallersDeferBusyDirectory/launch_failure (0.04s)
+    --- PASS: TestLaunchCleanupCallersDeferBusyDirectory/sweep (0.06s)
+    --- PASS: TestLaunchCleanupCallersDeferBusyDirectory/runner_stop (0.05s)
+    --- PASS: TestLaunchCleanupCallersDeferBusyDirectory/integration_teardown (0.06s)
+=== RUN   TestLaunchCleanupPreservesOtherErrors
+=== RUN   TestLaunchCleanupPreservesOtherErrors/windows/5
+2026/11/23 16:43:52 launch directory cleanup deferred; will retry during artifact sweep
+=== RUN   TestLaunchCleanupPreservesOtherErrors/windows/32
+2026/11/23 16:43:52 launch directory cleanup deferred; will retry during artifact sweep
+=== RUN   TestLaunchCleanupPreservesOtherErrors/windows/33
+=== RUN   TestLaunchCleanupPreservesOtherErrors/windows/87
+=== RUN   TestLaunchCleanupPreservesOtherErrors/windows/112
+=== RUN   TestLaunchCleanupPreservesOtherErrors/linux/5
+=== RUN   TestLaunchCleanupPreservesOtherErrors/linux/32
+=== RUN   TestLaunchCleanupPreservesOtherErrors/linux/33
+=== RUN   TestLaunchCleanupPreservesOtherErrors/linux/87
+=== RUN   TestLaunchCleanupPreservesOtherErrors/linux/112
+=== RUN   TestLaunchCleanupPreservesOtherErrors/darwin/5
+=== RUN   TestLaunchCleanupPreservesOtherErrors/darwin/32
+=== RUN   TestLaunchCleanupPreservesOtherErrors/darwin/33
+=== RUN   TestLaunchCleanupPreservesOtherErrors/darwin/87
+=== RUN   TestLaunchCleanupPreservesOtherErrors/darwin/112
+--- PASS: TestLaunchCleanupPreservesOtherErrors (0.95s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/windows/5 (0.05s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/windows/32 (0.05s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/windows/33 (0.06s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/windows/87 (0.06s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/windows/112 (0.07s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/linux/5 (0.06s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/linux/32 (0.05s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/linux/33 (0.15s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/linux/87 (0.06s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/linux/112 (0.05s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/darwin/5 (0.06s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/darwin/32 (0.05s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/darwin/33 (0.05s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/darwin/87 (0.06s)
+    --- PASS: TestLaunchCleanupPreservesOtherErrors/darwin/112 (0.06s)
+=== RUN   TestLaunchCleanupCancellationDefersBusyDirectory
+2026/11/23 16:43:53 launch directory cleanup deferred; will retry during artifact sweep
+--- PASS: TestLaunchCleanupCancellationDefersBusyDirectory (0.05s)
+=== RUN   TestLaunchCleanupReturnsNewErrorAfterBusy
+--- PASS: TestLaunchCleanupReturnsNewErrorAfterBusy (0.04s)
+=== RUN   TestLaunchCleanupRejectsUnsafePaths
+--- PASS: TestLaunchCleanupRejectsUnsafePaths (0.05s)
+=== RUN   TestLaunchFailureEventRetainsSpecificCause
+=== RUN   TestLaunchFailureEventRetainsSpecificCause/workdir_missing
+=== RUN   TestLaunchFailureEventRetainsSpecificCause/resume_picker
+=== RUN   TestLaunchFailureEventRetainsSpecificCause/unresolvable
+--- PASS: TestLaunchFailureEventRetainsSpecificCause (0.23s)
+    --- PASS: TestLaunchFailureEventRetainsSpecificCause/workdir_missing (0.07s)
+    --- PASS: TestLaunchFailureEventRetainsSpecificCause/resume_picker (0.08s)
+    --- PASS: TestLaunchFailureEventRetainsSpecificCause/unresolvable (0.08s)
+=== RUN   TestSpawnLaunchFailureEvent
+--- PASS: TestSpawnLaunchFailureEvent (0.07s)
+=== RUN   TestHeadlessLaunchChecksFailFromStarting
+=== RUN   TestHeadlessLaunchChecksFailFromStarting/worktree
+=== RUN   TestHeadlessLaunchChecksFailFromStarting/binary
+=== RUN   TestHeadlessLaunchChecksFailFromStarting/workdir
+--- PASS: TestHeadlessLaunchChecksFailFromStarting (0.20s)
+    --- PASS: TestHeadlessLaunchChecksFailFromStarting/worktree (0.06s)
+    --- PASS: TestHeadlessLaunchChecksFailFromStarting/binary (0.06s)
+    --- PASS: TestHeadlessLaunchChecksFailFromStarting/workdir (0.07s)
+=== RUN   TestPaneFailurePrivacyAcrossLaunchSteps
+=== RUN   TestPaneFailurePrivacyAcrossLaunchSteps/pane
+=== RUN   TestPaneFailurePrivacyAcrossLaunchSteps/shell
+=== RUN   TestPaneFailurePrivacyAcrossLaunchSteps/harness
+--- PASS: TestPaneFailurePrivacyAcrossLaunchSteps (0.27s)
+    --- PASS: TestPaneFailurePrivacyAcrossLaunchSteps/pane (0.10s)
+    --- PASS: TestPaneFailurePrivacyAcrossLaunchSteps/shell (0.08s)
+    --- PASS: TestPaneFailurePrivacyAcrossLaunchSteps/harness (0.08s)
+=== RUN   TestHeadlessFailurePrivacyBeforeLaunch
+=== RUN   TestHeadlessFailurePrivacyBeforeLaunch/worktree
+=== RUN   TestHeadlessFailurePrivacyBeforeLaunch/resolve
+=== RUN   TestHeadlessFailurePrivacyBeforeLaunch/files
+--- PASS: TestHeadlessFailurePrivacyBeforeLaunch (0.19s)
+    --- PASS: TestHeadlessFailurePrivacyBeforeLaunch/worktree (0.06s)
+    --- PASS: TestHeadlessFailurePrivacyBeforeLaunch/resolve (0.06s)
+    --- PASS: TestHeadlessFailurePrivacyBeforeLaunch/files (0.07s)
+=== RUN   TestHeadlessFailureReasonSurvivesWithSecretsScrubbed
+=== RUN   TestHeadlessFailureReasonSurvivesWithSecretsScrubbed/claude
+=== RUN   TestHeadlessFailureReasonSurvivesWithSecretsScrubbed/codex
+=== RUN   TestHeadlessFailureReasonSurvivesWithSecretsScrubbed/opencode
+=== RUN   TestHeadlessFailureReasonSurvivesWithSecretsScrubbed/stderr
+=== RUN   TestHeadlessFailureReasonSurvivesWithSecretsScrubbed/plain
+--- PASS: TestHeadlessFailureReasonSurvivesWithSecretsScrubbed (0.70s)
+    --- PASS: TestHeadlessFailureReasonSurvivesWithSecretsScrubbed/claude (0.14s)
+    --- PASS: TestHeadlessFailureReasonSurvivesWithSecretsScrubbed/codex (0.12s)
+    --- PASS: TestHeadlessFailureReasonSurvivesWithSecretsScrubbed/opencode (0.14s)
+    --- PASS: TestHeadlessFailureReasonSurvivesWithSecretsScrubbed/stderr (0.16s)
+    --- PASS: TestHeadlessFailureReasonSurvivesWithSecretsScrubbed/plain (0.14s)
+=== RUN   TestMembersOrderByCreationTimeThenID
+--- PASS: TestMembersOrderByCreationTimeThenID (0.04s)
+=== RUN   TestAcceptMessages
+--- PASS: TestAcceptMessages (0.06s)
+=== RUN   TestHumanMessageLimits
+--- PASS: TestHumanMessageLimits (0.05s)
+=== RUN   TestTimelineCurrentDeliveries
+--- PASS: TestTimelineCurrentDeliveries (0.06s)
+=== RUN   TestRunnerCleanupExactNamesAndGrace
+--- PASS: TestRunnerCleanupExactNamesAndGrace (0.04s)
+=== RUN   TestRunnerCleanupPreservesOtherTeams
+--- PASS: TestRunnerCleanupPreservesOtherTeams (0.06s)
+=== RUN   TestRunnerCleanupPointerFilesAreExactKnownAndRegular
+--- PASS: TestRunnerCleanupPointerFilesAreExactKnownAndRegular (0.06s)
+=== RUN   TestRunnerCleanupSymlinksDoNotTouchTargets
+--- PASS: TestRunnerCleanupSymlinksDoNotTouchTargets (0.05s)
+=== RUN   TestRunnerCleanupUsesListedSnapshotThenCurrentStore
+--- PASS: TestRunnerCleanupUsesListedSnapshotThenCurrentStore (0.05s)
+=== RUN   TestRunnerCleanupOldUnknownSymlinksAreUnlinked
+--- PASS: TestRunnerCleanupOldUnknownSymlinksAreUnlinked (0.06s)
+=== RUN   TestRunnerCleanupRejectsLinkedLaunchRoot
+--- PASS: TestRunnerCleanupRejectsLinkedLaunchRoot (0.06s)
+=== RUN   TestRunnerCleanupDoesNotTraversePointerParentLinks
+=== RUN   TestRunnerCleanupDoesNotTraversePointerParentLinks/.lugarn
+=== RUN   TestRunnerCleanupDoesNotTraversePointerParentLinks/conversations
+--- PASS: TestRunnerCleanupDoesNotTraversePointerParentLinks (0.15s)
+    --- PASS: TestRunnerCleanupDoesNotTraversePointerParentLinks/.lugarn (0.07s)
+    --- PASS: TestRunnerCleanupDoesNotTraversePointerParentLinks/conversations (0.08s)
+=== RUN   TestRunnerCleanupMissingLaunchDirectoryStillCleansKnownPointer
+--- PASS: TestRunnerCleanupMissingLaunchDirectoryStillCleansKnownPointer (0.05s)
+=== RUN   TestRunnerExitDetachesWhenAcknowledgementWriteIsCancelled
+--- PASS: TestRunnerExitDetachesWhenAcknowledgementWriteIsCancelled (0.12s)
+=== RUN   TestRunnerWriterReviewerFlow
+--- PASS: TestRunnerWriterReviewerFlow (0.38s)
+=== RUN   TestOutcomeStatus
+--- PASS: TestOutcomeStatus (0.00s)
+=== RUN   TestDefaultRunnerDrivers
+--- PASS: TestDefaultRunnerDrivers (0.00s)
+=== RUN   TestRunnerRecordsWindowsJobIdentity
+--- PASS: TestRunnerRecordsWindowsJobIdentity (0.07s)
+=== RUN   TestRunnerCancellationUsesOnlyRecordedJob
+=== RUN   TestRunnerCancellationUsesOnlyRecordedJob/named
+=== RUN   TestRunnerCancellationUsesOnlyRecordedJob/missing
+=== RUN   TestRunnerCancellationUsesOnlyRecordedJob/unrecorded
+=== RUN   TestRunnerCancellationUsesOnlyRecordedJob/denied
+=== RUN   TestRunnerCancellationUsesOnlyRecordedJob/wrong-launch
+--- PASS: TestRunnerCancellationUsesOnlyRecordedJob (0.27s)
+    --- PASS: TestRunnerCancellationUsesOnlyRecordedJob/named (0.06s)
+    --- PASS: TestRunnerCancellationUsesOnlyRecordedJob/missing (0.05s)
+    --- PASS: TestRunnerCancellationUsesOnlyRecordedJob/unrecorded (0.05s)
+    --- PASS: TestRunnerCancellationUsesOnlyRecordedJob/denied (0.05s)
+    --- PASS: TestRunnerCancellationUsesOnlyRecordedJob/wrong-launch (0.06s)
+=== RUN   TestRunnerReconcileCleansJobAfterRootExit
+--- PASS: TestRunnerReconcileCleansJobAfterRootExit (0.06s)
+=== RUN   TestRunnerLeaseAndHeartbeat
+--- PASS: TestRunnerLeaseAndHeartbeat (0.06s)
+=== RUN   TestRunnerRefusesStoppedTeam
+--- PASS: TestRunnerRefusesStoppedTeam (0.05s)
+=== RUN   TestRunnerAcquiresImmediatelyAfterStopTeam
+--- PASS: TestRunnerAcquiresImmediatelyAfterStopTeam (0.06s)
+=== RUN   TestRunnerHoldsLapseAndRelease
+=== RUN   TestRunnerHoldsLapseAndRelease/lapse
+=== RUN   TestRunnerHoldsLapseAndRelease/release
+--- PASS: TestRunnerHoldsLapseAndRelease (0.13s)
+    --- PASS: TestRunnerHoldsLapseAndRelease/lapse (0.06s)
+    --- PASS: TestRunnerHoldsLapseAndRelease/release (0.07s)
+=== RUN   TestRunnerDefaultRequestStatusEvents
+--- PASS: TestRunnerDefaultRequestStatusEvents (0.06s)
+=== RUN   TestRunnerLoopStops
+--- PASS: TestRunnerLoopStops (0.08s)
+=== RUN   TestRunnerAppStopCancelsRunningTurn
+--- PASS: TestRunnerAppStopCancelsRunningTurn (0.18s)
+=== RUN   TestRunnerPendingRequestDoesNotBlockOtherRecipient
+--- PASS: TestRunnerPendingRequestDoesNotBlockOtherRecipient (0.14s)
+=== RUN   TestRunnerStoppingMakesInFlightDeliveryUncertain
+--- PASS: TestRunnerStoppingMakesInFlightDeliveryUncertain (0.12s)
+=== RUN   TestRunnerPaneTransitions
+=== RUN   TestRunnerPaneTransitions/delivered
+=== RUN   TestRunnerPaneTransitions/working
+=== RUN   TestRunnerPaneTransitions/blocked
+=== RUN   TestRunnerPaneTransitions/unknown
+=== RUN   TestRunnerPaneTransitions/failed
+=== RUN   TestRunnerPaneTransitions/uncertain
+--- PASS: TestRunnerPaneTransitions (0.58s)
+    --- PASS: TestRunnerPaneTransitions/delivered (0.11s)
+    --- PASS: TestRunnerPaneTransitions/working (0.09s)
+    --- PASS: TestRunnerPaneTransitions/blocked (0.10s)
+    --- PASS: TestRunnerPaneTransitions/unknown (0.10s)
+    --- PASS: TestRunnerPaneTransitions/failed (0.09s)
+    --- PASS: TestRunnerPaneTransitions/uncertain (0.10s)
+=== RUN   TestRunnerPaneOverflowAndPointerSession
+--- PASS: TestRunnerPaneOverflowAndPointerSession (0.11s)
+=== RUN   TestRunnerReconcileGonePaneUsesLifecycle
+--- PASS: TestRunnerReconcileGonePaneUsesLifecycle (0.10s)
+=== RUN   TestRunnerStoppingMakesPaneSubmissionUncertain
+--- PASS: TestRunnerStoppingMakesPaneSubmissionUncertain (0.56s)
+=== RUN   TestRunnerPaneObservationThrottle
+--- PASS: TestRunnerPaneObservationThrottle (0.09s)
+=== RUN   TestRunnerReconcilePaneObservationCountsTowardThrottle
+--- PASS: TestRunnerReconcilePaneObservationCountsTowardThrottle (0.06s)
+=== RUN   TestPiPaneDeliveryWithoutInventedSession
+--- PASS: TestPiPaneDeliveryWithoutInventedSession (0.09s)
+=== RUN   TestRunnerNativeProcessHelper
+--- PASS: TestRunnerNativeProcessHelper (0.00s)
+=== RUN   TestRunnerNativeProcessIdentityAndCancellation
+--- PASS: TestRunnerNativeProcessIdentityAndCancellation (0.02s)
+=== RUN   TestRunnerPromptBriefAndSeal
+--- PASS: TestRunnerPromptBriefAndSeal (0.14s)
+=== RUN   TestRunnerAutoRepliesLatestAndCutLimits
+--- PASS: TestRunnerAutoRepliesLatestAndCutLimits (0.11s)
+=== RUN   TestRunnerAutoReplyManualAndGridSkip
+=== RUN   TestRunnerAutoReplyManualAndGridSkip/grid
+=== RUN   TestRunnerAutoReplyManualAndGridSkip/manual
+--- PASS: TestRunnerAutoReplyManualAndGridSkip (0.23s)
+    --- PASS: TestRunnerAutoReplyManualAndGridSkip/grid (0.11s)
+    --- PASS: TestRunnerAutoReplyManualAndGridSkip/manual (0.12s)
+=== RUN   TestRunnerAutoReplyCountsReviewRound
+--- PASS: TestRunnerAutoReplyCountsReviewRound (0.12s)
+=== RUN   TestRunnerReconcileDeliveriesTurnsRequestsAndFiles
+--- PASS: TestRunnerReconcileDeliveriesTurnsRequestsAndFiles (0.11s)
+=== RUN   TestRunnerReconcileLiveOrphanAndPIDReuse
+=== RUN   TestRunnerReconcileLiveOrphanAndPIDReuse/live
+=== RUN   TestRunnerReconcileLiveOrphanAndPIDReuse/reused
+--- PASS: TestRunnerReconcileLiveOrphanAndPIDReuse (0.12s)
+    --- PASS: TestRunnerReconcileLiveOrphanAndPIDReuse/live (0.06s)
+    --- PASS: TestRunnerReconcileLiveOrphanAndPIDReuse/reused (0.06s)
+=== RUN   TestRunnerOrphanTimeoutCancelsVerifiedProcess
+--- PASS: TestRunnerOrphanTimeoutCancelsVerifiedProcess (0.06s)
+=== RUN   TestRunnerReconcileInterruptedHeadlessLaunch
+--- PASS: TestRunnerReconcileInterruptedHeadlessLaunch (0.06s)
+=== RUN   TestRunnerTurnOutcomes
+=== RUN   TestRunnerTurnOutcomes/ack_on_exit
+=== RUN   TestRunnerTurnOutcomes/before_ack
+=== RUN   TestRunnerTurnOutcomes/cancelled
+=== RUN   TestRunnerTurnOutcomes/timeout
+--- PASS: TestRunnerTurnOutcomes (0.34s)
+    --- PASS: TestRunnerTurnOutcomes/ack_on_exit (0.09s)
+    --- PASS: TestRunnerTurnOutcomes/before_ack (0.09s)
+    --- PASS: TestRunnerTurnOutcomes/cancelled (0.08s)
+    --- PASS: TestRunnerTurnOutcomes/timeout (0.09s)
+=== RUN   TestRunnerTurnAcknowledgementAndGenerationFence
+--- PASS: TestRunnerTurnAcknowledgementAndGenerationFence (0.08s)
+=== RUN   TestRunnerCancellationDetachesTurn
+--- PASS: TestRunnerCancellationDetachesTurn (0.08s)
+=== RUN   TestRunnerStartFailureAndHeadlessCap
+--- PASS: TestRunnerStartFailureAndHeadlessCap (0.10s)
+=== RUN   TestRunnerProfileEditWaitsForNextLaunch
+--- PASS: TestRunnerProfileEditWaitsForNextLaunch (0.10s)
+=== RUN   TestRunnerHeadlessTeamCapAndBatchOrder
+--- PASS: TestRunnerHeadlessTeamCapAndBatchOrder (0.12s)
+=== RUN   TestRunnerClaudeAssignedSessionAndResume
+--- PASS: TestRunnerClaudeAssignedSessionAndResume (0.11s)
+=== RUN   TestRunnerUnavailableHarnessFailsBeforeLaunch
+--- PASS: TestRunnerUnavailableHarnessFailsBeforeLaunch (0.06s)
+=== RUN   TestRunnerCancelsStartedTurnWhenPIDWriteLosesGeneration
+--- PASS: TestRunnerCancelsStartedTurnWhenPIDWriteLosesGeneration (0.06s)
+=== RUN   TestTwoRunnersSeparateStores
+--- PASS: TestTwoRunnersSeparateStores (0.18s)
+=== RUN   TestRunnerWakeLimitsAndHumanOverride
+--- PASS: TestRunnerWakeLimitsAndHumanOverride (0.08s)
+=== RUN   TestRunnerWakeLastDriverAndDefaultPaneFailure
+--- PASS: TestRunnerWakeLastDriverAndDefaultPaneFailure (0.08s)
+=== RUN   TestRunnerLaunchFailureNeedsNewWake
+--- PASS: TestRunnerLaunchFailureNeedsNewWake (0.09s)
+=== RUN   TestStopTeamStoreCleanup
+--- PASS: TestStopTeamStoreCleanup (0.08s)
+=== RUN   TestStartTeamSeam
+--- PASS: TestStartTeamSeam (0.15s)
+=== RUN   TestAppRequestSeams
+--- PASS: TestAppRequestSeams (0.09s)
+=== RUN   TestApplyRemovalCleansMemberSessions
+--- PASS: TestApplyRemovalCleansMemberSessions (0.08s)
+=== RUN   TestSessionCleanupDoesNotFollowLinks
+=== RUN   TestSessionCleanupDoesNotFollowLinks/root-link
+=== RUN   TestSessionCleanupDoesNotFollowLinks/member-link
+--- PASS: TestSessionCleanupDoesNotFollowLinks (0.13s)
+    --- PASS: TestSessionCleanupDoesNotFollowLinks/root-link (0.06s)
+    --- PASS: TestSessionCleanupDoesNotFollowLinks/member-link (0.07s)
+=== RUN   TestNewRunRemovalCleansSpawnedMemberSessions
+--- PASS: TestNewRunRemovalCleansSpawnedMemberSessions (0.12s)
+=== RUN   TestSessionCleanupFailureDoesNotStrandStartingTeam
+--- PASS: TestSessionCleanupFailureDoesNotStrandStartingTeam (0.12s)
+=== RUN   TestSpawnTransactionAndCaps
+--- PASS: TestSpawnTransactionAndCaps (0.08s)
+=== RUN   TestConcurrentSpawn
+--- PASS: TestConcurrentSpawn (0.05s)
+=== RUN   TestStopPolicy
+--- PASS: TestStopPolicy (0.04s)
+=== RUN   TestStopTeamPreservesTeardownStepAndTarget
+--- PASS: TestStopTeamPreservesTeardownStepAndTarget (0.04s)
+=== RUN   TestWatchReplayAndLive
+--- PASS: TestWatchReplayAndLive (0.30s)
+=== RUN   TestWatchInvalidCursorAndBrokenOutput
+--- PASS: TestWatchInvalidCursorAndBrokenOutput (0.04s)
+=== RUN   TestWatchPollReadsWhileWriterIsBusy
+--- PASS: TestWatchPollReadsWhileWriterIsBusy (0.31s)
+=== RUN   TestWatchContactEveryFiveSeconds
+--- PASS: TestWatchContactEveryFiveSeconds (0.55s)
+=== RUN   TestWorktrees
+--- PASS: TestWorktrees (0.05s)
+=== RUN   TestRemoveWorktreeDoesNotBlockOtherWriters
+--- PASS: TestRemoveWorktreeDoesNotBlockOtherWriters (0.05s)
+=== RUN   TestRemoveWorktreeConcurrentCompletionEmitsOneEvent
+--- PASS: TestRemoveWorktreeConcurrentCompletionEmitsOneEvent (0.05s)
+PASS
+ok  	github.com/LexingtonStanley/lugarn-comms/internal/broker	22.466s

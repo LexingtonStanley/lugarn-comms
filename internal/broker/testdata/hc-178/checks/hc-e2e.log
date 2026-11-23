@@ -1,0 +1,3 @@
+private hc session: lugarn-test-c80791e963386386
+PASS: placements, names, cwd, environment, status, send, adoption, conversion, forget, stop
+removed hc session: lugarn-test-c80791e963386386

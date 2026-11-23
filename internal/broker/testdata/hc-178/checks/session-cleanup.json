@@ -1,0 +1,116 @@
+[
+  {
+    "backend": "hc",
+    "session": "lugarn-test-3f42a1d4d561b0e6",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-56f7769514562e151d51b350",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-5855356d7996ffc6",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-6479497131dc46ead1799dfb",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-6bad88e8f720d616758681dc",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-863250f442b8570b",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-889ec38951f8d397",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-922c227f9a9f356a",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-9a511888daf85b44",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-a081d66edadcee78",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-b02abd4306a1c213",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-b3fb1d7ab31548bb",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-bb01f084ee850a05d1f0179f",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-c80791e963386386",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "hc",
+    "session": "lugarn-test-dddbb51fbfb2a422",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "herdr",
+    "session": "lugarn-test-150-269326829027",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "herdr",
+    "session": "lugarn-test-4hmub9wybx",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "herdr",
+    "session": "lugarn-test-ft2p4qcfef",
+    "state_exists": false,
+    "socket_exists": false
+  },
+  {
+    "backend": "herdr",
+    "session": "lugarn-test-nwhfjar6m4",
+    "state_exists": false,
+    "socket_exists": false
+  }
+]
