@@ -155,7 +155,23 @@ func (c *Client) read(out io.Reader) {
 	_ = c.cmd.Wait()
 }
 func (c *Client) Close() error { c.finish(io.EOF); _ = c.input.Close(); return c.cmd.Process.Kill() }
+
+// Call bounds every request on the client side, as the 0.9 client does, so a
+// wedged core can't hang a caller whose context has no deadline. A send may be
+// held by hc for up to 60 s while the person types a draft; waits pass their own
+// bound (see Wait).
+func callTimeout(method string) time.Duration {
+	if method == "terminal.send" {
+		return 90 * time.Second
+	}
+	return 30 * time.Second
+}
 func (c *Client) Call(ctx context.Context, method string, params, result any) error {
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, callTimeout(method))
+		defer cancel()
+	}
 	c.mu.Lock()
 	c.next++
 	id := c.next
@@ -247,6 +263,8 @@ func (c *Client) Read(ctx context.Context, address string, lines int) (string, e
 	return out.Text, e
 }
 func (c *Client) Wait(ctx context.Context, address string, timeout time.Duration) (WaitResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout+10*time.Second)
+	defer cancel()
 	var out WaitResult
 	e := c.Call(ctx, "terminal.wait", map[string]any{"terminal": address, "timeout": timeout.Seconds()}, &out)
 	return out, e

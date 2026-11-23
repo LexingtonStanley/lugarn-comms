@@ -44,10 +44,13 @@ type HerdrAPI interface {
 type IntegrationOptions struct {
 	Binary, HerdrBinary, HCBinary, HomeDir string
 	HCProbe                                func(context.Context, string, string) hc.Info
-	Models                                 map[model.Harness]string
-	ExtraEnv                               map[string]string
-	Herdr                                  func(string) HerdrAPI
-	StartServer                            func(context.Context, string, string, ...herdr.ServerOption) (herdr.StartResult, error)
+	// HCSocket reports whether a session's core is already running, without
+	// starting one; nil means unknown. Production sets hc.SocketExists.
+	HCSocket    func(string) *bool
+	Models      map[model.Harness]string
+	ExtraEnv    map[string]string
+	Herdr       func(string) HerdrAPI
+	StartServer func(context.Context, string, string, ...herdr.ServerOption) (herdr.StartResult, error)
 }
 
 // Integration binds the real drivers to the broker and runner. Constructing it

@@ -208,7 +208,10 @@ func TestSubscriptionReconnectAfterClose(t *testing.T) {
 	}
 	// A closed subscription exposes no authoritative snapshot, forcing the
 	// broker's next loop to use its label-filtered poll.
-	deadline = time.Now().Add(time.Second)
+	// The view stops being authoritative when the peer's pipe closes, which
+	// waits for the fake (a race-instrumented test binary) to exit. That took
+	// over a second on a loaded macOS runner, so allow it a generous bound.
+	deadline = time.Now().Add(10 * time.Second)
 	for {
 		_, ok := view.Current(s.Hello.Core.ID)
 		if !ok {

@@ -122,8 +122,10 @@ func (b *Broker) applyTeam(ctx context.Context, r wire.ApplyTeamRequest, adopt f
 		}
 		s := p.Spec
 		if t != nil {
-			if t.Adopted && (t.BackendChoice != *s.Herdr.Backend || t.HerdrServer != *s.Herdr.Server) {
-				return invalid("adopted backend and server cannot change")
+			// An adopted team stays on the backend it was adopted from. A server
+			// change stays governed by the external-member check below, as in 0.9.
+			if t.Adopted && t.BackendChoice != *s.Herdr.Backend {
+				return invalid("an adopted team's herdr.backend cannot change")
 			}
 			for _, ms := range s.Members {
 				m, err := tx.GetMember(ms.ID)

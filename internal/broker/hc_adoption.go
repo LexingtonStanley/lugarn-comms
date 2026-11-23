@@ -109,7 +109,7 @@ func (b *Broker) adoptHC(ctx context.Context, r wire.AdoptTeamRequest) (wire.App
 		return zero, e
 	}
 	spec := policy.ApplyDefaults(r.Spec)
-	c, e := b.integration.hcClient(ctx, *spec.Herdr.Server)
+	c, e := b.integration.hcExisting(ctx, *spec.Herdr.Server)
 	if e != nil {
 		return zero, e
 	}
@@ -221,7 +221,7 @@ func (b *Broker) refreshHCExternal(ctx context.Context, t *store.Team, ms []mode
 	if !needed {
 		return nil
 	}
-	c, e := b.integration.hcClient(ctx, t.HerdrServer)
+	c, e := b.integration.hcExisting(ctx, t.HerdrServer)
 	var all []hc.Terminal
 	var core string
 	if e == nil {

@@ -476,3 +476,22 @@ func TestHCReturnHeadlessWaitsThroughBlocked(t *testing.T) {
 		t.Fatalf("gave up after %s, before the deadline", time.Since(started))
 	}
 }
+
+// Adopting must change nothing on the host, and connect starts a missing core.
+// With the session's core not running, adopt-team refuses without connecting.
+func TestHCAdoptDoesNotStartACore(t *testing.T) {
+	i, path, s := hcFake(t)
+	notRunning := false
+	i.opts.HCSocket = func(string) *bool { return &notRunning }
+	v := s.Terminals[0]
+	spec := model.TeamSpec{Version: 1, ID: "adopted", Name: "adopted", Pattern: model.PatternCustom, Herdr: &model.HerdrSettings{Server: ptr("lugarn-test-fake"), Backend: ptr(model.HerdrBackendChoiceHC)}, Members: []model.MemberSpec{{ID: "outside", Name: "outside", Role: model.RoleCustom, Harness: model.HarnessPi, Mode: model.ModePane, Profile: model.ProfileWorkspace, Folder: v.Foreground.Cwd, Brief: "test"}}, Grid: []model.GridEdge{}}
+	_, e := i.b.AdoptTeam(context.Background(), wire.AdoptTeamRequest{Spec: spec, Backend: ptr(model.HerdrBackendHC), Workspace: v.Labels["herdr.space"], Members: []wire.AdoptMember{{Member: "outside", Pane: v.Address, Agent: v.Address}}})
+	if failure := model.AsError(e); failure.Code != model.ErrorHerdrUnavailable || failure.Details["reason"] != "not_running" {
+		t.Fatalf("want herdr_unavailable not_running, got %v", e)
+	}
+	state, e := hctest.Read(path)
+	must(t, e)
+	if len(state.Calls) != 0 {
+		t.Fatalf("adopt-team reached hc with its core stopped: %v", state.Calls)
+	}
+}

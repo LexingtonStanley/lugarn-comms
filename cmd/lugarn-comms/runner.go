@@ -38,7 +38,7 @@ func integrationOptions() (broker.IntegrationOptions, error) {
 			models[h] = value
 		}
 	}
-	return broker.IntegrationOptions{HCProbe: hc.Probe, Binary: binary, HerdrBinary: os.Getenv("LUGARN_COMMS_HERDR_BINARY"), HCBinary: os.Getenv("LUGARN_COMMS_HC_BINARY"), HomeDir: home, Models: models}, nil
+	return broker.IntegrationOptions{HCProbe: hc.Probe, HCSocket: hc.SocketExists, Binary: binary, HerdrBinary: os.Getenv("LUGARN_COMMS_HERDR_BINARY"), HCBinary: os.Getenv("LUGARN_COMMS_HC_BINARY"), HomeDir: home, Models: models}, nil
 }
 func runTeam(ctx context.Context, args []string, stderr io.Writer) int {
 	flags := flag.NewFlagSet("run", flag.ContinueOnError)

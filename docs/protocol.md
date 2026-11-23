@@ -422,9 +422,15 @@ session explicitly.
 start a core when none is running. `hello` must not start one, so it runs
 `herdr-core --version`, and connects only when the session's socket already exists
 (`$XDG_RUNTIME_DIR/herdr-core/<server>.sock` on Linux, observed on 0.1.21 and 0.1.22).
-Elsewhere `hello` reports `running: null`. `start-team` on `hc` connects, which starts the
-core if needed. hc manages its own lifetime and reports `keeps_running_after_logout`, so
-`start-herdr` stays a 0.9 operation.
+Elsewhere `hello` reports `running: null`. `adopt-team` and the `members` refresh don't
+start a core either. With the socket absent, `adopt-team` fails with `herdr_unavailable`
+(`details.reason: not_running`), and external members read as unavailable. `start-team` on
+`hc`, or on `auto` once herdr-core is installed, connects, which starts the core if needed.
+So does `stop-team`, on purpose: a restarted core takes back the programs its holders kept,
+so they can be found and stopped. Every call has a client-side deadline: 30 s, 90 s for a
+send (hc may hold one for 60 s while the person types), and a wait's own timeout plus 10 s.
+hc manages its own lifetime and reports `keeps_running_after_logout`, so `start-herdr` stays
+a 0.9 operation.
 
 **The core's identity.** A team records its core's `core.id` when it first launches on `hc`.
 An address (`t7`, `t1r`) names one terminal for the life of the core's state: it survives
@@ -2500,9 +2506,12 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     Claude's per-process session file and the launch argv are read-only hints, validated
     like any session id. The preview shows the outcome before the person confirms, and the
     fallback is a fresh conversation, never a guess.
-89. **`hello` never starts a core; `start-team` may.** Both `connect` and `server status`
-    start a missing core, so `hello` checks for the socket first. A team needs its core, so
-    starting one at `start-team` is the intended effect. On Linux with systemd, hc runs its
+89. **`hello`, `adopt-team` and `members` never start a core; `start-team` and `stop-team`
+    may.** Both `connect` and `server status` start a missing core, so the read-only
+    operations check for the socket first. A team needs its core, so starting one at
+    `start-team` is the intended effect, including under `auto`: Lex's rule is that Auto
+    prefers hc whenever it's installed. `stop-team` starts it so that held programs are
+    found and stopped. On Linux with systemd, hc runs its
     core as a user service (`hc-serve-*.service` under `user@.service`, seen on lexbox), so it
     outlives the SSH session, and it reports linger itself.
 90. **What's new on the wire.** There are no new error codes, request kinds or values in

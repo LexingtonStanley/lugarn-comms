@@ -36,6 +36,18 @@ func hcMember(m model.Member) bool {
 func (i *Integration) hcClient(ctx context.Context, server string) (*hc.Client, error) {
 	return hc.Connect(ctx, i.opts.HCBinary, server)
 }
+
+// hcExisting connects only to a core that is already running. Read-only
+// operations (adopt-team, the members refresh) must not start one: connect
+// starts a missing core, which would be a change on the host.
+func (i *Integration) hcExisting(ctx context.Context, server string) (*hc.Client, error) {
+	if i.opts.HCSocket != nil {
+		if running := i.opts.HCSocket(server); running != nil && !*running {
+			return nil, model.NewError(model.ErrorHerdrUnavailable, "the hc core is not running").WithDetail("reason", "not_running")
+		}
+	}
+	return i.hcClient(ctx, server)
+}
 func (i *Integration) team(ctx context.Context, id string) (*store.Team, error) {
 	var t *store.Team
 	e := i.b.db.Read(ctx, func(tx *store.Tx) error { var e error; t, e = tx.GetTeam(id); return e })
