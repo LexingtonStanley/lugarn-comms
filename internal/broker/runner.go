@@ -20,6 +20,7 @@ var errRunnerGeneration = model.NewError(model.ErrorLeaseConflict, "runner membe
 // Cancelling its context detaches live turns; a team stop cancels them instead.
 type Runner struct {
 	onStop        func(context.Context) error
+	onExit        func()
 	checkPane     func(context.Context, model.Member) error
 	prepareMember func(context.Context, model.Member) (*model.Member, error)
 	onAcquire     func(context.Context) error
@@ -174,6 +175,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	if !r.used.CompareAndSwap(false, true) {
 		return invalid("Runner.Run is single-use")
 	}
+	defer func() {
+		if r.onExit != nil {
+			r.onExit()
+		}
+	}()
 	if r.b.opts.StateDir == "" {
 		return invalid("runner requires an explicit state directory")
 	}

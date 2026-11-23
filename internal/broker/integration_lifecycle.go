@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/harness"
+	"github.com/LexingtonStanley/lugarn-comms/internal/hc"
 	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
@@ -60,7 +61,12 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	// Fetch server observations before any write transaction or lease rotation.
 	// The write below serializes this snapshot with the store's reservations;
 	// agent start remains authoritative for races with other clients.
+	launchTeam, e := l.i.team(ctx, m.Team)
+	if e != nil {
+		return e
+	}
 	var agents []herdr.Agent
+	var terminals []hc.Terminal
 	if m.HerdrName == nil {
 		var server string
 		if e := l.i.b.db.Read(ctx, func(tx *store.Tx) error {
@@ -73,7 +79,16 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 			return e
 		}
 		var e error
-		agents, e = l.i.opts.Herdr(server).Agents(ctx)
+		if hcTeam(launchTeam) {
+			c, err := l.i.hcClient(ctx, server)
+			e = err
+			if e == nil {
+				terminals, e = c.List(ctx, nil)
+				c.Close()
+			}
+		} else {
+			agents, e = l.i.opts.Herdr(server).Agents(ctx)
+		}
 		if e != nil {
 			return e
 		}
@@ -219,7 +234,13 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 			}
 			newSession = true
 		}
-		agent, e := l.i.reserveAgentName(tx, t, m, agents)
+		var agent string
+		var e error
+		if hcTeam(t) {
+			agent, e = l.i.reserveHCName(tx, t, m, terminals)
+		} else {
+			agent, e = l.i.reserveAgentName(tx, t, m, agents)
+		}
 		if e != nil {
 			return e
 		}
@@ -273,6 +294,9 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	}
 	if e != nil {
 		return e
+	}
+	if hcTeam(team) {
+		return l.openHC(ctx, m, starting, *team, launch, binary, args, cause)
 	}
 	var env map[string]string
 	var bootstrap []string
@@ -371,6 +395,9 @@ func (l *integrationLifecycle) Open(ctx context.Context, m model.Member, cause m
 	return nil
 }
 func (l *integrationLifecycle) Exited(ctx context.Context, m model.Member) error {
+	if hcMember(m) {
+		return l.exitedHC(ctx, m)
+	}
 	if m.Lease == nil || m.Lease.Driver != model.DriverPane {
 		return nil
 	}
@@ -411,7 +438,13 @@ func (l *integrationLifecycle) checkPane(ctx context.Context, m model.Member) er
 		return nil
 	}
 	server, name := paneIdentity(m)
-	text, e := l.i.opts.Herdr(server).ReadAgent(ctx, name, 100)
+	var text string
+	var e error
+	if hcMember(m) {
+		text, e = l.i.readHC(ctx, m, 100)
+	} else {
+		text, e = l.i.opts.Herdr(server).ReadAgent(ctx, name, 100)
+	}
 	if e != nil {
 		return e
 	}

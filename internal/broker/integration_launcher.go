@@ -112,6 +112,9 @@ func (i *Integration) runnerBridge() (string, string, error) {
 }
 func (i *Integration) rootEnv() map[string]string {
 	env := map[string]string{"LUGARN_COMMS_HOME": i.b.opts.StateDir, "LUGARN_COMMS_POINTER_HOME": i.opts.HomeDir, "PATH": completeSystemPath()}
+	if i.opts.HCBinary != "" {
+		env["LUGARN_COMMS_HC_BINARY"] = i.opts.HCBinary
+	}
 	if i.opts.HerdrBinary != "" {
 		env["LUGARN_COMMS_HERDR_BINARY"] = i.opts.HerdrBinary
 	}
@@ -147,6 +150,9 @@ func (i *Integration) refreshPath(ctx context.Context) error {
 func (i *Integration) Launch(ctx context.Context, t store.Team) error {
 	if e := i.refreshPath(ctx); e != nil {
 		return e
+	}
+	if hcTeam(&t) {
+		return i.launchHC(ctx, t)
 	}
 	env := i.rootEnv()
 	if e := i.paneHome(env); e != nil {
