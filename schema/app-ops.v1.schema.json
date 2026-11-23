@@ -1303,6 +1303,84 @@
           "items": {
             "$ref": "common.v1.schema.json#/$defs/HarnessInfo"
           }
+        },
+        "herdr_auto": {
+          "anyOf": [
+            {
+              "$ref": "common.v1.schema.json#/$defs/HerdrBackend"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "hc": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "installed": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "running": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "generation": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "supported": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "keeps_running_after_logout": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "core": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ]
+                }
+              ]
+            }
+          }
         }
       },
       "required": [
@@ -2661,6 +2739,9 @@
           "items": {
             "$ref": "#/$defs/AdoptMember"
           }
+        },
+        "backend": {
+          "$ref": "common.v1.schema.json#/$defs/HerdrBackend"
         }
       },
       "required": [

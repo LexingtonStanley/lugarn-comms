@@ -15,7 +15,7 @@ const teamColumns = `id, name, pattern, spec_version, revision, run, state,
  herdr_server, herdr_workspace, hop_budget, review_rounds, per_recipient,
  headless_turns, turn_timeout_seconds, runner_state, runner_pid, runner_pane,
  runner_started_at, runner_heartbeat_at, last_app_contact_at, created_at,
- updated_at, started_at, stopped_at, display_name, placement, adopted, forgotten`
+ updated_at, started_at, stopped_at, display_name, placement, adopted, forgotten, backend_choice, backend, hc_core_id`
 
 func scanTeam(row scanner) (*Team, error) {
 	var t Team
@@ -28,7 +28,7 @@ func scanTeam(row scanner) (*Team, error) {
 		&state, &t.HerdrServer, &workspace, &t.HopBudget, &t.ReviewRounds,
 		&t.PerRecipient, &t.HeadlessTurns, &t.TurnTimeoutSeconds, &runnerState,
 		&pid, &pane, &runnerStarted, &heartbeat, &contact, &created, &updated,
-		&started, &stopped, &displayName, &t.Placement, &t.Adopted, &t.Forgotten)
+		&started, &stopped, &displayName, &t.Placement, &t.Adopted, &t.Forgotten, &t.BackendChoice, &t.Backend, &t.HCCoreID)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +66,13 @@ func scanTeam(row scanner) (*Team, error) {
 
 // CreateTeam inserts a team. Zero-valued limits receive protocol defaults.
 func (tx *Tx) CreateTeam(t Team) error {
+	if t.BackendChoice == "" {
+		t.BackendChoice = model.HerdrBackendChoiceHerdr
+	}
+	if t.Backend == nil && t.BackendChoice != model.HerdrBackendChoiceAuto {
+		v := model.HerdrBackend(t.BackendChoice)
+		t.Backend = &v
+	}
 	if t.Placement == "" {
 		t.Placement = model.DefaultHerdrPlacement
 	}
@@ -110,14 +117,14 @@ func (tx *Tx) CreateTeam(t Team) error {
  id, name, pattern, spec_version, revision, run, state, herdr_server,
  herdr_workspace, hop_budget, review_rounds, per_recipient, headless_turns,
  turn_timeout_seconds, runner_state, runner_pid, runner_pane, runner_started_at,
- runner_heartbeat_at, last_app_contact_at, created_at, updated_at, started_at, stopped_at, display_name, placement, adopted, forgotten
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+ runner_heartbeat_at, last_app_contact_at, created_at, updated_at, started_at, stopped_at, display_name, placement, adopted, forgotten, backend_choice, backend, hc_core_id
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.Name, t.Pattern, t.SpecVersion, t.Revision, t.Run, t.State,
 		t.HerdrServer, dbPtr(t.HerdrWorkspace), t.HopBudget, t.ReviewRounds,
 		t.PerRecipient, t.HeadlessTurns, t.TurnTimeoutSeconds, t.Runner.State,
 		dbPtr(t.Runner.PID), dbPtr(t.Runner.Pane), dbTimePtr(t.Runner.StartedAt),
 		dbTimePtr(t.Runner.HeartbeatAt), dbTimePtr(t.LastAppContactAt), dbTime(t.CreatedAt),
-		dbTime(t.UpdatedAt), dbTimePtr(t.StartedAt), dbTimePtr(t.StoppedAt), dbPtr(t.DisplayName), t.Placement, t.Adopted, t.Forgotten)
+		dbTime(t.UpdatedAt), dbTimePtr(t.StartedAt), dbTimePtr(t.StoppedAt), dbPtr(t.DisplayName), t.Placement, t.Adopted, t.Forgotten, t.BackendChoice, dbPtr(t.Backend), dbPtr(t.HCCoreID))
 	return err
 }
 
@@ -164,6 +171,15 @@ func (tx *Tx) UpdateTeam(id string, patch TeamPatch, at model.Time) error {
 	add := func(column string, value any) {
 		sets = append(sets, column+" = ?")
 		args = append(args, value)
+	}
+	if patch.BackendChoice != nil {
+		add("backend_choice", *patch.BackendChoice)
+	}
+	if patch.Backend != nil {
+		add("backend", dbPtr(*patch.Backend))
+	}
+	if patch.HCCoreID != nil {
+		add("hc_core_id", dbPtr(*patch.HCCoreID))
 	}
 	if patch.DisplayName != nil {
 		add("display_name", dbPtr(*patch.DisplayName))

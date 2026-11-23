@@ -3,12 +3,13 @@ package wire
 import "github.com/LexingtonStanley/lugarn-comms/internal/model"
 
 type AdoptTeamRequest struct {
-	Protocol  int64          `json:"protocol"`
-	Op        OpName         `json:"op"`
-	RequestID *string        `json:"request_id,omitempty"`
-	Spec      model.TeamSpec `json:"spec"`
-	Workspace string         `json:"workspace"`
-	Members   []AdoptMember  `json:"members"`
+	Backend   *model.HerdrBackend `json:"backend,omitempty"`
+	Protocol  int64               `json:"protocol"`
+	Op        OpName              `json:"op"`
+	RequestID *string             `json:"request_id,omitempty"`
+	Spec      model.TeamSpec      `json:"spec"`
+	Workspace string              `json:"workspace"`
+	Members   []AdoptMember       `json:"members"`
 }
 type AdoptMember struct {
 	Member string `json:"member"`

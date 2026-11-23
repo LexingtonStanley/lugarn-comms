@@ -32,7 +32,7 @@ func (tx *Tx) PaneTracked(server, pane string) (bool, error) {
 	var n int
 	err := tx.queryRow(`SELECT count(*) FROM members m JOIN teams t ON t.id=m.team_id
  LEFT JOIN external_members e ON e.member_id=m.id LEFT JOIN leases l ON l.member_id=m.id
- WHERE t.herdr_server=? AND t.forgotten=0 AND m.removed_at IS NULL AND (e.pane=? OR l.pane_id=?)`, server, pane, pane).Scan(&n)
+ WHERE t.herdr_server=? AND t.backend='herdr' AND t.forgotten=0 AND m.removed_at IS NULL AND (e.pane=? OR l.pane_id=?)`, server, pane, pane).Scan(&n)
 	return n > 0, asError(err)
 }
 

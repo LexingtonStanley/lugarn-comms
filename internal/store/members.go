@@ -22,7 +22,7 @@ const memberColumns = `m.id, m.team_id, m.name, m.kind, m.role, m.origin, m.posi
  m.session_id, m.herdr_agent, m.created_at, m.updated_at, m.started_at, m.stopped_at,
  m.removed_at, m.removed_reason, spawner.name, w.path, w.branch, w.removed_at,
  l.driver, l.generation, l.launch_id, l.pane_id, h.held_until, h.released_at,
- t.herdr_server, COALESCE(m.herdr_workspace, t.herdr_workspace), m.herdr_workspace`
+ t.herdr_server, COALESCE(m.herdr_workspace, t.herdr_workspace), m.herdr_workspace, t.backend`
 
 func scanMember(row scanner) (*StoredMember, error) {
 	var result StoredMember
@@ -33,6 +33,7 @@ func scanMember(row scanner) (*StoredMember, error) {
 	var leaseDriver, leaseLaunch, leasePane, heldUntil, holdReleased, herdrWorkspace sql.NullString
 	var created, updated string
 	var herdrServer string
+	var backend *model.HerdrBackend
 	var memberWorkspace sql.NullString
 	var started, stopped, removed sql.NullString
 	var removedReason sql.NullString
@@ -43,7 +44,7 @@ func scanMember(row scanner) (*StoredMember, error) {
 		&session, &herdrAgent, &created, &updated, &started, &stopped, &removed,
 		&removedReason, &spawnerName, &worktreePath, &worktreeBranch, &worktreeRemoved,
 		&leaseDriver, &generation, &leaseLaunch, &leasePane, &heldUntil, &holdReleased,
-		&herdrServer, &herdrWorkspace, &memberWorkspace)
+		&herdrServer, &herdrWorkspace, &memberWorkspace, &backend)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +116,10 @@ func scanMember(row scanner) (*StoredMember, error) {
 		}
 	}
 	if m.Lease != nil && m.Lease.Driver == model.DriverPane {
-		m.Herdr = &model.HerdrPlacement{Server: herdrServer, Workspace: stringPtr(herdrWorkspace), Agent: stringPtr(herdrAgent)}
+		m.Herdr = &model.HerdrPlacement{Backend: backend, Server: herdrServer, Workspace: stringPtr(herdrWorkspace), Agent: stringPtr(herdrAgent)}
+		if backend != nil && *backend == model.HerdrBackendHC {
+			m.Herdr.Agent = stringPtr(leasePane)
+		}
 	}
 	if m.CreatedAt, err = parseTime(created); err != nil {
 		return nil, err

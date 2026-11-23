@@ -2,6 +2,7 @@ package model
 
 // Schema defaults are exposed for the policy layer; decoding never applies them.
 const (
+	DefaultHerdrBackend       = HerdrBackendChoiceHerdr
 	DefaultHerdrServer        = "default"
 	DefaultHerdrPlacement     = "tabs"
 	DefaultHopBudget          = 16
@@ -34,8 +35,9 @@ type TeamSpec struct {
 
 // HerdrSettings selects the Herdr server for a team.
 type HerdrSettings struct {
-	Server    *string `json:"server,omitempty"`
-	Placement *string `json:"placement,omitempty"`
+	Backend   *HerdrBackendChoice `json:"backend,omitempty"`
+	Server    *string             `json:"server,omitempty"`
+	Placement *string             `json:"placement,omitempty"`
 }
 
 // Limits holds optional limits; nil fields leave defaults to the policy layer.

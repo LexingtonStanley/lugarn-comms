@@ -22,7 +22,7 @@ func TestOpenMigrateReopenAndDowngrade(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Version() != 2 {
+	if s.Version() != 3 {
 		t.Fatalf("version = %d", s.Version())
 	}
 	if err := model.ValidateHostID(s.HostID()); err != nil {
@@ -46,7 +46,7 @@ func TestOpenMigrateReopenAndDowngrade(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.HostID() != hostID || s.Version() != 2 {
+	if s.HostID() != hostID || s.Version() != 3 {
 		t.Fatalf("reopen changed metadata")
 	}
 	if err := s.Close(); err != nil {
@@ -57,7 +57,7 @@ func TestOpenMigrateReopenAndDowngrade(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (3, 'future')"); err != nil {
+	if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (4, 'future')"); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -76,7 +76,7 @@ func TestOpenMigrateReopenAndDowngrade(t *testing.T) {
 	if !errors.As(err, &protocolErr) || protocolErr.Code != model.ErrorUnsupportedVersion {
 		t.Fatalf("downgrade error = %v", err)
 	}
-	if protocolErr.Details["store"] != 3 || protocolErr.Details["supported"] != 2 {
+	if protocolErr.Details["store"] != 4 || protocolErr.Details["supported"] != 3 {
 		t.Fatalf("downgrade details = %#v", protocolErr.Details)
 	}
 	after, readErr := os.ReadFile(path)
@@ -109,7 +109,7 @@ func TestConcurrentFirstOpen(t *testing.T) {
 	}
 	hostID := stores[0].HostID()
 	for i, store := range stores {
-		if store.HostID() != hostID || store.Version() != 2 {
+		if store.HostID() != hostID || store.Version() != 3 {
 			t.Fatalf("open %d metadata mismatch", i)
 		}
 		if err := store.Close(); err != nil {

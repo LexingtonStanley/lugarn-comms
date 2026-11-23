@@ -94,7 +94,7 @@ func childEnv(home, search string) []string {
 	if runtime.GOOS != "windows" {
 		env = append(env, "HOME="+home, "ZDOTDIR="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"), "SHELL=/bin/sh")
 	}
-	return append(env, "PATH="+search, "LUGARN_COMMS_HOME="+home)
+	return append(env, "PATH="+search, "LUGARN_COMMS_HOME="+home, "LUGARN_COMMS_HC_BINARY="+filepath.Join(home,"hc-not-installed"))
 }
 
 type processResult struct {
@@ -169,7 +169,7 @@ func fixture(t *testing.T, hop int) *e2e {
 	f := &e2e{home: t.TempDir(), search: probeSearch, ctx: ctx, tokens: map[string]string{}, launches: map[string]string{}}
 	t.Setenv("LUGARN_COMMS_HOME", f.home)
 	hello := f.app(t, "hello", map[string]any{"protocols": []int{1}, "app": map[string]any{"version": "e2e"}}).Result.(*wire.HelloResult)
-	if hello.Schemas.Store != 2 || hello.Host.StateDir != f.home || hello.Herdr.Running {
+	if hello.Schemas.Store != 3 || hello.Host.StateDir != f.home || hello.Herdr.Running {
 		t.Fatal(hello)
 	}
 	contents, e := os.ReadFile(filepath.Join("..", "..", "schema", "examples", "team-spec", "writer-reviewer.json"))

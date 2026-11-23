@@ -110,6 +110,10 @@ func PlanApply(in ApplyInput, host Host) (ApplyPlan, *model.Error) {
 	if old.Pattern != spec.Pattern {
 		plan.TeamFields = append(plan.TeamFields, "/pattern")
 	}
+	if *old.Herdr.Backend != *spec.Herdr.Backend {
+		plan.TeamFields = append(plan.TeamFields, "/herdr/backend")
+		stopFields = append(stopFields, "/herdr/backend")
+	}
 	if *old.Herdr.Server != *spec.Herdr.Server {
 		plan.TeamFields = append(plan.TeamFields, "/herdr/server")
 		stopFields = append(stopFields, "/herdr/server")

@@ -81,6 +81,7 @@
         "issue": "not_installed",
         "headless": false
       }
-    ]
+    ],
+    "herdr_auto": null
   }
 }

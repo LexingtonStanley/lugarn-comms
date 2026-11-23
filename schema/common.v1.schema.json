@@ -617,6 +617,9 @@
             "string",
             "null"
           ]
+        },
+        "backend": {
+          "$ref": "#/$defs/HerdrBackend"
         }
       },
       "required": [
@@ -1528,6 +1531,16 @@
         },
         "forgotten": {
           "type": "boolean"
+        },
+        "herdr_backend": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/HerdrBackend"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -1630,7 +1643,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "pattern": "^[^\u0000-\u001f]+$"
+      "pattern": "^[^\u0000-\u001f\u007f]+$"
     },
     "ExternalMember": {
       "type": "object",
@@ -1669,6 +1682,21 @@
         "session",
         "activity",
         "available"
+      ]
+    },
+    "HerdrBackend": {
+      "type": "string",
+      "enum": [
+        "herdr",
+        "hc"
+      ]
+    },
+    "HerdrBackendChoice": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "herdr",
+        "hc"
       ]
     }
   }

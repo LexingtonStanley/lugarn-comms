@@ -33,9 +33,10 @@ type MemberSession struct {
 
 // HerdrPlacement is the common.v1 HerdrPlacement record.
 type HerdrPlacement struct {
-	Server    string  `json:"server"`
-	Workspace *string `json:"workspace"`
-	Agent     *string `json:"agent"`
+	Backend   *HerdrBackend `json:"backend,omitempty"`
+	Server    string        `json:"server"`
+	Workspace *string       `json:"workspace"`
+	Agent     *string       `json:"agent"`
 }
 
 // Member is the common.v1 Member record.
@@ -176,22 +177,23 @@ type Runner struct {
 
 // TeamStatus is the common.v1 TeamStatus record.
 type TeamStatus struct {
-	DisplayName      *string    `json:"display_name,omitempty"`
-	Adopted          *bool      `json:"adopted,omitempty"`
-	Forgotten        *bool      `json:"forgotten,omitempty"`
-	ID               string     `json:"id"`
-	Name             string     `json:"name"`
-	Pattern          Pattern    `json:"pattern"`
-	Revision         int64      `json:"revision"`
-	Run              int64      `json:"run"`
-	State            TeamState  `json:"state"`
-	Runner           Runner     `json:"runner"`
-	Hops             Hops       `json:"hops"`
-	Rounds           []Rounds   `json:"rounds"`
-	Counts           TeamCounts `json:"counts"`
-	StartedAt        *Time      `json:"started_at"`
-	StoppedAt        *Time      `json:"stopped_at"`
-	LastAppContactAt *Time      `json:"last_app_contact_at"`
+	HerdrBackend     *HerdrBackend `json:"herdr_backend"`
+	DisplayName      *string       `json:"display_name,omitempty"`
+	Adopted          *bool         `json:"adopted,omitempty"`
+	Forgotten        *bool         `json:"forgotten,omitempty"`
+	ID               string        `json:"id"`
+	Name             string        `json:"name"`
+	Pattern          Pattern       `json:"pattern"`
+	Revision         int64         `json:"revision"`
+	Run              int64         `json:"run"`
+	State            TeamState     `json:"state"`
+	Runner           Runner        `json:"runner"`
+	Hops             Hops          `json:"hops"`
+	Rounds           []Rounds      `json:"rounds"`
+	Counts           TeamCounts    `json:"counts"`
+	StartedAt        *Time         `json:"started_at"`
+	StoppedAt        *Time         `json:"stopped_at"`
+	LastAppContactAt *Time         `json:"last_app_contact_at"`
 }
 
 // HerdrInfo is the common.v1 HerdrInfo record.
