@@ -1,0 +1,35 @@
+{
+  "opencode": {
+    "version": "opencode v2.3.0",
+    "installed": true,
+    "reported": false,
+    "status": null,
+    "state": "live",
+    "foreground": {
+      "argv": [
+        "/home/lexde/.opencode/bin/opencode"
+      ],
+      "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+      "name": "opencode",
+      "pid": 1205601
+    }
+  },
+  "pi": {
+    "version": "1.4.0",
+    "installed": true,
+    "reported": true,
+    "status": {
+      "app": "pi",
+      "state": "idle"
+    },
+    "state": "live",
+    "foreground": {
+      "argv": [
+        "pi"
+      ],
+      "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+      "name": "pi",
+      "pid": 1213875
+    }
+  }
+}

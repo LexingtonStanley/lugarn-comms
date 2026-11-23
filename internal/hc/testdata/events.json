@@ -1,0 +1,479 @@
+[
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t1",
+        "argv": [
+          "/tmp/lugarn-hc-178-bpxjp9dv/lugarn-comms",
+          "run",
+          "--team",
+          "tabs"
+        ],
+        "cols": 200,
+        "created_ms": 1795451609199,
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/state/spaces/tabs/Team TABS",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp681dcc498a35abb3d7a6473786b20242",
+          "herdr.tab": "tbca10a0b60e3fe880273594ca778f53b1",
+          "lugarn.home": "3b15e97edaad3b01",
+          "lugarn.role": "runner",
+          "lugarn.team": "tabs"
+        },
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1083622,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 1,
+      "terminal": "t1",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/tmp/lugarn-hc-178-bpxjp9dv/lugarn-comms",
+          "run",
+          "--team",
+          "tabs"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/state/spaces/tabs/Team TABS",
+        "name": "lugarn-comms",
+        "pid": 1083622
+      },
+      "seq": 2,
+      "terminal": "t1",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t2",
+        "argv": [
+          "/tmp/lugarn-hc-178-bpxjp9dv/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795451619361,
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp681dcc498a35abb3d7a6473786b20242",
+          "herdr.tab": "tb42ed82cd8ba77978f6ec5266336d3439",
+          "lugarn.home": "3b15e97edaad3b01",
+          "lugarn.launch": "01M84M320HB39P58BJ7313RYN2",
+          "lugarn.member": "tabs-writer",
+          "lugarn.role": "member",
+          "lugarn.team": "tabs"
+        },
+        "name": "writer",
+        "notify": false,
+        "parent": null,
+        "pid": 1084642,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 3,
+      "terminal": "t2",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 4,
+      "terminal": "t2",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t3",
+        "argv": [
+          "/tmp/lugarn-hc-178-bpxjp9dv/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795451619364,
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp681dcc498a35abb3d7a6473786b20242",
+          "herdr.tab": "tb0bb223bd8724b15f1e05841b9601b494",
+          "lugarn.home": "3b15e97edaad3b01",
+          "lugarn.launch": "01M84M320H59BMYQ0T9BFM45GV",
+          "lugarn.member": "tabs-t7",
+          "lugarn.role": "member",
+          "lugarn.team": "tabs"
+        },
+        "name": "t7-2",
+        "notify": false,
+        "parent": null,
+        "pid": 1084649,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 5,
+      "terminal": "t3",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 6,
+      "terminal": "t3",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/lugarn-hc-178-bpxjp9dv/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/work",
+        "name": "pi",
+        "pid": 1084642
+      },
+      "seq": 7,
+      "terminal": "t2",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/lugarn-hc-178-bpxjp9dv/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/work",
+        "name": "pi",
+        "pid": 1084649
+      },
+      "seq": 8,
+      "terminal": "t3",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t4",
+        "argv": [
+          "/tmp/lugarn-hc-178-bpxjp9dv/lugarn-comms",
+          "run",
+          "--team",
+          "spaces"
+        ],
+        "cols": 200,
+        "created_ms": 1795451619695,
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/state/spaces/spaces/Team SPACES",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp2a416495a75398d3975087669785286a",
+          "herdr.tab": "tbdfb9d3e7fb643109825e3aff0ee0354d",
+          "lugarn.home": "3b15e97edaad3b01",
+          "lugarn.role": "runner",
+          "lugarn.team": "spaces"
+        },
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1084777,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 9,
+      "terminal": "t4",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/tmp/lugarn-hc-178-bpxjp9dv/lugarn-comms",
+          "run",
+          "--team",
+          "spaces"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/state/spaces/spaces/Team SPACES",
+        "name": "lugarn-comms",
+        "pid": 1084777
+      },
+      "seq": 10,
+      "terminal": "t4",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "heartbeat",
+    "params": {
+      "seq": 10
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t5",
+        "argv": [
+          "/tmp/lugarn-hc-178-bpxjp9dv/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795451629870,
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp11de5ff2ed687babce0f67435ec0242b",
+          "herdr.tab": "tb4ab6561fb53b7eb9ce3c227f6c73c89e",
+          "lugarn.home": "3b15e97edaad3b01",
+          "lugarn.launch": "01M84M3C8ZAJ4PWSNAY2J82GS2",
+          "lugarn.member": "spaces-t7",
+          "lugarn.role": "member",
+          "lugarn.team": "spaces"
+        },
+        "name": "t7-3",
+        "notify": false,
+        "parent": null,
+        "pid": 1085822,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 11,
+      "terminal": "t5",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 12,
+      "terminal": "t5",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t6",
+        "argv": [
+          "/tmp/lugarn-hc-178-bpxjp9dv/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795451629876,
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp73a06a9e06dbd936ad71cedb8a14a774",
+          "herdr.tab": "tb4e2879ca833b85812cbde96fb851e5b4",
+          "lugarn.home": "3b15e97edaad3b01",
+          "lugarn.launch": "01M84M3C8ZJ25ZDQTW2714F74Y",
+          "lugarn.member": "spaces-writer",
+          "lugarn.role": "member",
+          "lugarn.team": "spaces"
+        },
+        "name": "writer-2",
+        "notify": false,
+        "parent": null,
+        "pid": 1085829,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 13,
+      "terminal": "t6",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 14,
+      "terminal": "t6",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/lugarn-hc-178-bpxjp9dv/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/work",
+        "name": "pi",
+        "pid": 1085822
+      },
+      "seq": 15,
+      "terminal": "t5",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/bin/sh",
+          "/tmp/lugarn-hc-178-bpxjp9dv/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-bpxjp9dv/work",
+        "name": "pi",
+        "pid": 1085829
+      },
+      "seq": 16,
+      "terminal": "t6",
+      "type": "foreground"
+    }
+  }
+]
