@@ -386,3 +386,52 @@ func TestHCCodexNoDaemonOnce(t *testing.T) {
 		}
 	}
 }
+
+func TestHCHelloDoesNotGuessUnknownGeneration(t *testing.T) {
+	i, _, _ := hcFake(t)
+	for _, tc := range []struct {
+		info hc.Info
+		want *model.HerdrBackend
+	}{
+		{hc.Info{Installed: true, Running: ptr(false)}, nil},
+		{hc.Info{Installed: true, Supported: ptr(true)}, ptr(model.HerdrBackendHC)},
+		{hc.Info{Installed: true, Supported: ptr(false)}, ptr(model.HerdrBackendHerdr)},
+		{hc.Info{Installed: false}, ptr(model.HerdrBackendHerdr)},
+	} {
+		i.opts.HCProbe = func(context.Context, string, string) hc.Info { return tc.info }
+		result, e := i.b.Hello(context.Background(), wire.HelloRequest{Protocols: []int64{1}})
+		must(t, e)
+		if !reflect.DeepEqual(result.HerdrAuto, tc.want) {
+			t.Fatal(result.HerdrAuto, tc.want)
+		}
+	}
+}
+
+type hcLaunchCapture struct{ team store.Team }
+
+func (c *hcLaunchCapture) Launch(_ context.Context, t store.Team) error { c.team = t; return nil }
+func TestHCAutoChangeClearsPlacement(t *testing.T) {
+	i, _, _ := hcFake(t)
+	ctx := context.Background()
+	capture := &hcLaunchCapture{}
+	i.b.opts.Launcher = capture
+	i.opts.HCBinary = filepath.Join(t.TempDir(), "missing")
+	i.opts.Herdr = func(string) HerdrAPI { return hcFallback{installed: true} }
+	must(t, i.b.db.Write(ctx, func(tx *store.Tx) error {
+		return tx.UpdateTeam("t", store.TeamPatch{State: ptr(model.TeamStateStopped), BackendChoice: ptr(model.HerdrBackendChoiceAuto)}, i.b.now())
+	}))
+	_, e := i.b.StartTeam(ctx, wire.StartTeamRequest{Team: "t"})
+	must(t, e)
+	if capture.team.HerdrWorkspace != nil || capture.team.Backend == nil || *capture.team.Backend != model.HerdrBackendHerdr {
+		t.Fatal(capture.team)
+	}
+}
+func TestHCBackendEditWhileRunningRefused(t *testing.T) {
+	i, _, _ := hcFake(t)
+	ctx := context.Background()
+	got, e := i.b.GetTeam(ctx, wire.GetTeamRequest{Team: "t"})
+	must(t, e)
+	got.Spec.Herdr.Backend = ptr(model.HerdrBackendChoiceHerdr)
+	_, e = i.b.ApplyTeam(ctx, wire.ApplyTeamRequest{Spec: got.Spec, IfRevision: got.Revision})
+	code(t, e, model.ErrorTeamRunning)
+}

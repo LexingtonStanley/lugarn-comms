@@ -94,7 +94,7 @@ func childEnv(home, search string) []string {
 	if runtime.GOOS != "windows" {
 		env = append(env, "HOME="+home, "ZDOTDIR="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"), "SHELL=/bin/sh")
 	}
-	return append(env, "PATH="+search, "LUGARN_COMMS_HOME="+home, "LUGARN_COMMS_HC_BINARY="+filepath.Join(home,"hc-not-installed"))
+	return append(env, "PATH="+search, "LUGARN_COMMS_HOME="+home, "LUGARN_COMMS_HC_BINARY="+filepath.Join(home, "hc-not-installed"))
 }
 
 type processResult struct {

@@ -43,7 +43,7 @@ func (b *Broker) Hello(ctx context.Context, r wire.HelloRequest) (wire.HelloResu
 		out.HC = &info
 		if info.Supported != nil && *info.Supported {
 			out.HerdrAuto = ptr(model.HerdrBackendHC)
-		} else if herdr.Installed {
+		} else if herdr.Installed && (!info.Installed || info.Supported != nil && !*info.Supported) {
 			out.HerdrAuto = ptr(model.HerdrBackendHerdr)
 		}
 	}

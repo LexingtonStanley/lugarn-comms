@@ -127,7 +127,13 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 			}
 			return model.NewError(model.ErrorHerdrUnavailable, "the team's Herdr server is unavailable").WithDetail("reason", reason)
 		}
-		if e = tx.UpdateTeam(t.ID, store.TeamPatch{Backend: &backend, HCCoreID: &core}, b.now()); e != nil {
+		// An auto choice can resolve differently on a later start. Placement
+		// ids from the previous driver have no meaning on the new backend.
+		patch := store.TeamPatch{Backend: &backend, HCCoreID: &core}
+		if t.Backend != nil && backend != nil && *t.Backend != *backend {
+			patch.HerdrWorkspace = ptr((*string)(nil))
+		}
+		if e = tx.UpdateTeam(t.ID, patch, b.now()); e != nil {
 			return e
 		}
 		s, e := b.budget(tx, t, true)
