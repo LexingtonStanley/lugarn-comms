@@ -459,8 +459,9 @@ The broker acts only on terminals it recorded. Before it sends to, kills or remo
 the core id, the address and the `lugarn.home` and `lugarn.team` labels must all match.
 Anything else is foreign and left alone.
 
-Herdr app turns `keep` on when it shows a terminal, so a lost harness can come back as a
-shell at the same address. A `lost` or `restarted` event, a `pid` other than the one
+Herdr app turns `keep` on when it shows a terminal and writes a `where="<space> / <tab>"`
+label, both within about 2 s (seen 2026-11-23). The ownership check ignores both. Because of
+`keep`, a lost harness can come back as a shell at the same address. A `lost` or `restarted` event, a `pid` other than the one
 `terminal.run` returned, or `state: finished` all mean the member's pane has gone
 (`died`, or `exited` when the program exited with a code). A pane exit is then handled as
 on `herdr` ([Leases](#leases-and-launches)).
@@ -1157,7 +1158,7 @@ What the C2c drivers pass. **Verified headless only**, on lexbox on 2026-10-26, 
 | `bypass`            | `--permission-mode bypassPermissions`                                                           | `--dangerously-bypass-approvals-and-sandbox`                                                   | config `{"edit": "allow", "bash": "allow", "external_directory": "allow"}`, plus `--auto`         |
 | First headless turn | `claude -p --session-id <uuid>`                                                                 | `codex exec --json`                                                                            | `opencode run --format json`                                                                      |
 | Later turns         | `claude -p --resume <uuid>`                                                                     | `codex exec --json resume <id>`                                                                | `opencode run --format json --session <id>`                                                       |
-| Pane                | `claude --resume <uuid>`, or `--session-id <uuid>` for a new session                            | `codex --no-daemon resume <id>`                                                                | `opencode --session <id>`                                                                         |
+| Pane                | `claude --resume <uuid>`, or `--session-id <uuid>` for a new session                            | `codex --no-daemon -c check_for_update_on_startup=false resume <id>`                           | `opencode --session <id>`                                                                         |
 | Prompt              | stdin                                                                                           | stdin                                                                                          | stdin                                                                                             |
 | Acknowledgement     | the init event                                                                                  | `thread.started`                                                                               | the first event, `step_start`, carrying `"sessionID"`                                             |
 
@@ -1597,8 +1598,9 @@ Result:
   speaks generation 1), `core` (`id`, `name`) and `keeps_running_after_logout` (hc's own
   report), each null when unknown. `hello` never starts a core
   ([Herdr backends](#herdr-backends));
-- `herdr_auto`: what `auto` would pick now, `hc`, `herdr` or null. It's for display;
-  `start-team` decides;
+- `herdr_auto`: what `auto` would pick now, `hc`, `herdr` or null. It's null when hc is
+  installed but its core isn't running, since its generation can't be checked without
+  starting it. It's for display; `start-team` decides;
 - `harnesses`: per harness `installed`, `version`, `supported`, `issue`
   (`not_installed`, `unsupported_version`, `shim_only`) and `headless` (whether the broker can
   run it headless; false for pi until C0). OpenCode 1.x and 2.x are both supported.
@@ -2474,8 +2476,12 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     first terminal's folder. The runner is that terminal and runs in a folder named after
     the team, so the space reads as the team with nothing written. Limits: tabs stay
     numbered, member spaces in `workspaces` take their members' folder names, and a space
-    whose runner ends early falls back to the first member's folder. **Open:** Herdr app's
-    adoption of a broker-made space on a remote machine is not yet verified in a window.
+    whose runner ends early falls back to the first member's folder. Verified on 2026-11-23,
+    with Lex's approval for one probe on lexbox's default core: conair's window took a labelled
+    `sleep` on remote lexbox as a new space within about 2 s and called it "Lugarn Probe", the
+    folder's name with its space and capitals. A second terminal in a repository made tab 2
+    and left the name alone. Killing the first renamed the space after the repository. Focus
+    didn't move.
 84. **An adopted team's runner is hidden.** Adoption must change nothing, and starting an
     adopted team must not add a tab to the person's space. With no `herdr.*` labels, the
     runner is visible only in `hc ls`, and `forget-team` leaves no idle runner tab behind,
@@ -2502,4 +2508,12 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
 90. **What's new on the wire.** There are no new error codes, request kinds or values in
     existing enums. `HerdrBackend` and `HerdrBackendChoice` are new enums, used only by new
     optional fields. Store migration 3 adds the team's backend choice, its resolved backend
-    and its hc core id. The `hc` capability tells the app all of this is present.
+    and its hc core id, plus a private `hc_terminals` table (core, address, pid, foreground
+    pid, space, tab) that the ownership checks read. The `hc` capability tells the app all of
+    this is present.
+91. **Codex panes skip the update check, on both backends.** With a newer Codex released, the
+    TUI opens on an "Update available" dialog. It reports no status there, so the runner never
+    sees the member ready and nothing is delivered. Found on hc with Codex 0.164.0 against
+    0.171.0, and a 0.9 pane hits the same dialog. `-c check_for_update_on_startup=false`
+    (pane launches only; `exec` never asks) lets it start idle, verified on lexbox. Updating
+    Codex stays the person's job.

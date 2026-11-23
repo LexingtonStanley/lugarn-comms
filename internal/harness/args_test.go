@@ -85,7 +85,7 @@ func TestArgs(t *testing.T) {
 							}
 							want = append(want, "--skip-git-repo-check", "-")
 						} else {
-							want = append(want, "resume", l.SessionID)
+							want = append(want, "-c", "check_for_update_on_startup=false", "resume", l.SessionID)
 						}
 					case model.HarnessOpenCode:
 						if mode == model.ModeHeadless {
