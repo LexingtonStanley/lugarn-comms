@@ -1,5 +1,6 @@
 {
   "team": {
+    "herdr_backend": "herdr",
     "display_name": "Team B",
     "adopted": false,
     "forgotten": false,
@@ -11,10 +12,10 @@
     "state": "running",
     "runner": {
       "state": "up",
-      "pid": 3205104,
+      "pid": 1205943,
       "pane": "w3:p1",
-      "started_at": "2026-11-16T16:04:23.597Z",
-      "heartbeat_at": "2026-11-16T16:04:23.597Z"
+      "started_at": "2026-11-23T16:44:08.579Z",
+      "heartbeat_at": "2026-11-23T16:44:08.579Z"
     },
     "hops": {
       "used": 0,
@@ -31,9 +32,9 @@
       "held": 0,
       "uncertain": 0
     },
-    "started_at": "2026-11-16T16:04:13.512Z",
+    "started_at": "2026-11-23T16:43:58.504Z",
     "stopped_at": null,
-    "last_app_contact_at": "2026-11-16T16:04:13.469Z"
+    "last_app_contact_at": "2026-11-23T16:43:58.455Z"
   },
   "already_running": false
 }

@@ -1,7 +1,7 @@
 {
   "members": [
     {
-      "id": "01M7JHMZNX7Q88SGPBB5DCBHV1",
+      "id": "01M84MPSB57Z5JPQX7SZPH3TDD",
       "team": "adopted",
       "name": "human",
       "kind": "human",
@@ -24,7 +24,7 @@
       "session": null,
       "sessions": [],
       "host": null,
-      "created_at": "2026-11-16T16:04:41.277Z",
+      "created_at": "2026-11-23T16:44:25.829Z",
       "started_at": null,
       "stopped_at": null,
       "removed_at": null,
@@ -34,7 +34,7 @@
       "id": "adopted-alpha",
       "herdr_name": "alpha",
       "external": {
-        "terminal": "term_66066eced45031",
+        "terminal": "term_660f44bedd1611",
         "pane": "w1:p1",
         "workspace": "w1",
         "agent": "alpha",
@@ -51,9 +51,9 @@
       "harness": "pi",
       "profile": "workspace",
       "mode": "pane",
-      "folder": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+      "folder": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
       "worktree": null,
-      "workdir": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+      "workdir": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
       "state": "stopped",
       "stop_reason": null,
       "activity": null,
@@ -69,7 +69,7 @@
       "session": null,
       "sessions": [],
       "host": null,
-      "created_at": "2026-11-16T16:04:41.277Z",
+      "created_at": "2026-11-23T16:44:25.829Z",
       "started_at": null,
       "stopped_at": null,
       "removed_at": null,
@@ -79,7 +79,7 @@
       "id": "adopted-beta",
       "herdr_name": "beta",
       "external": {
-        "terminal": "term_66066eced925f2",
+        "terminal": "term_660f44bedfebf2",
         "pane": "w1:p2",
         "workspace": "w1",
         "agent": "beta",
@@ -96,9 +96,9 @@
       "harness": "pi",
       "profile": "workspace",
       "mode": "pane",
-      "folder": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+      "folder": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
       "worktree": null,
-      "workdir": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+      "workdir": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
       "state": "stopped",
       "stop_reason": null,
       "activity": null,
@@ -114,12 +114,12 @@
       "session": null,
       "sessions": [],
       "host": null,
-      "created_at": "2026-11-16T16:04:41.277Z",
+      "created_at": "2026-11-23T16:44:25.829Z",
       "started_at": null,
       "stopped_at": null,
       "removed_at": null,
       "removed_reason": null
     }
   ],
-  "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.37"
+  "cursor": "c699a815abab4e38e3d9556b206ec7c6.37"
 }

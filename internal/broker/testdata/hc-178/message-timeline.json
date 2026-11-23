@@ -1,0 +1,42 @@
+{
+  "type": "message.created",
+  "cursor": "1af0e2323b9ab059a78b354edb26c953.35",
+  "at": "2026-11-23T16:51:08.144Z",
+  "team": "tabs",
+  "timeline": true,
+  "data": {
+    "message": {
+      "id": "01M84N327FRAQAS330BBXQ3V52",
+      "team": "tabs",
+      "from": {
+        "id": "01M84N2DRTA6SDFC7W9T9V6W07",
+        "name": "human"
+      },
+      "kind": "message",
+      "broadcast": false,
+      "reply_to": null,
+      "text": "CHECK178 delivery",
+      "hop": null,
+      "round": null,
+      "turn": null,
+      "created_at": "2026-11-23T16:51:08.143Z",
+      "deliveries": [
+        {
+          "to": {
+            "id": "tabs-writer",
+            "name": "writer"
+          },
+          "state": "delivered",
+          "reason": null,
+          "via": "pane",
+          "wake": true,
+          "attempts": 1,
+          "notify": null,
+          "turn": null,
+          "updated_at": "2026-11-23T16:51:08.592Z",
+          "delivered_at": "2026-11-23T16:51:08.592Z"
+        }
+      ]
+    }
+  }
+}

@@ -2,13 +2,13 @@
   "events": [
     {
       "type": "member.added",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.34",
-      "at": "2026-11-16T16:04:41.278Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.34",
+      "at": "2026-11-23T16:44:25.830Z",
       "team": "adopted",
       "timeline": true,
       "data": {
         "member": {
-          "id": "01M7JHMZNX7Q88SGPBB5DCBHV1",
+          "id": "01M84MPSB57Z5JPQX7SZPH3TDD",
           "team": "adopted",
           "name": "human",
           "kind": "human",
@@ -31,7 +31,7 @@
           "session": null,
           "sessions": [],
           "host": null,
-          "created_at": "2026-11-16T16:04:41.277Z",
+          "created_at": "2026-11-23T16:44:25.829Z",
           "started_at": null,
           "stopped_at": null,
           "removed_at": null,
@@ -41,8 +41,8 @@
     },
     {
       "type": "member.added",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.35",
-      "at": "2026-11-16T16:04:41.278Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.35",
+      "at": "2026-11-23T16:44:25.830Z",
       "team": "adopted",
       "timeline": true,
       "data": {
@@ -50,7 +50,7 @@
           "id": "adopted-alpha",
           "herdr_name": "alpha",
           "external": {
-            "terminal": "term_66066eced45031",
+            "terminal": "term_660f44bedd1611",
             "pane": "w1:p1",
             "workspace": "w1",
             "agent": "alpha",
@@ -67,9 +67,9 @@
           "harness": "pi",
           "profile": "workspace",
           "mode": "pane",
-          "folder": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+          "folder": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
           "worktree": null,
-          "workdir": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+          "workdir": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
           "state": "stopped",
           "stop_reason": null,
           "activity": null,
@@ -85,7 +85,7 @@
           "session": null,
           "sessions": [],
           "host": null,
-          "created_at": "2026-11-16T16:04:41.277Z",
+          "created_at": "2026-11-23T16:44:25.829Z",
           "started_at": null,
           "stopped_at": null,
           "removed_at": null,
@@ -95,8 +95,8 @@
     },
     {
       "type": "member.added",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.36",
-      "at": "2026-11-16T16:04:41.278Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.36",
+      "at": "2026-11-23T16:44:25.831Z",
       "team": "adopted",
       "timeline": true,
       "data": {
@@ -104,7 +104,7 @@
           "id": "adopted-beta",
           "herdr_name": "beta",
           "external": {
-            "terminal": "term_66066eced925f2",
+            "terminal": "term_660f44bedfebf2",
             "pane": "w1:p2",
             "workspace": "w1",
             "agent": "beta",
@@ -121,9 +121,9 @@
           "harness": "pi",
           "profile": "workspace",
           "mode": "pane",
-          "folder": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+          "folder": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
           "worktree": null,
-          "workdir": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+          "workdir": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
           "state": "stopped",
           "stop_reason": null,
           "activity": null,
@@ -139,7 +139,7 @@
           "session": null,
           "sessions": [],
           "host": null,
-          "created_at": "2026-11-16T16:04:41.277Z",
+          "created_at": "2026-11-23T16:44:25.829Z",
           "started_at": null,
           "stopped_at": null,
           "removed_at": null,
@@ -149,12 +149,13 @@
     },
     {
       "type": "team.applied",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.37",
-      "at": "2026-11-16T16:04:41.278Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.37",
+      "at": "2026-11-23T16:44:25.831Z",
       "team": "adopted",
       "timeline": true,
       "data": {
         "team": {
+          "herdr_backend": "herdr",
           "display_name": "Team ADOPTED",
           "adopted": true,
           "forgotten": false,
@@ -188,18 +189,19 @@
           },
           "started_at": null,
           "stopped_at": null,
-          "last_app_contact_at": "2026-11-16T16:04:41.277Z"
+          "last_app_contact_at": "2026-11-23T16:44:25.829Z"
         }
       }
     },
     {
       "type": "team.state_changed",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.38",
-      "at": "2026-11-16T16:04:41.482Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.38",
+      "at": "2026-11-23T16:44:25.922Z",
       "team": "adopted",
       "timeline": true,
       "data": {
         "team": {
+          "herdr_backend": "herdr",
           "display_name": "Team ADOPTED",
           "adopted": true,
           "forgotten": false,
@@ -231,9 +233,9 @@
             "held": 0,
             "uncertain": 0
           },
-          "started_at": "2026-11-16T16:04:41.482Z",
+          "started_at": "2026-11-23T16:44:25.921Z",
           "stopped_at": null,
-          "last_app_contact_at": "2026-11-16T16:04:41.277Z"
+          "last_app_contact_at": "2026-11-23T16:44:25.829Z"
         },
         "from": "stopped",
         "to": "starting"
@@ -241,12 +243,13 @@
     },
     {
       "type": "runner.state_changed",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.39",
-      "at": "2026-11-16T16:04:51.537Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.39",
+      "at": "2026-11-23T16:44:35.963Z",
       "team": "adopted",
       "timeline": true,
       "data": {
         "team": {
+          "herdr_backend": "herdr",
           "display_name": "Team ADOPTED",
           "adopted": true,
           "forgotten": false,
@@ -258,10 +261,10 @@
           "state": "starting",
           "runner": {
             "state": "up",
-            "pid": 3207252,
+            "pid": 1216628,
             "pane": "w1:p3",
-            "started_at": "2026-11-16T16:04:51.537Z",
-            "heartbeat_at": "2026-11-16T16:04:51.537Z"
+            "started_at": "2026-11-23T16:44:35.962Z",
+            "heartbeat_at": "2026-11-23T16:44:35.962Z"
           },
           "hops": {
             "used": 0,
@@ -278,9 +281,9 @@
             "held": 0,
             "uncertain": 0
           },
-          "started_at": "2026-11-16T16:04:41.482Z",
+          "started_at": "2026-11-23T16:44:25.921Z",
           "stopped_at": null,
-          "last_app_contact_at": "2026-11-16T16:04:41.277Z"
+          "last_app_contact_at": "2026-11-23T16:44:25.829Z"
         },
         "from": "down",
         "to": "up"
@@ -288,12 +291,13 @@
     },
     {
       "type": "team.state_changed",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.40",
-      "at": "2026-11-16T16:04:51.538Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.40",
+      "at": "2026-11-23T16:44:35.963Z",
       "team": "adopted",
       "timeline": true,
       "data": {
         "team": {
+          "herdr_backend": "herdr",
           "display_name": "Team ADOPTED",
           "adopted": true,
           "forgotten": false,
@@ -305,10 +309,10 @@
           "state": "running",
           "runner": {
             "state": "up",
-            "pid": 3207252,
+            "pid": 1216628,
             "pane": "w1:p3",
-            "started_at": "2026-11-16T16:04:51.537Z",
-            "heartbeat_at": "2026-11-16T16:04:51.537Z"
+            "started_at": "2026-11-23T16:44:35.962Z",
+            "heartbeat_at": "2026-11-23T16:44:35.962Z"
           },
           "hops": {
             "used": 0,
@@ -325,9 +329,9 @@
             "held": 0,
             "uncertain": 0
           },
-          "started_at": "2026-11-16T16:04:41.482Z",
+          "started_at": "2026-11-23T16:44:25.921Z",
           "stopped_at": null,
-          "last_app_contact_at": "2026-11-16T16:04:41.277Z"
+          "last_app_contact_at": "2026-11-23T16:44:25.829Z"
         },
         "from": "starting",
         "to": "running"
@@ -335,8 +339,8 @@
     },
     {
       "type": "member.state_changed",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.43",
-      "at": "2026-11-16T16:04:51.890Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.43",
+      "at": "2026-11-23T16:44:36.321Z",
       "team": "adopted",
       "timeline": true,
       "data": {
@@ -352,29 +356,30 @@
           "harness": "pi",
           "profile": "workspace",
           "mode": "pane",
-          "folder": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+          "folder": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
           "worktree": null,
-          "workdir": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+          "workdir": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
           "state": "starting",
           "stop_reason": null,
           "activity": null,
           "lease": {
             "driver": "pane",
             "generation": 1,
-            "launch": "01M7JHNA1H6PVGWTE5YXJ2D08T",
+            "launch": "01M84MQ3K07CAN161N98KTX3C9",
             "pane": null
           },
           "last_driver": "pane",
           "held_until": null,
           "herdr": {
-            "server": "lugarn-150",
+            "backend": "herdr",
+            "server": "lugarn-test-150-269326829027",
             "workspace": "w1",
             "agent": "alpha"
           },
           "session": null,
           "sessions": [],
           "host": null,
-          "created_at": "2026-11-16T16:04:41.277Z",
+          "created_at": "2026-11-23T16:44:25.829Z",
           "started_at": null,
           "stopped_at": null,
           "removed_at": null,
@@ -388,8 +393,8 @@
     },
     {
       "type": "member.state_changed",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.44",
-      "at": "2026-11-16T16:04:54.951Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.44",
+      "at": "2026-11-23T16:44:39.390Z",
       "team": "adopted",
       "timeline": true,
       "data": {
@@ -405,30 +410,31 @@
           "harness": "pi",
           "profile": "workspace",
           "mode": "pane",
-          "folder": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+          "folder": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
           "worktree": null,
-          "workdir": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+          "workdir": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
           "state": "running",
           "stop_reason": null,
           "activity": null,
           "lease": {
             "driver": "pane",
             "generation": 1,
-            "launch": "01M7JHNA1H6PVGWTE5YXJ2D08T",
+            "launch": "01M84MQ3K07CAN161N98KTX3C9",
             "pane": "w1:p4"
           },
           "last_driver": "pane",
           "held_until": null,
           "herdr": {
-            "server": "lugarn-150",
+            "backend": "herdr",
+            "server": "lugarn-test-150-269326829027",
             "workspace": "w1",
             "agent": "alpha"
           },
           "session": null,
           "sessions": [],
           "host": null,
-          "created_at": "2026-11-16T16:04:41.277Z",
-          "started_at": "2026-11-16T16:04:54.951Z",
+          "created_at": "2026-11-23T16:44:25.829Z",
+          "started_at": "2026-11-23T16:44:39.389Z",
           "stopped_at": null,
           "removed_at": null,
           "removed_reason": null
@@ -441,8 +447,8 @@
     },
     {
       "type": "lease.changed",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.46",
-      "at": "2026-11-16T16:04:54.952Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.46",
+      "at": "2026-11-23T16:44:39.390Z",
       "team": "adopted",
       "timeline": true,
       "data": {
@@ -458,30 +464,31 @@
           "harness": "pi",
           "profile": "workspace",
           "mode": "pane",
-          "folder": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+          "folder": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
           "worktree": null,
-          "workdir": "/home/lexde/codings/lugarn-comms-wt/c4-herdr-names",
+          "workdir": "/home/lexde/codings/lugarn-comms-wt/c5-hc",
           "state": "running",
           "stop_reason": null,
           "activity": "idle",
           "lease": {
             "driver": "pane",
             "generation": 1,
-            "launch": "01M7JHNA1H6PVGWTE5YXJ2D08T",
+            "launch": "01M84MQ3K07CAN161N98KTX3C9",
             "pane": "w1:p4"
           },
           "last_driver": "pane",
           "held_until": null,
           "herdr": {
-            "server": "lugarn-150",
+            "backend": "herdr",
+            "server": "lugarn-test-150-269326829027",
             "workspace": "w1",
             "agent": "alpha"
           },
           "session": null,
           "sessions": [],
           "host": null,
-          "created_at": "2026-11-16T16:04:41.277Z",
-          "started_at": "2026-11-16T16:04:54.951Z",
+          "created_at": "2026-11-23T16:44:25.829Z",
+          "started_at": "2026-11-23T16:44:39.389Z",
           "stopped_at": null,
           "removed_at": null,
           "removed_reason": null
@@ -494,16 +501,16 @@
     },
     {
       "type": "message.created",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.48",
-      "at": "2026-11-16T16:04:54.987Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.48",
+      "at": "2026-11-23T16:44:39.528Z",
       "team": "adopted",
       "timeline": true,
       "data": {
         "message": {
-          "id": "01M7JHND2BNXTGK0T9855ET47Q",
+          "id": "01M84MQ6Q8WXPF9XTCCJ95SJNQ",
           "team": "adopted",
           "from": {
-            "id": "01M7JHMZNX7Q88SGPBB5DCBHV1",
+            "id": "01M84MPSB57Z5JPQX7SZPH3TDD",
             "name": "human"
           },
           "kind": "message",
@@ -513,7 +520,7 @@
           "hop": null,
           "round": null,
           "turn": null,
-          "created_at": "2026-11-16T16:04:54.987Z",
+          "created_at": "2026-11-23T16:44:39.528Z",
           "deliveries": [
             {
               "to": {
@@ -527,8 +534,8 @@
               "attempts": 1,
               "notify": null,
               "turn": null,
-              "updated_at": "2026-11-16T16:04:55.370Z",
-              "delivered_at": "2026-11-16T16:04:55.370Z"
+              "updated_at": "2026-11-23T16:44:40.099Z",
+              "delivered_at": "2026-11-23T16:44:40.099Z"
             }
           ]
         }
@@ -536,13 +543,13 @@
     },
     {
       "type": "message.created",
-      "cursor": "c7f43c13cbb0189d18a43ef1fe5fa98e.52",
-      "at": "2026-11-16T16:05:05.410Z",
+      "cursor": "c699a815abab4e38e3d9556b206ec7c6.52",
+      "at": "2026-11-23T16:44:50.164Z",
       "team": "adopted",
       "timeline": true,
       "data": {
         "message": {
-          "id": "01M7JHNQ825X1TXVNGRFAFS49E",
+          "id": "01M84MQH3KPPW0ED7YWRE9C76V",
           "team": "adopted",
           "from": {
             "id": "adopted-alpha",
@@ -555,11 +562,11 @@
           "hop": null,
           "round": null,
           "turn": null,
-          "created_at": "2026-11-16T16:05:05.410Z",
+          "created_at": "2026-11-23T16:44:50.163Z",
           "deliveries": [
             {
               "to": {
-                "id": "01M7JHMZNX7Q88SGPBB5DCBHV1",
+                "id": "01M84MPSB57Z5JPQX7SZPH3TDD",
                 "name": "human"
               },
               "state": "delivered",
@@ -569,8 +576,8 @@
               "attempts": 0,
               "notify": true,
               "turn": null,
-              "updated_at": "2026-11-16T16:05:05.410Z",
-              "delivered_at": "2026-11-16T16:05:05.410Z"
+              "updated_at": "2026-11-23T16:44:50.163Z",
+              "delivered_at": "2026-11-23T16:44:50.163Z"
             }
           ]
         }

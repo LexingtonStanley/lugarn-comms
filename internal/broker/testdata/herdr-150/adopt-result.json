@@ -1,5 +1,6 @@
 {
   "team": {
+    "herdr_backend": "herdr",
     "display_name": "Team ADOPTED",
     "adopted": true,
     "forgotten": false,
@@ -33,7 +34,7 @@
     },
     "started_at": null,
     "stopped_at": null,
-    "last_app_contact_at": "2026-11-16T16:04:41.277Z"
+    "last_app_contact_at": "2026-11-23T16:44:25.829Z"
   },
   "warnings": []
 }

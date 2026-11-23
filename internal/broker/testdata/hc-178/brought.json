@@ -1,0 +1,41 @@
+{
+  "id": "adopted-one",
+  "herdr_name": "one",
+  "team": "adopted",
+  "name": "one",
+  "kind": "agent",
+  "role": "custom",
+  "origin": "spec",
+  "spawned_by": null,
+  "harness": "pi",
+  "profile": "workspace",
+  "mode": "pane",
+  "folder": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+  "worktree": null,
+  "workdir": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+  "state": "running",
+  "stop_reason": null,
+  "activity": "unknown",
+  "lease": {
+    "driver": "pane",
+    "generation": 1,
+    "launch": "01M84N3DP86YJFX9561E332TY2",
+    "pane": "t10"
+  },
+  "last_driver": "pane",
+  "held_until": null,
+  "herdr": {
+    "backend": "hc",
+    "server": "lugarn-test-c80791e963386386",
+    "workspace": "spaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "agent": "t10"
+  },
+  "session": null,
+  "sessions": [],
+  "host": null,
+  "created_at": "2026-11-23T16:51:09.391Z",
+  "started_at": "2026-11-23T16:51:19.907Z",
+  "stopped_at": null,
+  "removed_at": null,
+  "removed_reason": null
+}

@@ -3,7 +3,7 @@
   "conversation": "fresh",
   "session": null,
   "request": {
-    "id": "01M7JHN9S09B0233QKFHG04749",
+    "id": "01M84MQ3AN5228M03P7QK9BFDY",
     "team": "adopted",
     "kind": "open-terminal",
     "member": {
@@ -11,18 +11,18 @@
       "name": "alpha"
     },
     "requested_by": {
-      "id": "01M7JHMZNX7Q88SGPBB5DCBHV1",
+      "id": "01M84MPSB57Z5JPQX7SZPH3TDD",
       "name": "human"
     },
     "args": {
       "bring_onto_comms": true,
       "expected_session": null,
       "pane": "w1:p1",
-      "terminal": "term_66066eced45031"
+      "terminal": "term_660f44bedd1611"
     },
     "status": "pending",
     "error": null,
-    "created_at": "2026-11-16T16:04:51.616Z",
+    "created_at": "2026-11-23T16:44:36.053Z",
     "started_at": null,
     "finished_at": null
   }
