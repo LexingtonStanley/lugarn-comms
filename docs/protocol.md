@@ -179,7 +179,7 @@ The app owns the spec and pushes all of it with `apply-team`. Schema:
 | `name`    | `TeamName`           |                                                                    |
 | `pattern` | `Pattern`            | A label for the app and the briefs. The broker doesn't enforce a pattern's shape. |
 | `display_name` | string | Optional, 1–128 Unicode characters without ASCII controls. Human-facing workspace label; omitted means `name`. |
-| `herdr`   | `{ server, placement }`         | Optional. The Herdr server the team runs on, default `default`. `placement` defaults to `tabs`; the alternative is `workspaces`. |
+| `herdr`   | `{ server, placement, backend }` | Optional. The Herdr server (session) the team runs on, default `default`. `placement` defaults to `tabs`; the alternative is `workspaces`. `backend` is `auto`, `hc` or `herdr`, default `herdr` ([Herdr backends](#herdr-backends)). |
 | `limits`  | `Limits`             | Optional; every field has a default.                               |
 | `members` | `MemberSpec[]`       | 1 to 24.                                                           |
 | `grid`    | `GridEdge[]`         | May be empty: everything denied.                                   |
@@ -381,6 +381,207 @@ watch clients remove it. Retrying forget is safe: an already-forgotten team succ
 `if_revision` and does not close member panes. This is
 separate from `stop-team`, which still stops managed members.
 
+### Herdr backends
+
+The broker drives two Herdr runtimes:
+
+| Backend  | What it is                                                     | Driven through                                    |
+| -------- | -------------------------------------------------------------- | ------------------------------------------------- |
+| `herdr`  | The Herdr 0.9.5 server (`herdr --session <server>`)            | The `herdr` CLI, exactly as in v0.1.2              |
+| `hc`     | herdr-core, the core Herdr app runs every terminal and agent in | `herdr-core connect`: JSON-RPC 2.0, one message per line, protocol generation 1 |
+
+Everything above this section describes `herdr`. This section says what differs on `hc`.
+Where it says nothing, `hc` behaves as `herdr` does.
+
+**Choosing.** The spec's `herdr.backend` is `auto`, `hc` or `herdr`. Omitted means `herdr`,
+so a v0.1.2 app's teams stay where it can see them. A newer app sends `auto` unless the
+person chose a backend for the host. `auto` resolves at every `start-team` from `stopped`:
+
+1. `hc` when herdr-core is installed and its core answers `hello` with `generation: 1`;
+2. else `herdr` when Herdr 0.9 is installed;
+3. else `herdr_unavailable` with `details.reason: not_installed`.
+
+A core that answers with another generation is skipped (`details.hc: unsupported_generation`
+if nothing else is left). The resolved backend is `herdr_backend` in `TeamStatus`, null for
+an `auto` team that has never started. Changing `herdr.backend` or `herdr.server` while the
+team runs is refused (`team_running`, `details.fields`). On a stopped team it clears the
+recorded workspace, as a server change does, because placement ids belong to one backend.
+An adopted team's backend is the one it was adopted from, never `auto`.
+
+`herdr.server` keeps its meaning on both backends: the session. On `hc`, `default` is the
+default core, and any other name selects `HC_SESSION=<server>` (`herdr-core connect
+--session <server>`). Tests use `lugarn-test-<random>`.
+
+**Finding herdr-core.** `herdr-core` on the merged `PATH`
+([The person's `PATH`](#the-persons-path)), else `$HOME/.local/bin/herdr-core`, which is
+the rule hc's own remote probe uses. The `hc` symlink is optional and never used. The
+broker strips `HC_*` from the environment of every herdr-core it runs and passes the
+session explicitly.
+
+**Probing without side effects.** `herdr-core connect` and `herdr-core server status` both
+start a core when none is running. `hello` must not start one, so it runs
+`herdr-core --version`, and connects only when the session's socket already exists
+(`$XDG_RUNTIME_DIR/herdr-core/<server>.sock` on Linux, observed on 0.1.21 and 0.1.22).
+Elsewhere `hello` reports `running: null`. `start-team` on `hc` connects, which starts the
+core if needed. hc manages its own lifetime and reports `keeps_running_after_logout`, so
+`start-herdr` stays a 0.9 operation.
+
+**The core's identity.** A team records its core's `core.id` when it first launches on `hc`.
+An address (`t7`, `t1r`) names one terminal for the life of the core's state: it survives
+`server stop` and a later start, and is never reused. A different core id at the same
+session means the state was replaced. Every recorded address is then gone: never killed,
+sent to or removed.
+
+**What the broker starts.** Every terminal comes from `terminal.run` with an argv, never a
+shell line and never text typed into a shell. It also gets:
+
+- `cwd`;
+- `env`: the launch's own variables and the person's `PATH`, applied over the core's
+  environment;
+- `name`, for members;
+- `no_parent: true` and `no_notify: true`;
+- `keep: false`;
+- these labels:
+
+| Label                    | Value                                                                    |
+| ------------------------ | ------------------------------------------------------------------------ |
+| `lugarn.home`            | The first 16 hex digits of the SHA-256 of the state directory's path     |
+| `lugarn.team`            | The team id                                                              |
+| `lugarn.role`            | `runner` or `member`                                                     |
+| `lugarn.member`          | The member id (members only)                                             |
+| `lugarn.launch`          | The launch id (members only)                                             |
+| `herdr.space`, `herdr.tab` | Placement, below. Absent on a hidden runner.                           |
+
+Every client of the core can read labels, so no label carries a token, a path to one, or
+any text from the spec.
+
+The broker acts only on terminals it recorded. Before it sends to, kills or removes one,
+the core id, the address and the `lugarn.home` and `lugarn.team` labels must all match.
+Anything else is foreign and left alone.
+
+Herdr app turns `keep` on when it shows a terminal, so a lost harness can come back as a
+shell at the same address. A `lost` or `restarted` event, a `pid` other than the one
+`terminal.run` returned, or `state: finished` all mean the member's pane has gone
+(`died`, or `exited` when the program exited with a code). A pane exit is then handled as
+on `herdr` ([Leases](#leases-and-launches)).
+
+A Codex pane launch on `hc` adds `--no-daemon` when the installed Codex lists it in
+`--help`. hc requires it, because Codex otherwise runs its commands outside the core.
+
+**Placement.** Herdr app shows any terminal carrying `herdr.space` and `herdr.tab`, and an
+id it doesn't know becomes a new space or tab. The broker makes ids in Herdr's own shape:
+`sp` or `tb` followed by 32 random lowercase hex digits.
+
+- `tabs`: the team has a space. The runner is its first terminal, in a tab of its own, and
+  each pane member gets a tab in that space.
+- `workspaces`: the runner keeps the team space, and each pane member gets a space of its
+  own, with one tab.
+- At a start, the broker reuses the recorded space id when a live terminal on the core
+  still carries it. Otherwise it makes a new one, so the runner is again the first
+  terminal.
+- Headless members have no terminal until they're opened, as on `herdr`.
+- An adopted team's runner carries no `herdr.*` labels. It doesn't appear in Herdr app, so
+  starting an adopted team adds nothing to the person's space, and forgetting it leaves
+  nothing behind. Members the broker launches for an adopted team follow its placement,
+  with the adopted space as the team space.
+
+**Space names.** The broker never reads or writes the `herdr-app` document. Herdr app owns
+it: the newest accepted write wins, nothing is merged, and Herdr documents commands, not
+the document, as the way to change structure. A space nobody has named is called after
+where its first terminal is: its repository, else its folder. So the runner runs in
+`<state>/spaces/<team id>/<label>`, and Herdr app shows the space under the team's name
+with nothing written. `<label>` is the team's `display_name`, or `name` without one, made
+into one folder name:
+
+- `/`, `\`, ASCII controls and `<>:"|?*` become `-`;
+- leading and trailing spaces and dots are trimmed;
+- it keeps at most 64 bytes, cut at a UTF-8 boundary;
+- `name` is used instead when nothing is left or the result is a Windows reserved name.
+
+The folders are `0700`. A space the person renames in Herdr app keeps their name. These are
+known limits:
+
+- tabs are unnamed, so Herdr numbers them, and member names show as terminal names;
+- in `workspaces`, a member's space is named after the member's folder;
+- if the runner's terminal ends while members still run, the space takes the first
+  member's folder name until the next start;
+- a state directory inside a git repository gives the repository's name.
+
+**Names.** A member's terminal name follows [Herdr names](#herdr-placement) rule:
+
+- the member name first, then `-2`, `-3` and so on, checked against the names of live
+  terminals on the core;
+- hc refuses names shaped like an address (`t7`, `t1r`), so the broker treats those as
+  taken;
+- the recorded name is reused at every later launch, and when a live terminal holds it,
+  the launch fails with `name_taken` (`details.name`).
+
+hc names are unique only among live terminals, so a finished terminal's name is free again.
+
+**Status.** The runner keeps one `events.subscribe` connection, filtered on its
+`lugarn.home` and `lugarn.team` labels. It applies the snapshot and then each event in `seq`
+order to its view of its own terminals, and reads member activity from that view instead
+of polling:
+
+- hc's `idle`, `working`, `blocked` and `done` are the protocol's values;
+- `error` maps to `blocked`, because hc's guidance for it is that a person should read why;
+- no status (a program that never reported, or one that has exited) maps to `unknown`.
+
+`missed` replaces the view with the snapshot that follows it. If the connection closes, or
+no event or `heartbeat` arrives for 45 seconds, the runner reconnects with backoff (1 s,
+doubling to 30 s). Until it's back, it polls `terminal.list` with the same labels on each
+loop. `members` reads external members with one `terminal.list` per call, as on `herdr`.
+
+**Delivery.** Pane deliveries use `terminal.send`, with `force: false` and `wait: false`.
+hc holds a send while the person is typing a draft, up to 60 seconds after their last key,
+so the broker still never types over a person. hc's `blocked` refusal is
+`recipient_blocked`, and `finished` or `not_found` mean the pane has gone. hc pastes the
+text and presses Enter. [Untrusted text](#untrusted-text) applies unchanged.
+`return-headless` waits with `terminal.wait` for up to 300 seconds. It closes the pane with
+`terminal.kill`, confirms `state: finished` in the result, and then calls `terminal.rm`.
+
+**Adopting an hc space.** `adopt-team` with `backend: "hc"` takes these values:
+
+- `workspace`: a `herdr.space` id;
+- `pane`, in each binding: a terminal's address;
+- `agent`, in each binding: the terminal's name, or its address when it has none.
+
+The broker reads one `terminal.list` and never calls `doc.get`. Each binding must name a
+live terminal on this core that has:
+
+- that `herdr.space`;
+- a harness matching the member's, taken from its status `app` (`claude-code` is `claude`;
+  `codex`, `opencode` and `pi` are themselves), else from its foreground program's name;
+- a foreground `cwd` equal to the member's folder.
+
+Nothing is labelled, named or kept, so adopting changes nothing on the host. hc doesn't
+report a harness session, so the broker finds one for `bring-onto-comms` in this order:
+
+1. Claude's `~/.claude/sessions/<foreground pid>.json`, when its `pid` and `cwd` match the
+   terminal; only `sessionId` is read.
+2. A resume argument in the foreground argv: `--resume <id>` or `-r <id>` for Claude,
+   `resume <id>` for Codex, `--session <id>` or `-s <id>` for OpenCode.
+3. Otherwise none: a fresh conversation, which the preview reports.
+
+Every value is validated as a harness session id before it's used, as on `herdr`.
+
+**Bringing a member onto comms.** The runner rechecks the terminal: core, address, `pid`,
+`herdr.space`, harness, folder and the expected session. It then kills the terminal and
+confirms `finished`, and launches the member as a managed terminal. On `tabs`, the new
+terminal gets the adopted space and the old terminal's `herdr.tab`, so it lands back in its
+tab when Herdr app still has it; on `workspaces`, a new space. It takes the old terminal's
+name when it had one, which is free once the old one has finished. Otherwise it gets the
+member's name by the rule above. The old terminal is never removed: it belongs to the
+person.
+
+**Stopping and forgetting.** `stop-team` kills and removes the team's managed terminals
+and its runner, and leaves external members alone. `forget-team` kills and removes only the
+runner, which on an adopted team is hidden, so no runner tab is left behind.
+
+**Other platforms.** The `hc` driver is the same code on every OS. argv runs directly, so
+Windows needs none of the pane-launch workaround `herdr` does (decision 70). v0.1.3 verifies
+`hc` on Linux only. macOS and Windows on `hc` are untested.
+
 ## Teams and runs
 
 | State      | Meaning                                                                                   |
@@ -530,7 +731,7 @@ stopping, the runner dying and the spawner forgetting the member. Rows are never
 | `held_until`     | When the person's [hold](#holds) lapses, while one is live; else null                    |
 | `herdr_name`     | Optional permanent chosen Herdr name, present once allocated (migration backfills old members). |
 | `external`       | Optional `{ workspace, pane, terminal, agent, session, activity, available }` for a member not on comms. Absent once converted. |
-| `herdr`          | `{ server, workspace, agent }` while it has a managed pane, else null                           |
+| `herdr`          | `{ server, workspace, agent }` while it has a managed pane, else null. Optional `backend` (`HerdrBackend`); on `hc`, `workspace` is the `herdr.space` id and `agent` the terminal's address |
 | `session`        | The current session id, or null                                                         |
 | `sessions`       | Every session id it has had, oldest first: `{ id, ordinal, source, launch, first_seen_at }` |
 | `host`           | null (reserved)                                                                         |
@@ -1369,7 +1570,8 @@ Result:
 - `schemas`: `team_spec` (spec versions accepted), `store` (the store's migration version);
 - `capabilities`: feature flags. Known: `spawn`, `watch`, `open-terminal`, `return-headless`,
   `start-herdr`, `resolve-delivery`, `hold`, `worktrees`, `herdr-names`, `herdr-placement`,
-  `adopt-team`, `bring-onto-comms`, `forget-team`. Clients ignore unknown flags;
+  `adopt-team`, `bring-onto-comms`, `forget-team`, `hc` (this broker drives herdr-core;
+  see [Herdr backends](#herdr-backends)). Clients ignore unknown flags;
 - `host`: `id`, `os`, `arch`, `hostname`, `state_dir`, and `logind`: on Linux with
   systemd-logind, `kill_user_processes` (logind's `KillUserProcesses`) and `linger` (the
   user's `Linger`); null elsewhere or when `loginctl` can't say. With `kill_user_processes`
@@ -1390,6 +1592,13 @@ Result:
   through the login shell, or name the capture's issue. On Windows, `login`, `shell`,
   `captured_at` and `issue` are null;
 - `herdr`: `installed`, `version`, `running`, `server` (`default`);
+- `hc` (with the `hc` capability): `installed`, `version`, `path`, `running` (true, false, or
+  null when the OS gives no side-effect-free check), `generation`, `supported` (the core
+  speaks generation 1), `core` (`id`, `name`) and `keeps_running_after_logout` (hc's own
+  report), each null when unknown. `hello` never starts a core
+  ([Herdr backends](#herdr-backends));
+- `herdr_auto`: what `auto` would pick now, `hc`, `herdr` or null. It's for display;
+  `start-team` decides;
 - `harnesses`: per harness `installed`, `version`, `supported`, `issue`
   (`not_installed`, `unsupported_version`, `shim_only`) and `headless` (whether the broker can
   run it headless; false for pi until C0). OpenCode 1.x and 2.x are both supported.
@@ -1407,7 +1616,11 @@ See [Applying a spec](#applying-a-spec).
 ### adopt-team
 
 Request: `spec` (v1), `workspace` (existing ID), `members` (1–24 bindings of
-`{ member: <spec member id>, pane, agent }`). Creates only, with implicit revision 0.
+`{ member: <spec member id>, pane, agent }`), and optional `backend` (`herdr`, the default,
+or `hc`, which needs the `hc` capability). Creates only, with implicit revision 0. The
+spec's `herdr.backend` must be absent or equal `backend`; the stored team gets `backend`.
+On `hc`, `workspace` is a `herdr.space` id and `pane` a terminal address
+([Herdr backends](#herdr-backends)).
 Result: the same `team`, `warnings` as `apply-team`. All names, IDs and folders are validated;
 workspace/pane/terminal IDs are 1–128 ASCII letters, digits, `_`, `:`, `-`, starting with
 an alphanumeric. No shell option, control, relative folder or invalid resume ID is used.
@@ -1474,7 +1687,8 @@ member id, then reviewer member id, ascending (also in `continue-budget`).
 `pane`, `started_at`, `heartbeat_at`), `hops` (`used`, `allowance`, `base`, `exhausted`),
 `rounds` (per pair, the same plus `writer` and `reviewer`), `counts` (`members`, `running`,
 `headless_turns`, `queued`, `held`, `uncertain`), `started_at`, `stopped_at`,
-`last_app_contact_at`. New optional fields are `display_name`, `adopted` and `forgotten`.
+`last_app_contact_at`. New optional fields are `display_name`, `adopted`, `forgotten` and
+`herdr_backend` (the resolved `HerdrBackend`, null until an `auto` team first starts).
 
 **App contact.** Every app op updates `last_app_contact_at` on the team it names, or on every
 team when it names none (`hello`, `status` without a team, `start-herdr`). An open `watch`
@@ -1884,7 +2098,7 @@ one transaction and records itself in `schema_migrations`.
 | ----------------- | ------------------------------------------------------------------------------------------ |
 | `schema_migrations` | applied migrations                                                                       |
 | `meta`            | `host_id`                                                                                  |
-| `teams`           | the team, its limits, state, run, revision and runner heartbeat                            |
+| `teams`           | the team, its limits, state, run, revision and runner heartbeat; its backend choice, resolved backend and hc core id (migration 3) |
 | `external_members` | read-only Herdr bindings for members not yet on comms |
 | `members`         | every member, `human` included; never deleted                                              |
 | `worktrees`       | every worktree the broker created, with `removed_at` once `remove-worktrees` removes it     |
@@ -1976,6 +2190,8 @@ under [Versioning and compatibility](#versioning-and-compatibility).
 | `ErrorCode`        | `internal`, `invalid_request`, `unauthenticated`, `unsupported_version`, `not_found`, `unknown_member`, `denied`, `spawn_disabled`, `spawn_cap_reached`, `harness_not_allowed`, `profile_too_high`, `nesting_not_allowed`, `name_taken`, `team_not_running`, `team_running`, `runner_unavailable`, `herdr_unavailable`, `harness_unavailable`, `launch_failed`, `lease_conflict`, `revision_conflict`, `cursor_invalid`, `timeout` | errors |
 | `OpName`           | `adopt-team`, `bring-onto-comms`, `forget-team`, `hello`, `apply-team`, `get-team`, `start-team`, `stop-team`, `status`, `members`, `timeline`, `send`, `continue-budget`, `resolve-delivery`, `hold`, `open-terminal`, `return-headless`, `stop-member`, `worktrees`, `remove-worktrees`, `start-herdr`, `watch` | app ops |
 | `HerdrStartMethod` | `detached`, `systemd`, `wmi` | `start-herdr` |
+| `HerdrBackend`     | `herdr`, `hc` | `adopt-team`, `TeamStatus.herdr_backend`, `hello.herdr_auto`, member `herdr.backend` |
+| `HerdrBackendChoice` | `auto`, `herdr`, `hc` | spec `herdr.backend` |
 | `GitState`         | `missing`, `clean`, `dirty` | `worktrees` |
 | `WorktreeRefusal`  | `member_not_stopped`, `dirty`, `unknown_path`, `git_failed` | `remove-worktrees` |
 | `BranchOutcome`    | `deleted`, `kept_unmerged`, `missing` | `remove-worktrees`, `worktree.removed` |
@@ -2234,3 +2450,56 @@ Each item is a call the plan didn't make. Open questions are marked **Open**.
     bit on its launch instead. They survive runner restarts, rotate with a new launch,
     and never pretend to identify pi's conversation. This enables the existing CLI-only
     pi contract without changing its session/resume promises (decision 46).
+
+**Herdr app (hc), FlareTerminal #178**
+
+80. **Two backends, chosen per team.** `herdr.backend` is `auto`, `hc` or `herdr`, and
+    omitted means `herdr`, so v0.1.2 apps keep their 0.9 teams. The broker resolves `auto` at
+    each start, because it runs on the host and the app's per-host setting (Auto, Herdr app,
+    Herdr server) maps onto the three values one to one. The choice lives in the spec, not
+    in a `start-team` argument, because a team's recorded space, panes and core id belong to
+    one backend. Rejected: broker-side configuration, which the app couldn't see or show.
+81. **hc gets its own driver; it doesn't emulate the 0.9 client.** 0.9 creates a pane and then
+    starts the agent in it or types a command into its shell. hc runs an argv in a new
+    terminal. Emulating 0.9's panes over hc would bring back the shell typing hc removes, and
+    with it the clean-shell bootstrap and Windows workaround (decision 70). The 0.9 driver
+    and its tests are unchanged.
+82. **The broker never touches the `herdr-app` document.** It's never written: Herdr app owns
+    it, the newest accepted write wins with no merge, its format is private, and it holds the
+    person's whole layout for every live agent on that machine. A bad write costs that layout
+    for a cosmetic gain. It's never read either, since labels carry everything the broker
+    needs. Rejected: a compare-and-set `doc.set` to name the space, and
+    `herdr-app do space.rename`, which needs the window, often on another machine.
+83. **Space names come from the runner's folder.** Herdr app names an unnamed space after its
+    first terminal's folder. The runner is that terminal and runs in a folder named after
+    the team, so the space reads as the team with nothing written. Limits: tabs stay
+    numbered, member spaces in `workspaces` take their members' folder names, and a space
+    whose runner ends early falls back to the first member's folder. **Open:** Herdr app's
+    adoption of a broker-made space on a remote machine is not yet verified in a window.
+84. **An adopted team's runner is hidden.** Adoption must change nothing, and starting an
+    adopted team must not add a tab to the person's space. With no `herdr.*` labels, the
+    runner is visible only in `hc ls`, and `forget-team` leaves no idle runner tab behind,
+    which fixes the 0.9 leftover passed to the app at v0.1.2.
+85. **Safety by core id, address and labels.** hc addresses are permanent for a core's state,
+    and the core id detects replaced state. The broker acts only where all three match its
+    record, so a stale record can never kill or type into someone else's terminal. Labels
+    are public to every core client and so carry ids only.
+86. **Status from `events.subscribe`, with a poll fallback.** One subscription per runner,
+    filtered by labels, gives member activity within the core's event latency, as the app
+    asked. A dropped or silent subscription falls back to polling, so a status change is
+    never lost, only later. Adopted members keep the per-call refresh of decision 75.
+87. **hc's `error` is `blocked`.** The `Activity` enum is fixed in protocol 1. hc says a
+    person should read why an `error` happened, which is what `blocked` asks of the app.
+88. **Finding an adopted terminal's session is best-effort.** hc reports no harness session.
+    Claude's per-process session file and the launch argv are read-only hints, validated
+    like any session id. The preview shows the outcome before the person confirms, and the
+    fallback is a fresh conversation, never a guess.
+89. **`hello` never starts a core; `start-team` may.** Both `connect` and `server status`
+    start a missing core, so `hello` checks for the socket first. A team needs its core, so
+    starting one at `start-team` is the intended effect. On Linux with systemd, hc runs its
+    core as a user service (`hc-serve-*.service` under `user@.service`, seen on lexbox), so it
+    outlives the SSH session, and it reports linger itself.
+90. **What's new on the wire.** There are no new error codes, request kinds or values in
+    existing enums. `HerdrBackend` and `HerdrBackendChoice` are new enums, used only by new
+    optional fields. Store migration 3 adds the team's backend choice, its resolved backend
+    and its hc core id. The `hc` capability tells the app all of this is present.
