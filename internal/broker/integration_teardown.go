@@ -13,6 +13,9 @@ import (
 // Close waits for cooperative runner shutdown, then removes only this team's
 // recorded processes/panes and ended launch artifacts. No process name is used.
 func (i *Integration) Close(ctx context.Context, t store.Team, members []model.Member) error {
+	if hcTeam(&t) {
+		return i.closeHC(ctx, t, members)
+	}
 	var failures teardownFailures
 	record := func(step string, e error) {
 		if e != nil {

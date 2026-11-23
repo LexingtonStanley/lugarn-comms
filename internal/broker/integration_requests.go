@@ -126,6 +126,9 @@ func (l *integrationLifecycle) waitRecipient(ctx context.Context, m model.Member
 	}
 }
 func (l *integrationLifecycle) closePane(ctx context.Context, m model.Member) error {
+	if hcMember(m) {
+		return l.i.closeHCMember(ctx, m)
+	}
 	if m.Lease == nil || m.Lease.Pane == nil {
 		return nil
 	}
@@ -244,7 +247,12 @@ func (l *integrationLifecycle) toHeadless(ctx context.Context, m model.Member, c
 			return e
 		}
 		server, name := paneIdentity(m)
-		_, e := l.i.opts.Herdr(server).Wait(ctx, name, []model.Activity{model.ActivityIdle, model.ActivityDone}, 300*time.Second)
+		var e error
+		if hcMember(m) {
+			e = l.i.waitHCIdle(ctx, m, 300*time.Second)
+		} else {
+			_, e = l.i.opts.Herdr(server).Wait(ctx, name, []model.Activity{model.ActivityIdle, model.ActivityDone}, 300*time.Second)
+		}
 		if e != nil {
 			return e
 		}

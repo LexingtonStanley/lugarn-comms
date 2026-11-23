@@ -163,6 +163,7 @@ func checkRecordEmission(t *testing.T, typ reflect.Type, def schemaNode) {
 
 func TestSchemaDefaultParity(t *testing.T) {
 	defaults := map[string]any{
+		"HerdrSettings.backend":         DefaultHerdrBackend,
 		"HerdrSettings.server":          DefaultHerdrServer,
 		"HerdrSettings.placement":       DefaultHerdrPlacement,
 		"Limits.hop_budget":             DefaultHopBudget,

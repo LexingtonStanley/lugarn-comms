@@ -1,0 +1,53 @@
+[
+  {
+    "jsonrpc": "2.0",
+    "method": "missed",
+    "params": {
+      "seq": 150005,
+      "terminals": [
+        {
+          "address": "t1",
+          "argv": [
+            "/usr/bin/python3",
+            "-c",
+            "import sys,time;time.sleep(1);sys.stdout.write('\\x1b]7501;state=working:app=fixture\\x07\\x1b]7501;state=idle:app=fixture\\x07'*50000);sys.stdout.flush();time.sleep(3)"
+          ],
+          "cols": 200,
+          "created_ms": 1795452221537,
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "die_with_parent": false,
+          "exit_code": 0,
+          "finished_ms": 1795452225733,
+          "identity": "ghostty",
+          "keep": false,
+          "labels": {
+            "probe": "missed"
+          },
+          "name": null,
+          "notify": false,
+          "parent": null,
+          "pid": 1194146,
+          "reason": "exited",
+          "reported": true,
+          "rm": false,
+          "rows": 120,
+          "screen": "exact",
+          "signal": null,
+          "state": "finished",
+          "status": null,
+          "status_ms": 1795452225733,
+          "template": null,
+          "title": "",
+          "turn": 50000
+        }
+      ]
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "heartbeat",
+    "params": {
+      "seq": 150005
+    }
+  }
+]

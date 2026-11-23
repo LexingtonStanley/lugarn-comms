@@ -103,7 +103,7 @@ func (r *Runner) observePane(ctx context.Context, m model.Member) (observe, work
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	previous, ok := r.paneObserved[m.ID]
-	if !work && ok && previous.generation == m.Lease.Generation && now.Sub(previous.at) < 5*time.Second {
+	if !hcMember(m) && !work && ok && previous.generation == m.Lease.Generation && now.Sub(previous.at) < 5*time.Second {
 		return false, false, nil
 	}
 	r.paneObserved[m.ID] = runnerPanePoll{at: now, generation: m.Lease.Generation}
@@ -268,7 +268,11 @@ func (r *Runner) runPane(ctx context.Context, m model.Member) error {
 		if ctx.Err() != nil {
 			return r.cancelledPane(ctx, current, items, false)
 		}
-		return r.finishPane(ctx, current, items, model.DeliveryStateHeld, ptr(model.DeliveryReasonDeliveryFailed))
+		reason := model.DeliveryReasonDeliveryFailed
+		if hcMember(current) && model.AsError(e).Details["reason"] == "recipient_blocked" {
+			reason = model.DeliveryReasonRecipientBlocked
+		}
+		return r.finishPane(ctx, current, items, model.DeliveryStateHeld, &reason)
 	}
 	activity, e := r.opts.Panes.WaitActivity(ctx, current, r.opts.PaneTimeout)
 	if ctx.Err() != nil {

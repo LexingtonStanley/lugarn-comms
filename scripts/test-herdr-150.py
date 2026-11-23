@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Opt-in real #150 regression: python3 scripts/test-herdr-150.py --run.
 
-Uses only the named server lugarn-150 and plain shell harnesses. Refuses an
+Uses only a fresh lugarn-test-150-<random> server and plain shell harnesses. Refuses an
 existing session, builds the real broker, records fixtures, and cleans up in
 finally. The only unscoped Herdr command is the read-only session list.
 """
 import json
+import secrets
 import os
 from pathlib import Path
 import shlex
@@ -18,7 +19,7 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "internal/broker/testdata/herdr-150"
 HERDR = shutil.which("herdr")
-SESSION = "lugarn-150"
+SESSION = "lugarn-test-150-" + secrets.token_hex(6)
 
 
 def command(argv, **kwargs):
@@ -41,7 +42,7 @@ def main():
         sys.exit("herdr is not installed")
     before = sessions()
     if any(s["name"] == SESSION for s in before["sessions"]):
-        sys.exit("refusing existing lugarn-150 session; leave it to its owner")
+        sys.exit("refusing existing test session; leave it to its owner")
     FIXTURES.mkdir(parents=True, exist_ok=True)
     save("sessions-before.json", before)
     scratch = Path(tempfile.mkdtemp(prefix=".herdr-150-", dir=ROOT))
@@ -57,7 +58,7 @@ def main():
         helper = scratch / "bin/pi"
         helper.write_text("""#!/bin/sh
 if [ "$1" = --version ]; then echo 'pi 0.63.0'; exit 0; fi
-report() { %s --session lugarn-150 pane report-agent "$HERDR_PANE_ID" --source lugarn-150 --agent pi --state "$1" >/dev/null; }
+report() { %s --session %s pane report-agent "$HERDR_PANE_ID" --source lugarn-150 --agent pi --state "$1" >/dev/null; }
 report idle
 printf 'pi test shell ready\\n'
 while IFS= read -r line; do
@@ -73,7 +74,7 @@ while IFS= read -r line; do
   ;;
  esac
 done
-""" % (shlex.quote(HERDR), shlex.quote(str(binary))))
+""" % (shlex.quote(HERDR), shlex.quote(SESSION), shlex.quote(str(binary))))
         helper.chmod(0o700)
         original_config = os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))
         env = dict(os.environ, HOME=str(home), ZDOTDIR=str(home),

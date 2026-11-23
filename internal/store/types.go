@@ -9,6 +9,9 @@ import (
 
 // Team is the stored team configuration and runtime state.
 type Team struct {
+	BackendChoice      model.HerdrBackendChoice
+	Backend            *model.HerdrBackend
+	HCCoreID           *string
 	ID                 string
 	Name               string
 	DisplayName        *string
@@ -38,6 +41,9 @@ type Team struct {
 // TeamPatch changes only non-nil fields. Revision and run are changed by their
 // dedicated accessors so concurrent revision checks remain explicit.
 type TeamPatch struct {
+	BackendChoice      *model.HerdrBackendChoice
+	Backend            **model.HerdrBackend
+	HCCoreID           **string
 	Name               *string
 	DisplayName        **string
 	Placement          *string

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/broker"
+	"github.com/LexingtonStanley/lugarn-comms/internal/hc"
 	"github.com/LexingtonStanley/lugarn-comms/internal/hostprobe"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/statedir"
@@ -37,7 +38,7 @@ func integrationOptions() (broker.IntegrationOptions, error) {
 			models[h] = value
 		}
 	}
-	return broker.IntegrationOptions{Binary: binary, HerdrBinary: os.Getenv("LUGARN_COMMS_HERDR_BINARY"), HomeDir: home, Models: models}, nil
+	return broker.IntegrationOptions{HCProbe: hc.Probe, HCSocket: hc.SocketExists, Binary: binary, HerdrBinary: os.Getenv("LUGARN_COMMS_HERDR_BINARY"), HCBinary: os.Getenv("LUGARN_COMMS_HC_BINARY"), HomeDir: home, Models: models}, nil
 }
 func runTeam(ctx context.Context, args []string, stderr io.Writer) int {
 	flags := flag.NewFlagSet("run", flag.ContinueOnError)
@@ -95,6 +96,15 @@ func runTeam(ctx context.Context, args []string, stderr io.Writer) int {
 	var pane *string
 	if value := os.Getenv("HERDR_PANE_ID"); value != "" {
 		pane = &value
+	}
+	if value := os.Getenv("HC_TERMINAL_ID"); value != "" {
+		var t *store.Team
+		if e = db.Read(ctx, func(tx *store.Tx) error { var err error; t, err = tx.GetTeam(*team); return err }); e != nil {
+			return fail(e)
+		}
+		if t.Backend != nil && *t.Backend == model.HerdrBackendHC {
+			pane = &value
+		}
 	}
 	if e = integration.Runner(*team, broker.RunnerOptions{Pane: pane}).Run(ctx); e != nil {
 		return fail(e)

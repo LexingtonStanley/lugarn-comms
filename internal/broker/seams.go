@@ -79,13 +79,23 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 	}
 	var host model.HerdrInfo
 	var hostErr error
+	backend := preflight.Backend
+	core := preflight.HCCoreID
 	if preflight.Forgotten {
 		return out, model.NewError(model.ErrorNotFound, "team was forgotten")
 	}
 	if preflight.State == model.TeamStateStopped {
 		if b.integration != nil {
-			status, e := b.integration.opts.Herdr(preflight.HerdrServer).Status(ctx)
-			host, hostErr = status.Info(), e
+			backend, core, hostErr = b.integration.resolveBackend(ctx, preflight)
+			if hostErr != nil {
+				return out, hostErr
+			}
+			if backend != nil && *backend == model.HerdrBackendHC {
+				host = model.HerdrInfo{Installed: true, Running: true}
+			} else {
+				status, e := b.integration.opts.Herdr(preflight.HerdrServer).Status(ctx)
+				host, hostErr = status.Info(), e
+			}
 		} else {
 			host, hostErr = b.opts.Probe.Herdr(ctx, preflight.HerdrServer)
 		}
@@ -107,7 +117,7 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 		if t.State != model.TeamStateStopped {
 			return model.NewError(model.ErrorLeaseConflict, "team is already starting or stopping")
 		}
-		if preflight.State != model.TeamStateStopped || preflight.HerdrServer != t.HerdrServer {
+		if preflight.State != model.TeamStateStopped || preflight.HerdrServer != t.HerdrServer || preflight.BackendChoice != t.BackendChoice {
 			return model.NewError(model.ErrorLeaseConflict, "team changed during Herdr preflight")
 		}
 		if hostErr != nil || !host.Running {
@@ -116,6 +126,15 @@ func (b *Broker) StartTeam(ctx context.Context, r wire.StartTeamRequest) (wire.S
 				reason = "not_installed"
 			}
 			return model.NewError(model.ErrorHerdrUnavailable, "the team's Herdr server is unavailable").WithDetail("reason", reason)
+		}
+		// An auto choice can resolve differently on a later start. Placement
+		// ids from the previous driver have no meaning on the new backend.
+		patch := store.TeamPatch{Backend: &backend, HCCoreID: &core}
+		if t.Backend != nil && backend != nil && *t.Backend != *backend {
+			patch.HerdrWorkspace = ptr((*string)(nil))
+		}
+		if e = tx.UpdateTeam(t.ID, patch, b.now()); e != nil {
+			return e
 		}
 		s, e := b.budget(tx, t, true)
 		if e != nil {

@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"encoding/json"
+	"github.com/LexingtonStanley/lugarn-comms/internal/hc"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 	"github.com/LexingtonStanley/lugarn-comms/internal/policy"
 	"github.com/LexingtonStanley/lugarn-comms/internal/service"
@@ -34,7 +35,17 @@ func (b *Broker) Hello(ctx context.Context, r wire.HelloRequest) (wire.HelloResu
 	}
 	out = wire.HelloResult{Broker: wire.HelloResultBroker{Version: version.Version, Commit: ptr(version.Commit), Protocol: 1, Protocols: []int64{1}}, Schemas: wire.HelloResultSchemas{TeamSpec: []int64{1}, Store: int64(b.db.Version())}, Capabilities: []string{"watch", "resolve-delivery", "hold", "worktrees"}, Host: wire.HelloResultHost{ID: b.db.HostID(), OS: h.OS, Arch: h.Arch, Hostname: h.Hostname, StateDir: b.opts.StateDir}, Herdr: herdr, Harnesses: b.opts.Probe.Harnesses(ctx)}
 	if b.integration != nil {
-		out.Capabilities = append(out.Capabilities, "spawn", "open-terminal", "return-headless", "start-herdr", "herdr-names", "herdr-placement", "adopt-team", "bring-onto-comms", "forget-team")
+		out.Capabilities = append(out.Capabilities, "spawn", "open-terminal", "return-headless", "start-herdr", "herdr-names", "herdr-placement", "adopt-team", "bring-onto-comms", "forget-team", "hc")
+		var info hc.Info
+		if probe := b.integration.opts.HCProbe; probe != nil {
+			info = probe(ctx, b.integration.opts.HCBinary, model.DefaultHerdrServer)
+		}
+		out.HC = &info
+		if info.Supported != nil && *info.Supported {
+			out.HerdrAuto = ptr(model.HerdrBackendHC)
+		} else if herdr.Installed && (!info.Installed || info.Supported != nil && !*info.Supported) {
+			out.HerdrAuto = ptr(model.HerdrBackendHerdr)
+		}
 	}
 	out.Host.Path.Inherited = os.Getenv("PATH")
 	if p := b.opts.LoginPath; p != nil {

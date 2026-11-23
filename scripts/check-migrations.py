@@ -449,6 +449,8 @@ plan_uses("worktrees listing", "SELECT path FROM worktrees WHERE team_id = ? AND
 common = json.loads(COMMON.read_text())["$defs"]
 ENUM_COLUMNS = {
     ("teams", "pattern"): "Pattern",
+    ("teams", "backend_choice"): "HerdrBackendChoice",
+    ("teams", "backend"): "HerdrBackend",
     ("teams", "state"): "TeamState",
     ("teams", "runner_state"): "RunnerState",
     ("members", "kind"): "MemberKind",

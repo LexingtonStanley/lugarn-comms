@@ -75,6 +75,12 @@ func Args(l Launch, mode model.Mode) ([]string, error) {
 		for _, name := range commsTools {
 			config("mcp_servers.lugarn.tools."+name+".approval_mode", "approve")
 		}
+		if !headless {
+			// The TUI otherwise opens on an "Update available" dialog whenever a
+			// newer Codex exists. It reports no status there, so the runner never
+			// sees it ready and no delivery happens (found on hc, 0.164 -> 0.171).
+			config("check_for_update_on_startup", false)
+		}
 		if headless {
 			a = append(a, "exec", "--json")
 			if l.Resume {

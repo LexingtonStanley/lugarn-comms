@@ -116,7 +116,11 @@ func ApplyDefaults(spec model.TeamSpec) model.TeamSpec {
 	if spec.Herdr != nil && spec.Herdr.Placement != nil {
 		placement = *spec.Herdr.Placement
 	}
-	out.Herdr = &model.HerdrSettings{Server: &server, Placement: &placement}
+	backend := model.HerdrBackendChoiceHerdr
+	if spec.Herdr != nil && spec.Herdr.Backend != nil {
+		backend = *spec.Herdr.Backend
+	}
+	out.Herdr = &model.HerdrSettings{Server: &server, Placement: &placement, Backend: &backend}
 
 	l := ResolveLimits(spec.Limits)
 	out.Limits = &model.Limits{
@@ -289,6 +293,9 @@ func checkSpecValues(errs *fieldErrors, spec model.TeamSpec) {
 	}
 	if spec.DisplayName != nil && (model.ValidateText(*spec.DisplayName) != nil || utf8.RuneCountInString(*spec.DisplayName) > 128 || displayControlPattern.MatchString(*spec.DisplayName)) {
 		errs.add("/display_name", "must be 1 to 128 characters without controls")
+	}
+	if spec.Herdr != nil && spec.Herdr.Backend != nil && !spec.Herdr.Backend.Valid() {
+		errs.add("/herdr/backend", "must be auto, hc or herdr")
 	}
 	if spec.Herdr != nil && spec.Herdr.Placement != nil && *spec.Herdr.Placement != "tabs" && *spec.Herdr.Placement != "workspaces" {
 		errs.add("/herdr/placement", "must be tabs or workspaces")

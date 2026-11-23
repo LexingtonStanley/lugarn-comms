@@ -11,7 +11,7 @@ import (
 )
 
 func (b *Broker) spec(tx *store.Tx, t *store.Team) (model.TeamSpec, error) {
-	out := model.TeamSpec{Version: t.SpecVersion, ID: t.ID, Name: t.Name, Pattern: t.Pattern, DisplayName: t.DisplayName, Herdr: &model.HerdrSettings{Server: &t.HerdrServer, Placement: &t.Placement}, Limits: &model.Limits{HopBudget: ptr(int(t.HopBudget)), ReviewRounds: ptr(int(t.ReviewRounds)), PerRecipient: ptr(int(t.PerRecipient)), HeadlessTurns: ptr(int(t.HeadlessTurns)), TurnTimeoutSeconds: ptr(int(t.TurnTimeoutSeconds))}, Members: []model.MemberSpec{}}
+	out := model.TeamSpec{Version: t.SpecVersion, ID: t.ID, Name: t.Name, Pattern: t.Pattern, DisplayName: t.DisplayName, Herdr: &model.HerdrSettings{Server: &t.HerdrServer, Placement: &t.Placement, Backend: &t.BackendChoice}, Limits: &model.Limits{HopBudget: ptr(int(t.HopBudget)), ReviewRounds: ptr(int(t.ReviewRounds)), PerRecipient: ptr(int(t.PerRecipient)), HeadlessTurns: ptr(int(t.HeadlessTurns)), TurnTimeoutSeconds: ptr(int(t.TurnTimeoutSeconds))}, Members: []model.MemberSpec{}}
 	ms, e := tx.ListMembers(t.ID, false)
 	if e != nil {
 		return out, e
@@ -122,6 +122,11 @@ func (b *Broker) applyTeam(ctx context.Context, r wire.ApplyTeamRequest, adopt f
 		}
 		s := p.Spec
 		if t != nil {
+			// An adopted team stays on the backend it was adopted from. A server
+			// change stays governed by the external-member check below, as in 0.9.
+			if t.Adopted && t.BackendChoice != *s.Herdr.Backend {
+				return invalid("an adopted team's herdr.backend cannot change")
+			}
 			for _, ms := range s.Members {
 				m, err := tx.GetMember(ms.ID)
 				if err != nil && !missing(err) {
@@ -135,17 +140,17 @@ func (b *Broker) applyTeam(ctx context.Context, r wire.ApplyTeamRequest, adopt f
 		now := b.now()
 		l := p.Limits
 		if p.Create {
-			if e = tx.CreateTeam(store.Team{ID: s.ID, Name: s.Name, Pattern: s.Pattern, SpecVersion: 1, Revision: p.Revision, State: model.TeamStateStopped, HerdrServer: *s.Herdr.Server, DisplayName: s.DisplayName, Placement: *s.Herdr.Placement, HopBudget: int64(l.HopBudget), ReviewRounds: int64(l.ReviewRounds), PerRecipient: int64(l.PerRecipient), HeadlessTurns: int64(l.HeadlessTurns), TurnTimeoutSeconds: int64(l.TurnTimeoutSeconds), CreatedAt: now, UpdatedAt: now}); e != nil {
+			if e = tx.CreateTeam(store.Team{ID: s.ID, Name: s.Name, Pattern: s.Pattern, SpecVersion: 1, Revision: p.Revision, State: model.TeamStateStopped, HerdrServer: *s.Herdr.Server, BackendChoice: *s.Herdr.Backend, DisplayName: s.DisplayName, Placement: *s.Herdr.Placement, HopBudget: int64(l.HopBudget), ReviewRounds: int64(l.ReviewRounds), PerRecipient: int64(l.PerRecipient), HeadlessTurns: int64(l.HeadlessTurns), TurnTimeoutSeconds: int64(l.TurnTimeoutSeconds), CreatedAt: now, UpdatedAt: now}); e != nil {
 				return e
 			}
 		} else {
-			if e = tx.UpdateTeam(s.ID, store.TeamPatch{Name: &s.Name, Pattern: &s.Pattern, HerdrServer: s.Herdr.Server, DisplayName: &s.DisplayName, Placement: s.Herdr.Placement, HopBudget: ptr(int64(l.HopBudget)), ReviewRounds: ptr(int64(l.ReviewRounds)), PerRecipient: ptr(int64(l.PerRecipient)), HeadlessTurns: ptr(int64(l.HeadlessTurns)), TurnTimeoutSeconds: ptr(int64(l.TurnTimeoutSeconds))}, now); e != nil {
+			if e = tx.UpdateTeam(s.ID, store.TeamPatch{Name: &s.Name, Pattern: &s.Pattern, HerdrServer: s.Herdr.Server, BackendChoice: s.Herdr.Backend, DisplayName: &s.DisplayName, Placement: s.Herdr.Placement, HopBudget: ptr(int64(l.HopBudget)), ReviewRounds: ptr(int64(l.ReviewRounds)), PerRecipient: ptr(int64(l.PerRecipient)), HeadlessTurns: ptr(int64(l.HeadlessTurns)), TurnTimeoutSeconds: ptr(int64(l.TurnTimeoutSeconds))}, now); e != nil {
 				return e
 			}
 			// Workspace IDs are scoped to a server; never reuse an old server's
 			// recorded ID when the stopped team selects another server.
-			if t.HerdrServer != *s.Herdr.Server {
-				if e = tx.UpdateTeam(s.ID, store.TeamPatch{HerdrWorkspace: ptr((*string)(nil))}, now); e != nil {
+			if t.HerdrServer != *s.Herdr.Server || t.BackendChoice != *s.Herdr.Backend {
+				if e = tx.UpdateTeam(s.ID, store.TeamPatch{HerdrWorkspace: ptr((*string)(nil)), Backend: ptr(resolvedChoice(*s.Herdr.Backend)), HCCoreID: ptr((*string)(nil))}, now); e != nil {
 					return e
 				}
 			}

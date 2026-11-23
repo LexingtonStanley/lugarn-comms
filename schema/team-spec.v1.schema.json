@@ -32,6 +32,7 @@
     "HerdrSettings": {
       "type": "object",
       "properties": {
+        "backend": { "$ref": "common.v1.schema.json#/$defs/HerdrBackendChoice", "default": "herdr" },
         "placement": { "type": "string", "enum": ["tabs", "workspaces"], "default": "tabs" },
         "server": {
           "description": "The Herdr server the team runs on. Default `default`.",

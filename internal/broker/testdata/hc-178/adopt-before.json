@@ -1,0 +1,94 @@
+[
+  {
+    "address": "t7",
+    "argv": [
+      "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+    ],
+    "cols": 200,
+    "created_ms": 1795452668661,
+    "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+    "die_with_parent": false,
+    "exit_code": null,
+    "finished_ms": null,
+    "foreground": {
+      "argv": [
+        "/usr/bin/python3",
+        "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+      ],
+      "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+      "name": "pi",
+      "pid": 1297142
+    },
+    "identity": "ghostty",
+    "keep": false,
+    "labels": {
+      "herdr.space": "spaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "herdr.tab": "tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "name": "one",
+    "notify": false,
+    "parent": null,
+    "pid": 1297142,
+    "reason": null,
+    "reported": true,
+    "rm": false,
+    "rows": 120,
+    "screen": "exact",
+    "signal": null,
+    "state": "live",
+    "status": {
+      "app": "pi",
+      "state": "idle"
+    },
+    "status_ms": 1795452668674,
+    "template": null,
+    "title": "",
+    "turn": 0
+  },
+  {
+    "address": "t8",
+    "argv": [
+      "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+    ],
+    "cols": 200,
+    "created_ms": 1795452668669,
+    "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+    "die_with_parent": false,
+    "exit_code": null,
+    "finished_ms": null,
+    "foreground": {
+      "argv": [
+        "/usr/bin/python3",
+        "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+      ],
+      "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+      "name": "pi",
+      "pid": 1297147
+    },
+    "identity": "ghostty",
+    "keep": false,
+    "labels": {
+      "herdr.space": "spaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "herdr.tab": "tbcccccccccccccccccccccccccccccccc"
+    },
+    "name": "two",
+    "notify": false,
+    "parent": null,
+    "pid": 1297147,
+    "reason": null,
+    "reported": true,
+    "rm": false,
+    "rows": 120,
+    "screen": "exact",
+    "signal": null,
+    "state": "live",
+    "status": {
+      "app": "pi",
+      "state": "idle"
+    },
+    "status_ms": 1795452668678,
+    "template": null,
+    "title": "",
+    "turn": 0
+  }
+]

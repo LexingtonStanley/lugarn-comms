@@ -1,0 +1,1099 @@
+[
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t1",
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/lugarn-comms",
+          "run",
+          "--team",
+          "tabs"
+        ],
+        "cols": 200,
+        "created_ms": 1795452647315,
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/state/spaces/tabs/Team TABS",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp3539622e15faf4ecd37b68e65fa1d2d6",
+          "herdr.tab": "tb30e66929fbd0b0411186ae70ef1289b3",
+          "lugarn.home": "2cfe8aa231c09d85",
+          "lugarn.role": "runner",
+          "lugarn.team": "tabs"
+        },
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1293050,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 1,
+      "terminal": "t1",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/lugarn-comms",
+          "run",
+          "--team",
+          "tabs"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/state/spaces/tabs/Team TABS",
+        "name": "lugarn-comms",
+        "pid": 1293050
+      },
+      "seq": 2,
+      "terminal": "t1",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t2",
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452657466,
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp3539622e15faf4ecd37b68e65fa1d2d6",
+          "herdr.tab": "tb5398b8085e5b06ab17485d76290d4a5f",
+          "lugarn.home": "2cfe8aa231c09d85",
+          "lugarn.launch": "01M84N2QSDPQT9BJSSFCTR0V8C",
+          "lugarn.member": "tabs-t7",
+          "lugarn.role": "member",
+          "lugarn.team": "tabs"
+        },
+        "name": "t7-2",
+        "notify": false,
+        "parent": null,
+        "pid": 1294949,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 3,
+      "terminal": "t2",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t3",
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452657475,
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp3539622e15faf4ecd37b68e65fa1d2d6",
+          "herdr.tab": "tbc96574479ac2f592cb8b08eb28f9dac2",
+          "lugarn.home": "2cfe8aa231c09d85",
+          "lugarn.launch": "01M84N2QSDMPQAG40ZYXW74YB1",
+          "lugarn.member": "tabs-writer",
+          "lugarn.role": "member",
+          "lugarn.team": "tabs"
+        },
+        "name": "writer",
+        "notify": false,
+        "parent": null,
+        "pid": 1294960,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 4,
+      "terminal": "t3",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 5,
+      "terminal": "t2",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 6,
+      "terminal": "t3",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/usr/bin/python3",
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "name": "pi",
+        "pid": 1294949
+      },
+      "seq": 7,
+      "terminal": "t2",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/usr/bin/python3",
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "name": "pi",
+        "pid": 1294960
+      },
+      "seq": 8,
+      "terminal": "t3",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t4",
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/lugarn-comms",
+          "run",
+          "--team",
+          "spaces"
+        ],
+        "cols": 200,
+        "created_ms": 1795452657814,
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/state/spaces/spaces/Team SPACES",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp61032c6bdec8e83a1b27c1c3c4753b75",
+          "herdr.tab": "tba4c0328847bca146cc40166ce2a77489",
+          "lugarn.home": "2cfe8aa231c09d85",
+          "lugarn.role": "runner",
+          "lugarn.team": "spaces"
+        },
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1295175,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 9,
+      "terminal": "t4",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/lugarn-comms",
+          "run",
+          "--team",
+          "spaces"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/state/spaces/spaces/Team SPACES",
+        "name": "lugarn-comms",
+        "pid": 1295175
+      },
+      "seq": 10,
+      "terminal": "t4",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "heartbeat",
+    "params": {
+      "seq": 10
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t5",
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452667946,
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "sp0db2e1ba87ac111ea6150db0ca22e36f",
+          "herdr.tab": "tbd2ad292dc4228b5d95bbed27ed9128b2",
+          "lugarn.home": "2cfe8aa231c09d85",
+          "lugarn.launch": "01M84N320VDKM4QNFXHTKA2K61",
+          "lugarn.member": "spaces-writer",
+          "lugarn.role": "member",
+          "lugarn.team": "spaces"
+        },
+        "name": "writer-2",
+        "notify": false,
+        "parent": null,
+        "pid": 1296940,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 11,
+      "terminal": "t5",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t6",
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452667950,
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "spa5c69b4913fa2a745c48073f1b64438d",
+          "herdr.tab": "tb62ae5d6e7b7feeb82b08b02804a8d9c8",
+          "lugarn.home": "2cfe8aa231c09d85",
+          "lugarn.launch": "01M84N320VHWYDQERF012HPQZD",
+          "lugarn.member": "spaces-t7",
+          "lugarn.role": "member",
+          "lugarn.team": "spaces"
+        },
+        "name": "t7-3",
+        "notify": false,
+        "parent": null,
+        "pid": 1296947,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 12,
+      "terminal": "t6",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 13,
+      "terminal": "t5",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 14,
+      "terminal": "t6",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/usr/bin/python3",
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "name": "pi",
+        "pid": 1296940
+      },
+      "seq": 15,
+      "terminal": "t5",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/usr/bin/python3",
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "name": "pi",
+        "pid": 1296947
+      },
+      "seq": 16,
+      "terminal": "t6",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "working"
+        }
+      },
+      "seq": 17,
+      "terminal": "t3",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t7",
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452668661,
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "spaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "herdr.tab": "tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "name": "one",
+        "notify": false,
+        "parent": null,
+        "pid": 1297142,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 18,
+      "terminal": "t7",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t8",
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452668669,
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "spaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "herdr.tab": "tbcccccccccccccccccccccccccccccccc"
+        },
+        "name": "two",
+        "notify": false,
+        "parent": null,
+        "pid": 1297147,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 19,
+      "terminal": "t8",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 20,
+      "terminal": "t7",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 21,
+      "terminal": "t8",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/usr/bin/python3",
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "name": "pi",
+        "pid": 1297142
+      },
+      "seq": 22,
+      "terminal": "t7",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/usr/bin/python3",
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "name": "pi",
+        "pid": 1297147
+      },
+      "seq": 23,
+      "terminal": "t8",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t9",
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/lugarn-comms",
+          "run",
+          "--team",
+          "adopted"
+        ],
+        "cols": 200,
+        "created_ms": 1795452669456,
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/state/spaces/adopted/Team ADOPTED",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "lugarn.home": "2cfe8aa231c09d85",
+          "lugarn.role": "runner",
+          "lugarn.team": "adopted"
+        },
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1297320,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 24,
+      "terminal": "t9",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 25,
+      "terminal": "t3",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "state": "idle",
+        "turn": 1
+      },
+      "seq": 26,
+      "terminal": "t3",
+      "type": "turn"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/lugarn-comms",
+          "run",
+          "--team",
+          "adopted"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/state/spaces/adopted/Team ADOPTED",
+        "name": "lugarn-comms",
+        "pid": 1297320
+      },
+      "seq": 27,
+      "terminal": "t9",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "heartbeat",
+    "params": {
+      "seq": 27
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": null
+      },
+      "seq": 28,
+      "terminal": "t7",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "exit_code": null,
+        "finished_ms": 1795452679861,
+        "reason": "killed",
+        "signal": 1
+      },
+      "seq": 29,
+      "terminal": "t7",
+      "type": "finished"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "address": "t10",
+        "argv": [
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452679899,
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "herdr.space": "spaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "herdr.tab": "tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "lugarn.home": "2cfe8aa231c09d85",
+          "lugarn.launch": "01M84N3DP86YJFX9561E332TY2",
+          "lugarn.member": "adopted-one",
+          "lugarn.role": "member",
+          "lugarn.team": "adopted"
+        },
+        "name": "one",
+        "notify": false,
+        "parent": null,
+        "pid": 1298485,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      },
+      "seq": 30,
+      "terminal": "t10",
+      "type": "created"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        }
+      },
+      "seq": 31,
+      "terminal": "t10",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "exit_code": 0,
+        "finished_ms": 1795452680045,
+        "reason": "exited",
+        "signal": null
+      },
+      "seq": 32,
+      "terminal": "t9",
+      "type": "finished"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {},
+      "seq": 33,
+      "terminal": "t9",
+      "type": "removed"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "argv": [
+          "/usr/bin/python3",
+          "/tmp/lugarn-hc-178-tjjb0q4p/bin/pi"
+        ],
+        "cwd": "/tmp/lugarn-hc-178-tjjb0q4p/work",
+        "name": "pi",
+        "pid": 1298485
+      },
+      "seq": 34,
+      "terminal": "t10",
+      "type": "foreground"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "exit_code": 0,
+        "finished_ms": 1795452680393,
+        "reason": "exited",
+        "signal": null
+      },
+      "seq": 35,
+      "terminal": "t1",
+      "type": "finished"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {},
+      "seq": 36,
+      "terminal": "t1",
+      "type": "removed"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": null
+      },
+      "seq": 37,
+      "terminal": "t2",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "exit_code": null,
+        "finished_ms": 1795452680431,
+        "reason": "killed",
+        "signal": 1
+      },
+      "seq": 38,
+      "terminal": "t2",
+      "type": "finished"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {},
+      "seq": 39,
+      "terminal": "t2",
+      "type": "removed"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": null
+      },
+      "seq": 40,
+      "terminal": "t3",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "exit_code": null,
+        "finished_ms": 1795452680449,
+        "reason": "killed",
+        "signal": 1
+      },
+      "seq": 41,
+      "terminal": "t3",
+      "type": "finished"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {},
+      "seq": 42,
+      "terminal": "t3",
+      "type": "removed"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "exit_code": 0,
+        "finished_ms": 1795452680623,
+        "reason": "exited",
+        "signal": null
+      },
+      "seq": 43,
+      "terminal": "t4",
+      "type": "finished"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {},
+      "seq": 44,
+      "terminal": "t4",
+      "type": "removed"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": null
+      },
+      "seq": 45,
+      "terminal": "t5",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "exit_code": null,
+        "finished_ms": 1795452680727,
+        "reason": "killed",
+        "signal": 1
+      },
+      "seq": 46,
+      "terminal": "t5",
+      "type": "finished"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {},
+      "seq": 47,
+      "terminal": "t5",
+      "type": "removed"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "records": {},
+        "reported": true,
+        "status": null
+      },
+      "seq": 48,
+      "terminal": "t6",
+      "type": "status"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {
+        "exit_code": null,
+        "finished_ms": 1795452680741,
+        "reason": "killed",
+        "signal": 1
+      },
+      "seq": 49,
+      "terminal": "t6",
+      "type": "finished"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "event",
+    "params": {
+      "data": {},
+      "seq": 50,
+      "terminal": "t6",
+      "type": "removed"
+    }
+  }
+]

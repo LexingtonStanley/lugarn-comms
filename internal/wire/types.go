@@ -4,6 +4,7 @@ package wire
 
 import (
 	"encoding/json"
+	"github.com/LexingtonStanley/lugarn-comms/internal/hc"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
 )
 
@@ -377,6 +378,8 @@ type StartHerdrResponse struct {
 
 // HelloResult mirrors its v1 wire object.
 type HelloResult struct {
+	HC           *hc.Info            `json:"hc,omitempty"`
+	HerdrAuto    *model.HerdrBackend `json:"herdr_auto"`
 	Broker       HelloResultBroker   `json:"broker"`
 	Schemas      HelloResultSchemas  `json:"schemas"`
 	Capabilities []string            `json:"capabilities"`

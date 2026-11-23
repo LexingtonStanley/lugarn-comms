@@ -41,7 +41,7 @@ func migrateHerdrNames(ctx context.Context, tx *sql.Tx) error {
 
 // ReservedHerdrNames includes stopped members: a recorded name is permanent.
 func (tx *Tx) ReservedHerdrNames(server string) (map[string]bool, error) {
-	rows, err := tx.query(`SELECT m.herdr_agent FROM members m JOIN teams t ON t.id = m.team_id WHERE t.herdr_server = ? AND m.herdr_agent IS NOT NULL AND m.removed_at IS NULL AND t.forgotten = 0`, server)
+	rows, err := tx.query(`SELECT m.herdr_agent FROM members m JOIN teams t ON t.id = m.team_id WHERE t.herdr_server = ? AND t.backend = 'herdr' AND m.herdr_agent IS NOT NULL AND m.removed_at IS NULL AND t.forgotten = 0`, server)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/LexingtonStanley/lugarn-comms/internal/harness"
+	"github.com/LexingtonStanley/lugarn-comms/internal/hc"
 	"github.com/LexingtonStanley/lugarn-comms/internal/herdr"
 	"github.com/LexingtonStanley/lugarn-comms/internal/hostprobe"
 	"github.com/LexingtonStanley/lugarn-comms/internal/model"
@@ -41,11 +42,15 @@ type HerdrAPI interface {
 // for launch pointers. Models and ExtraEnv are trusted host configuration only.
 // No credential files or copied configuration homes are ever accessed here.
 type IntegrationOptions struct {
-	Binary, HerdrBinary, HomeDir string
-	Models                       map[model.Harness]string
-	ExtraEnv                     map[string]string
-	Herdr                        func(string) HerdrAPI
-	StartServer                  func(context.Context, string, string, ...herdr.ServerOption) (herdr.StartResult, error)
+	Binary, HerdrBinary, HCBinary, HomeDir string
+	HCProbe                                func(context.Context, string, string) hc.Info
+	// HCSocket reports whether a session's core is already running, without
+	// starting one; nil means unknown. Production sets hc.SocketExists.
+	HCSocket    func(string) *bool
+	Models      map[model.Harness]string
+	ExtraEnv    map[string]string
+	Herdr       func(string) HerdrAPI
+	StartServer func(context.Context, string, string, ...herdr.ServerOption) (herdr.StartResult, error)
 }
 
 // Integration binds the real drivers to the broker and runner. Constructing it
@@ -56,6 +61,7 @@ type Integration struct {
 	adapter      *harnessAdapter
 	panes        *paneAdapter
 	windowsPanes bool
+	hcPanes      *hcPaneAdapter
 }
 
 // NewIntegration constructs adapters without launching any process or server.
@@ -82,6 +88,8 @@ func NewIntegration(b *Broker, opts IntegrationOptions) (*Integration, error) {
 	integration := &Integration{b: b, opts: opts, windowsPanes: runtime.GOOS == "windows"}
 	integration.adapter = &harnessAdapter{binary: opts.Binary, state: b.opts.StateDir, home: opts.HomeDir, probe: b.opts.Probe, models: opts.Models, extra: opts.ExtraEnv}
 	integration.panes = &paneAdapter{clients: opts.Herdr, observed: map[string]model.Activity{}, submitted: map[string]bool{}, checked: map[string]int64{}}
+	integration.hcPanes = &hcPaneAdapter{i: integration, views: map[string]*hc.View{}, submitted: map[string]bool{}}
+	integration.panes.hc = integration.hcPanes
 	return integration, nil
 }
 
@@ -103,6 +111,12 @@ func (i *Integration) Runner(team string, opts RunnerOptions) *Runner {
 	r.checkPane = lifecycle.checkPane
 	r.prepareMember = func(ctx context.Context, m model.Member) (*model.Member, error) { return i.prepareWorktree(ctx, r, m) }
 	r.onAcquire = func(ctx context.Context) error {
+		subctx, cancel := context.WithCancel(ctx)
+		r.onExit = cancel
+		if e := i.hcPanes.start(subctx, team); e != nil {
+			cancel()
+			return e
+		}
 		i.sweepRunnerBridges()
 		placement, e := i.placement(team)
 		if e != nil {
@@ -219,6 +233,7 @@ func (h *harnessHandle) Wait() TurnOutcome {
 }
 
 type paneAdapter struct {
+	hc        *hcPaneAdapter
 	clients   func(string) HerdrAPI
 	mu        sync.Mutex
 	observed  map[string]model.Activity
@@ -239,6 +254,9 @@ func paneIdentity(m model.Member) (string, string) {
 }
 func paneKey(m model.Member) string { server, agent := paneIdentity(m); return server + "/" + agent }
 func (p *paneAdapter) State(ctx context.Context, m model.Member) (PaneObservation, error) {
+	if hcMember(m) {
+		return p.hc.State(ctx, m)
+	}
 	server, name := paneIdentity(m)
 	a, e := p.clients(server).Agent(ctx, name)
 	if herdr.IsTimeout(e) {
@@ -256,6 +274,9 @@ func (p *paneAdapter) State(ctx context.Context, m model.Member) (PaneObservatio
 	return PaneObservation{Activity: a.Activity}, nil
 }
 func (p *paneAdapter) Submit(ctx context.Context, m model.Member, prompt string) error {
+	if hcMember(m) {
+		return p.hc.Submit(ctx, m, prompt)
+	}
 	server, name := paneIdentity(m)
 	client := p.clients(server)
 	before, e := client.Agent(ctx, name)
@@ -276,6 +297,9 @@ func (p *paneAdapter) Submit(ctx context.Context, m model.Member, prompt string)
 	return nil
 }
 func (p *paneAdapter) WaitSettled(ctx context.Context, m model.Member, timeout time.Duration) (PaneObservation, error) {
+	if hcMember(m) {
+		return p.hc.WaitSettled(ctx, m, timeout)
+	}
 	server, name := paneIdentity(m)
 	a, e := p.clients(server).Wait(ctx, name, []model.Activity{model.ActivityIdle, model.ActivityDone, model.ActivityBlocked, model.ActivityUnknown}, timeout)
 	if herdr.IsTimeout(e) {
@@ -293,6 +317,9 @@ func (p *paneAdapter) WaitSettled(ctx context.Context, m model.Member, timeout t
 	return PaneObservation{Activity: a.Activity}, nil
 }
 func (p *paneAdapter) WaitActivity(ctx context.Context, m model.Member, timeout time.Duration) (bool, error) {
+	if hcMember(m) {
+		return p.hc.WaitActivity(ctx, m, timeout)
+	}
 	p.mu.Lock()
 	baseline := p.observed[paneKey(m)]
 	confirmed := p.submitted[paneKey(m)]

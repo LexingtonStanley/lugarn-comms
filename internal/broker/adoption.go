@@ -87,6 +87,21 @@ func (i *Integration) validateExternal(ctx context.Context, workspace, pane, nam
 
 func (b *Broker) AdoptTeam(ctx context.Context, r wire.AdoptTeamRequest) (wire.ApplyTeamResult, error) {
 	var zero wire.ApplyTeamResult
+	backend := model.HerdrBackendHerdr
+	if r.Backend != nil {
+		backend = *r.Backend
+	}
+	if !backend.Valid() {
+		return zero, invalid("invalid adoption backend")
+	}
+	if r.Spec.Herdr != nil && r.Spec.Herdr.Backend != nil && string(*r.Spec.Herdr.Backend) != string(backend) {
+		return zero, invalid("spec backend must match adoption backend")
+	}
+	r.Spec = policy.ApplyDefaults(r.Spec)
+	r.Spec.Herdr.Backend = ptr(model.HerdrBackendChoice(backend))
+	if backend == model.HerdrBackendHC {
+		return b.adoptHC(ctx, r)
+	}
 	if len(r.Members) != len(r.Spec.Members) || len(r.Members) == 0 {
 		return zero, invalid("adoption must bind every spec member exactly once")
 	}
@@ -163,6 +178,9 @@ func (b *Broker) refreshExternal(ctx context.Context, team string) error {
 	if t.Forgotten {
 		return nil
 	}
+	if hcTeam(t) {
+		return b.refreshHCExternal(ctx, t, ms)
+	}
 	var snapshot externalSnapshot
 	var observationErr error
 	for _, m := range ms {
@@ -215,6 +233,9 @@ func (b *Broker) refreshExternal(ctx context.Context, team string) error {
 // has gone. A missing agent alone is insufficient: the terminal might now hold
 // somebody else's shell job. Never treat server unavailability as proof of exit.
 func (i *Integration) externalForBring(ctx context.Context, t *store.Team, m model.Member) (model.ExternalMember, error) {
+	if hcTeam(t) {
+		return i.externalHC(ctx, t, m)
+	}
 	old := *m.External
 	v, err := i.inspectExternal(ctx, t.HerdrServer, old.Workspace, old.Pane, old.Agent, *m.Harness, *m.Folder)
 	if err == nil {
@@ -370,7 +391,12 @@ func (l *integrationLifecycle) bringOntoComms(ctx context.Context, m model.Membe
 	}
 	// Close only the selected pane, never its whole tab (which may have siblings).
 	if v.Available {
-		if e = l.i.opts.Herdr(team.HerdrServer).ClosePane(ctx, v.Pane); e != nil {
+		if hcTeam(team) {
+			e = l.i.killHCExternal(ctx, team, m, v)
+		} else {
+			e = l.i.opts.Herdr(team.HerdrServer).ClosePane(ctx, v.Pane)
+		}
+		if e != nil {
 			return e
 		}
 	}

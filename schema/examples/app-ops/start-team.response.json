@@ -34,7 +34,8 @@
       },
       "started_at": "2026-10-26T14:00:01.037Z",
       "stopped_at": null,
-      "last_app_contact_at": "2026-10-26T14:05:00.100Z"
+      "last_app_contact_at": "2026-10-26T14:05:00.100Z",
+      "herdr_backend": "herdr"
     },
     "already_running": false
   }

@@ -1,0 +1,35 @@
+{
+  "message": {
+    "id": "01M84N327FRAQAS330BBXQ3V52",
+    "team": "tabs",
+    "from": {
+      "id": "01M84N2DRTA6SDFC7W9T9V6W07",
+      "name": "human"
+    },
+    "kind": "message",
+    "broadcast": false,
+    "reply_to": null,
+    "text": "CHECK178 delivery",
+    "hop": null,
+    "round": null,
+    "turn": null,
+    "created_at": "2026-11-23T16:51:08.143Z",
+    "deliveries": [
+      {
+        "to": {
+          "id": "tabs-writer",
+          "name": "writer"
+        },
+        "state": "queued",
+        "reason": null,
+        "via": null,
+        "wake": true,
+        "attempts": 0,
+        "notify": null,
+        "turn": null,
+        "updated_at": "2026-11-23T16:51:08.143Z",
+        "delivered_at": null
+      }
+    ]
+  }
+}

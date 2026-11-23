@@ -1,0 +1,2265 @@
+[
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "hello",
+      "params": {
+        "generation": 1
+      }
+    },
+    "response": {
+      "id": 1,
+      "jsonrpc": "2.0",
+      "result": {
+        "core": {
+          "id": "8ac34a3e3eb9abb0281132d4d08a3057",
+          "name": "lexbox"
+        },
+        "features": [
+          "framed",
+          "attach",
+          "events",
+          "status",
+          "shell",
+          "resize_notifications",
+          "automatic_input",
+          "restart_environment"
+        ],
+        "framed": false,
+        "generation": 1,
+        "keeps_running_after_logout": true,
+        "logout_linger_user": "lexde",
+        "methods": [
+          "hello",
+          "server.status",
+          "server.stop",
+          "server.restart",
+          "terminal.run",
+          "templates.list",
+          "terminal.list",
+          "terminal.get",
+          "terminal.kill",
+          "terminal.rm",
+          "terminal.keep",
+          "terminal.label",
+          "terminal.read",
+          "terminal.attach",
+          "terminal.send",
+          "terminal.wait",
+          "terminal.keys",
+          "terminal.interrupt",
+          "terminal.put",
+          "machine.exec",
+          "file.read",
+          "file.write",
+          "file.edit",
+          "doc.get",
+          "doc.set",
+          "events.subscribe",
+          "machine.add",
+          "machine.list",
+          "machine.connect",
+          "machine.rename",
+          "machine.rm",
+          "rpc.discover"
+        ],
+        "version": "0.1.21"
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "terminal.run",
+      "params": {
+        "argv": [
+          "/usr/bin/python3",
+          "-c",
+          "import sys,time;time.sleep(1);sys.stdout.write('\\x1b]7501;state=working:app=fixture\\x07\\x1b]7501;state=idle:app=fixture\\x07'*50000);sys.stdout.flush();time.sleep(3)"
+        ],
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "labels": {
+          "probe": "missed"
+        },
+        "no_parent": true,
+        "no_notify": true,
+        "keep": false
+      }
+    },
+    "response": {
+      "id": 2,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t1",
+        "argv": [
+          "/usr/bin/python3",
+          "-c",
+          "import sys,time;time.sleep(1);sys.stdout.write('\\x1b]7501;state=working:app=fixture\\x07\\x1b]7501;state=idle:app=fixture\\x07'*50000);sys.stdout.flush();time.sleep(3)"
+        ],
+        "cols": 200,
+        "created_ms": 1795452221537,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {
+          "probe": "missed"
+        },
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1194146,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "terminal.run",
+      "params": {
+        "argv": [
+          "/bin/cat"
+        ],
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "name": "error-probe",
+        "no_parent": true,
+        "no_notify": true,
+        "keep": false
+      }
+    },
+    "response": {
+      "id": 3,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t2",
+        "argv": [
+          "/bin/cat"
+        ],
+        "cols": 200,
+        "created_ms": 1795452236503,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": "error-probe",
+        "notify": false,
+        "parent": null,
+        "pid": 1205430,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "method": "terminal.run",
+      "params": {
+        "argv": [
+          "/bin/cat"
+        ],
+        "name": "error-probe"
+      }
+    },
+    "response": {
+      "error": {
+        "code": -32000,
+        "data": {
+          "hint": "pick another name, or kill the one holding it",
+          "kind": "name_taken"
+        },
+        "message": "a live terminal is already named \"error-probe\""
+      },
+      "id": 4,
+      "jsonrpc": "2.0"
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "method": "terminal.run",
+      "params": {
+        "argv": [
+          "/bin/cat"
+        ],
+        "name": "t7"
+      }
+    },
+    "response": {
+      "error": {
+        "code": -32602,
+        "data": {
+          "hint": "see `hc schema`",
+          "kind": "invalid_params"
+        },
+        "message": "bad name \"t7\": use 1-32 of a-z 0-9 - _ . starting with a letter or digit, not shaped like an id (t7)"
+      },
+      "id": 5,
+      "jsonrpc": "2.0"
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "method": "terminal.kill",
+      "params": {
+        "terminal": "t2"
+      }
+    },
+    "response": {
+      "id": 6,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t2",
+        "argv": [
+          "/bin/cat"
+        ],
+        "cols": 200,
+        "created_ms": 1795452236503,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": 1795452236523,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": "error-probe",
+        "notify": false,
+        "parent": null,
+        "pid": 1205430,
+        "reason": "killed",
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": 1,
+        "state": "finished",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 7,
+      "method": "terminal.send",
+      "params": {
+        "terminal": "t2",
+        "text": "finished"
+      }
+    },
+    "response": {
+      "error": {
+        "code": -32000,
+        "data": {
+          "hint": "hc read t2",
+          "kind": "finished"
+        },
+        "message": "t2 has finished"
+      },
+      "id": 7,
+      "jsonrpc": "2.0"
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 8,
+      "method": "terminal.rm",
+      "params": {
+        "terminal": "t2"
+      }
+    },
+    "response": {
+      "id": 8,
+      "jsonrpc": "2.0",
+      "result": {
+        "removed": "t2"
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 9,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t2"
+      }
+    },
+    "response": {
+      "error": {
+        "code": -32000,
+        "data": {
+          "hint": "see `hc ls --all`",
+          "kind": "not_found"
+        },
+        "message": "no terminal \"t2\""
+      },
+      "id": 9,
+      "jsonrpc": "2.0"
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 10,
+      "method": "terminal.run",
+      "params": {
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "env": {
+          "HOME": "/tmp/hc-probe-178-xv_cr1j4/opencode",
+          "XDG_CONFIG_HOME": "/tmp/hc-probe-178-xv_cr1j4/opencode/config",
+          "XDG_DATA_HOME": "/tmp/hc-probe-178-xv_cr1j4/opencode/data",
+          "XDG_CACHE_HOME": "/tmp/hc-probe-178-xv_cr1j4/opencode/cache",
+          "OPENCODE_DISABLE_AUTOUPDATE": "1",
+          "OPENCODE_CONFIG_CONTENT": "{}"
+        },
+        "no_parent": true,
+        "no_notify": true,
+        "keep": false
+      }
+    },
+    "response": {
+      "id": 10,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 11,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 11,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 12,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 12,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 13,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 13,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 14,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 14,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 15,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 15,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 16,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 16,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 17,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 17,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 18,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 18,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 19,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 19,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 20,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 20,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 21,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 21,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 22,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 22,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 23,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 23,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 24,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 24,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 25,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 25,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 26,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 26,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 27,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 27,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 28,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 28,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 29,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 29,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 30,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 30,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 31,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 31,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 32,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 32,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 33,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 33,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 34,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 34,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 35,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 35,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 36,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 36,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 37,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 37,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 38,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 38,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 39,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 39,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 40,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 40,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "/home/lexde/.opencode/bin/opencode"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "opencode",
+          "pid": 1205601
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 41,
+      "method": "terminal.kill",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 41,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t3",
+        "argv": [
+          "/home/lexde/.opencode/bin/opencode"
+        ],
+        "cols": 200,
+        "created_ms": 1795452237408,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": 143,
+        "finished_ms": 1795452252440,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1205601,
+        "reason": "killed",
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "finished",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 42,
+      "method": "terminal.rm",
+      "params": {
+        "terminal": "t3"
+      }
+    },
+    "response": {
+      "id": 42,
+      "jsonrpc": "2.0",
+      "result": {
+        "removed": "t3"
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 43,
+      "method": "terminal.run",
+      "params": {
+        "argv": [
+          "/home/lexde/.local/bin/pi"
+        ],
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "env": {
+          "HOME": "/tmp/hc-probe-178-xv_cr1j4/pi",
+          "XDG_CONFIG_HOME": "/tmp/hc-probe-178-xv_cr1j4/pi/config",
+          "XDG_DATA_HOME": "/tmp/hc-probe-178-xv_cr1j4/pi/data",
+          "XDG_CACHE_HOME": "/tmp/hc-probe-178-xv_cr1j4/pi/cache",
+          "PI_SKIP_VERSION_CHECK": "1",
+          "PI_CODING_AGENT_DIR": "/tmp/hc-probe-178-xv_cr1j4/pi"
+        },
+        "no_parent": true,
+        "no_notify": true,
+        "keep": false
+      }
+    },
+    "response": {
+      "id": 43,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t4",
+        "argv": [
+          "/home/lexde/.local/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452252666,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1213875,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 44,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t4"
+      }
+    },
+    "response": {
+      "id": 44,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t4",
+        "argv": [
+          "/home/lexde/.local/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452252666,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1213875,
+        "reason": null,
+        "reported": false,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": null,
+        "status_ms": null,
+        "template": null,
+        "title": "",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 45,
+      "method": "terminal.get",
+      "params": {
+        "terminal": "t4"
+      }
+    },
+    "response": {
+      "id": 45,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t4",
+        "argv": [
+          "/home/lexde/.local/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452252666,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": null,
+        "finished_ms": null,
+        "foreground": {
+          "argv": [
+            "pi"
+          ],
+          "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+          "name": "pi",
+          "pid": 1213875
+        },
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1213875,
+        "reason": null,
+        "reported": true,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "live",
+        "status": {
+          "app": "pi",
+          "state": "idle"
+        },
+        "status_ms": 1795452252873,
+        "template": null,
+        "title": "\u03c0 - hc-probe-178-xv_cr1j4",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 46,
+      "method": "terminal.kill",
+      "params": {
+        "terminal": "t4"
+      }
+    },
+    "response": {
+      "id": 46,
+      "jsonrpc": "2.0",
+      "result": {
+        "address": "t4",
+        "argv": [
+          "/home/lexde/.local/bin/pi"
+        ],
+        "cols": 200,
+        "created_ms": 1795452252666,
+        "cwd": "/tmp/hc-probe-178-xv_cr1j4",
+        "die_with_parent": false,
+        "exit_code": 0,
+        "finished_ms": 1795452253237,
+        "identity": "ghostty",
+        "keep": false,
+        "labels": {},
+        "name": null,
+        "notify": false,
+        "parent": null,
+        "pid": 1213875,
+        "reason": "killed",
+        "reported": true,
+        "rm": false,
+        "rows": 120,
+        "screen": "exact",
+        "signal": null,
+        "state": "finished",
+        "status": null,
+        "status_ms": 1795452253229,
+        "template": null,
+        "title": "\u03c0 - hc-probe-178-xv_cr1j4",
+        "turn": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 47,
+      "method": "terminal.rm",
+      "params": {
+        "terminal": "t4"
+      }
+    },
+    "response": {
+      "id": 47,
+      "jsonrpc": "2.0",
+      "result": {
+        "removed": "t4"
+      }
+    }
+  }
+]
