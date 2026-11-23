@@ -49,3 +49,17 @@ func TestViewSequenceMissedAndLost(t *testing.T) {
 		t.Fatal(view)
 	}
 }
+
+func TestForegroundDoesNotMutatePublishedSnapshot(t *testing.T) {
+	v := NewView()
+	v.core = "core"
+	v.snapshot(Snapshot{Terminals: []Terminal{{Address: "t1", State: "live", Foreground: &Foreground{PID: 1, Cwd: "before"}}}})
+	old, _ := v.Current("core")
+	raw, _ := json.Marshal(map[string]any{"seq": 1, "type": "foreground", "terminal": "t1", "data": Foreground{PID: 2, Cwd: "after"}})
+	if !v.apply(Notification{Method: "event", Params: raw}) {
+		t.Fatal("event refused")
+	}
+	if old["t1"].Foreground.Cwd != "before" {
+		t.Fatal("published snapshot changed")
+	}
+}

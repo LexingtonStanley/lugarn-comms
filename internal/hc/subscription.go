@@ -108,9 +108,12 @@ func (v *View) apply(n Notification) bool {
 		t.Status = data.Status
 		t.Reported = data.Reported
 	case "foreground":
-		if json.Unmarshal(e.Data, &t.Foreground) != nil {
+		// Decode a fresh pointer: readers may still hold the prior snapshot.
+		var foreground *Foreground
+		if json.Unmarshal(e.Data, &foreground) != nil {
 			return false
 		}
+		t.Foreground = foreground
 	case "turn":
 		var data struct {
 			Turn uint64 `json:"turn"`
